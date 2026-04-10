@@ -523,9 +523,9 @@
             <properties>
                 <!-- 开发环境 -->
                 <profile.name>dev</profile.name>
-                <nacos.server-addr>localhost:19014</nacos.server-addr>
-                <nacos.username/>
-                <nacos.password/>
+                <nacos.server-addr>192.168.111.103:19014</nacos.server-addr>
+                <nacos.username>nacos</nacos.username>
+                <nacos.password>nacos</nacos.password>
             </properties>
         </profile>
     </profiles>
