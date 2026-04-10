@@ -3,6 +3,8 @@ package cn.com.mfish.common.ai.agent;
 import cn.com.mfish.common.ai.entity.AiRouterVo;
 import cn.com.mfish.common.core.utils.StringUtils;
 import cn.com.mfish.common.core.web.Result;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.ResponseEntity;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -10,6 +12,7 @@ import org.springframework.ai.chat.client.advisor.SimpleLoggerAdvisor;
 import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatModel;
 import org.springframework.ai.chat.model.ChatResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
@@ -23,14 +26,30 @@ import java.util.Objects;
  */
 @Component
 public class GatewayAssistant {
+    private static final Logger logger = LoggerFactory.getLogger(GatewayAssistant.class);
     private static final String DEFAULT_PROMPT = "你好，简单介绍下摸鱼低代码";
     private final ChatClient chatClient;
 
+    @Value("${spring.ai.openai.api-key:}")
+    private String apiKey;
+
+    @Value("${spring.ai.openai.base-url:}")
+    private String baseUrl;
+
+    @Value("${spring.ai.openai.chat.options.model:}")
+    private String model;
+
     public GatewayAssistant(ChatModel openAiChatModel, ChatMemory chatMemory) {
+        logger.info("===== OpenAI Config =====");
+        logger.info("API Key: {}", apiKey != null && !apiKey.isEmpty() ? "****" + apiKey.substring(Math.max(0, apiKey.length() - 4)) : "NOT SET");
+        logger.info("Base URL: {}", baseUrl != null && !baseUrl.isEmpty() ? baseUrl : "NOT SET");
+        logger.info("Model: {}", model != null && !model.isEmpty() ? model : "NOT SET");
+        logger.info("========================");
+
         this.chatClient = ChatClient.builder(openAiChatModel)
                 .defaultSystem("""
-                        你是“摸鱼低代码”的路由小助手，你会根据用户的问题，判断用户需要访问的路由路径!
-                        当有人问“摸鱼低代码”相关信息时，实际是在问我们整个平台的信息
+                        你是"摸鱼低代码"的路由小助手，你会根据用户的问题，判断用户需要访问的路由路径!
+                        当有人问"摸鱼低代码"相关信息时，实际是在问我们整个平台的信息
                         你只能返回路由路径，不能返回其他内容！
                         结果以json格式返回：
                         返回格式：{"path":"/sys/ai/chat","name":"摸鱼小助手"}

@@ -1,1 +1,3 @@
 cn.com.mfish.common.ai.agent.GatewayAssistant
+cn.com.mfish.common.ai.config.AiConfig
+cn.com.mfish.common.ai.config.OpenAiConfigLogger
