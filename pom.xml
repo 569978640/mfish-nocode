@@ -523,7 +523,7 @@
             <properties>
                 <!-- 开发环境 -->
                 <profile.name>dev</profile.name>
-                <nacos.server-addr>192.168.111.103:19014</nacos.server-addr>
+                <nacos.server-addr>192.168.111.103:8848</nacos.server-addr>
                 <nacos.username>nacos</nacos.username>
                 <nacos.password>nacos</nacos.password>
             </properties>
