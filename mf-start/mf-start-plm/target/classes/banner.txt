@@ -1,3 +1,0 @@
-Application Name: ${spring.application.name}
-Application Version: mf-2.3.0
-Spring Boot Version: 4.0.2
