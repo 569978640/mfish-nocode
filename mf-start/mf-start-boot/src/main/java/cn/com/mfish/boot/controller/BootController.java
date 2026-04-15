@@ -50,7 +50,7 @@ public class BootController {
             @MetricsMonitor(metricEnum = MetricEnum.MFISH_REQUEST_DURATION, tagValues = {"GET", "/ai/router"})
     })
     public Result<AiRouterVo> aiRouter(String prompt) {
-        prompt = StringUtils.isEmpty(prompt) ? "介绍下摸鱼低代码" : prompt;
+        prompt = StringUtils.isEmpty(prompt) ? "介绍下WindFlow" : prompt;
         return gatewayAssistant.chat(prompt).block();
     }
 }

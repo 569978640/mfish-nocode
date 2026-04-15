@@ -7,7 +7,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
 /**
- * @description: 摸鱼文件中心启动类
+ * @description: WindFlow文件中心启动类
  * @author: mfish
  * @date: 2023/1/5 16:34
  */

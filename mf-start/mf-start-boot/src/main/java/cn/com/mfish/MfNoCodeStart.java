@@ -7,7 +7,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
 /**
- * @description: 摸鱼低代码单应用启动类
+ * @description: WindFlow单应用启动类
  * @author: mfish
  * @date: 2024/1/26
  */

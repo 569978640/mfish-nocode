@@ -8,7 +8,7 @@ import org.springframework.cloud.openfeign.FallbackFactory;
 import org.springframework.stereotype.Component;
 
 /**
- * @description: 低代码服务接口降级处理
+ * @description: 开发服务接口降级处理
  * @author: mfish
  * @date: 2025/09/26
  */
@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class RemoteNocodeFallBack implements FallbackFactory<RemoteNocodeService> {
     @Override
     public RemoteNocodeService create(Throwable cause) {
-        log.error("错误: 低代码服务接口调用异常", cause);
+        log.error("错误: 开发服务接口调用异常", cause);
         return new RemoteNocodeService() {
 
             @Override

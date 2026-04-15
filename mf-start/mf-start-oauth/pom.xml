@@ -11,7 +11,7 @@
 
     <artifactId>mf-start-oauth</artifactId>
     <name>mf-start-oauth</name>
-    <description>摸鱼低代码认证中心</description>
+    <description>WindFlow平台认证中心</description>
     <url>https://mfish.com.cn</url>
 
     <licenses>

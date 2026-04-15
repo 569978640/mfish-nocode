@@ -9,7 +9,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 /**
  * @author: mfish
- * @description: 摸鱼测试中心启动
+ * @description: WindFlow测试中心启动
  * @date: 2021/12/3 17:22
  */
 @Slf4j

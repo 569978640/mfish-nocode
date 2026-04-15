@@ -19,8 +19,8 @@ public class SwaggerProperties {
      * 是否开启swagger
      */
     private Boolean enabled = true;
-    private String title = "摸鱼框架";
-    private String description = "摸鱼框架接口文档";
+    private String title = "WindFlow框架";
+    private String description = "WindFlow框架接口文档";
     private String termsOfServiceUrl = "";
     private String license = "";
     private String licenseUrl = "";

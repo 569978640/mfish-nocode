@@ -44,7 +44,7 @@ public class RouteFunctionConfig {
     @Bean
     public RouterFunction<ServerResponse> aiRouter() {
         return RouterFunctions.route(GET("/ai/router"), request -> {
-            String prompt = request.queryParam("prompt").orElse("介绍下摸鱼低代码");
+            String prompt = request.queryParam("prompt").orElse("介绍下WindFlow");
             try {
                 Mono<Result<AiRouterVo>> result = gatewayAssistant.chat(prompt);
                 return ServerResponse.ok()

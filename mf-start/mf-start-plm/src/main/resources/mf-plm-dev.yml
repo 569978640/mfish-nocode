@@ -1,5 +1,5 @@
 swagger:
-  title: '摸鱼PLM服务'
+  title: 'WindFlow PLM服务'
   prefix: /plm
 mybatis-plus:
   mapper-locations: classpath*:cn/com/mfish/plm/mapper/**/*Mapper.xml

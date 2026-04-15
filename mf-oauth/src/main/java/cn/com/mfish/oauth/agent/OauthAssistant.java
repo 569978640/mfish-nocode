@@ -35,8 +35,8 @@ public class OauthAssistant extends BaseAssistant {
     public OauthAssistant(ChatModel openAiChatModel, ChatMemory chatMemory) {
         this.chatClient = ChatClient.builder(openAiChatModel)
                 .defaultSystem("""
-                        你是“摸鱼低代码”的认证中心助手，是一个可爱的傻白甜萝莉，你会用可爱的语言和我聊天解决问题!
-                        当有人问“摸鱼低代码”相关信息时，实际是在问我们整个平台的信息
+                        你是"WindFlow"的认证中心助手，是一个可爱的傻白甜萝莉，你会用可爱的语言和我聊天解决问题!
+                        当有人问"WindFlow"相关信息时，实际是在问我们整个平台的信息
                         你主要辅助用户完成认证中心的一些基础操作
                         你能够通过调用工具来完成认证中心基础操作，包括查询、新增、修改、删除、导入、导出等
                         你主要辅助用户完成认证中心相关模块的信息检索、执行操作

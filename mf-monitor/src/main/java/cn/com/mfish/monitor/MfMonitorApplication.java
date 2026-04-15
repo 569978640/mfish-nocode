@@ -6,7 +6,7 @@ import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 /**
- * @description: 摸鱼监控中心启动类
+ * @description: WindFlow监控中心启动类
  * @author: mfish
  * @date: 2023/1/26 23:11
  */
@@ -21,7 +21,7 @@ public class MfMonitorApplication {
                 \t----------------------------------------------------------
                 \t\
                 
-                \t--------------------摸鱼监控中心启动成功-----------------------
+                \t--------------------WindFlow监控中心启动成功-----------------------
                 \t""");
     }
 }

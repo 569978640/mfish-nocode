@@ -25,7 +25,7 @@ import reactor.core.publisher.Flux;
 @RequestMapping("/openai")
 @RequiredArgsConstructor
 public class OpenAiChatModelController {
-    private static final String DEFAULT_PROMPT = "你好，简单介绍下摸鱼低代码";
+    private static final String DEFAULT_PROMPT = "你好，简单介绍下WindFlow";
 
     private final ChatModel openAiChatModel;
 

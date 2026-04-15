@@ -6,7 +6,7 @@ import cn.com.mfish.common.nocode.api.fallback.RemoteNocodeFallBack;
 import org.springframework.cloud.openfeign.FeignClient;
 
 /**
- * @description: 低代码服务接口
+ * @description: 开发服务接口
  * @author: mfish
  * @date: 2025/09/26
  */

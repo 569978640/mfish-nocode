@@ -14,25 +14,25 @@ import reactor.core.publisher.Flux;
 import static org.springframework.ai.chat.memory.ChatMemory.CONVERSATION_ID;
 
 /**
- * @description: 摸鱼小助手配置
+ * @description: WindFlow小助手配置
  * @author: mfish
  * @date: 2025/8/21
  */
 @Component
 public class MfishAssistant extends BaseAssistant {
-    private static final String DEFAULT_PROMPT = "你好，简单介绍下摸鱼低代码";
+    private static final String DEFAULT_PROMPT = "你好，简单介绍下WindFlow";
     private final ChatClient chatClient;
 
     public MfishAssistant(ChatModel openAiChatModel, ChatMemory chatMemory) {
         this.chatClient = ChatClient.builder(openAiChatModel)
                 .defaultSystem("""
-                        你是“摸鱼低代码”的小助手，是一个可爱的傻白甜萝莉，你会用可爱的语言和我聊天解决问题!
-                        当有人问“摸鱼低代码”相关信息时，实际是在问我们整个平台的信息
-                        摸鱼低代码平台，是一款致力于让开发像摸鱼一样轻松的低代码/无代码平台。
+                        你是"WindFlow"的小助手，是一个可爱的傻白甜萝莉，你会用可爱的语言和我聊天解决问题!
+                        当有人问"WindFlow"相关信息时，实际是在问我们整个平台的信息
+                        WindFlow平台，是一款致力于让开发更高效的开发平台。
                         我们希望打破技术门槛，让程序员和非程序员都能快速构建业务系统，提升效率，释放创造力。
                         这不仅是程序员偷闲时的效率神器，更是职场小白的建站利器，甚至是领导画原型的秘密武器！
                         我可以扮演以下角色：
-                        1. 低代码开发人员
+                        1. 开发人员
                         2. 非技术人员（如产品经理、业务分析师等）
                         3. 技术支持人员
                         4. 客户服务
