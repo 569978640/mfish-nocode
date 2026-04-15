@@ -19,11 +19,30 @@ import java.util.List;
 public interface FlowableService {
 
     /**
+     * 部署流程定义 本地文件部署，使用默认名称和描述
+     *
+     * @param id 流程唯一id
+     */
+    Integer deployProcess(String id);
+
+    /**
+     * 删除流程定义
+     *
+     * @param flowKey 流程定义key
+     * @param version 流程定义版本
+     */
+    void deleteDeploy(String flowKey, Integer version);
+
+    /**
      * 部署流程定义
      *
-     * @param name 流程定义文件名称 例如：test.bpmn20.xml文件名称传test
+     * @param flowKey    流程定义key
+     * @param name       部署名称
+     * @param desc       部署描述
+     * @param flowConfig 流程配置
+     * @return 返回版本号
      */
-    void deployProcess(String name);
+    Integer deployProcess(String flowKey, String name, String desc, String flowConfig);
 
     /**
      * 启动流程
@@ -84,7 +103,23 @@ public interface FlowableService {
      * @param processInstanceId 流程实例id
      * @return 图片base64编码
      */
-    String queryImage(String processInstanceId);
+    String getImage(String processInstanceId);
+
+    /**
+     * 查询流程定义
+     *
+     * @param processInstanceId 流程实例id
+     * @return 流程定义
+     */
+    FlowDefinition getFlowDefinition(String processInstanceId);
+
+    /**
+     * 查询激活的流程定义key
+     *
+     * @param processInstanceId 流程实例id
+     * @return 流程定义key列表
+     */
+    List<String> getActiveDefinitionKeys(String processInstanceId);
 
     /**
      * 查询任务列表
@@ -153,5 +188,13 @@ public interface FlowableService {
      * @return 审核评论列表
      */
     List<AuditComment> getAuditComments(String processInstanceId);
+
+    /**
+     * 查询流程管理信息
+     *
+     * @param processInstanceId 流程实例id
+     * @return 流程管理信息
+     */
+    FlowManage queryFlowManage(String processInstanceId);
 
 }
