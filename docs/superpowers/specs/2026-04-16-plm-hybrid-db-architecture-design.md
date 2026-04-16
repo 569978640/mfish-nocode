@@ -38,9 +38,9 @@
 | 目标 | 说明 |
 |-----|------|
 | 关系库为主 | 存储模型主数据，存储完整节点属性+关系属性，所有写操作、业务逻辑、事务、回滚 |
-| 图库为辅 | 存储精简节点+关系拓扑+关系属性，数据来自关系库异步同步，不承担业务写逻辑 |
+| 图库为辅 | 存储精简节点+边公共属性，数据来自关系库异步同步，不承担业务写逻辑 |
 | 数据一致性 | 图库数据来自关系库异步同步，保证最终一致性 |
-| 查询效率 | 图库查路径+关系属性，关系库查节点属性，混合查询 |
+| 查询效率 | 图库查路径，PG库查节点+边的业务属性，混合查询 |
 | 配置灵活 | 单节点/集群模式通过配置切换 |
 
 ### 1.3 设计原则
@@ -261,7 +261,7 @@ public class GraphEdge {
     @ApiModelProperty("更新时间")
     private Date updateTime;
 
-    @ApiModelProperty("父节点ID (存储fromId)")
+    @ApiModelProperty("父节点ID")
     private String parentId;
 
     @ApiModelProperty("起始节点ID")
@@ -275,6 +275,9 @@ public class GraphEdge {
 
     @ApiModelProperty("目标节点类型")
     private String toType;
+
+    @ApiModelProperty("PG库Link表的业务属性 (如FolderLink的folderCode、PartLink的version等)")
+    private Map<String, Object> properties;
 }
 ```
 
@@ -321,11 +324,12 @@ public class GraphEdge {
 | createTime | DateTime | 创建时间 |
 | updateBy | String | 更新用户 |
 | updateTime | DateTime | 更新时间 |
-| parentId | T | 父节点ID (存储fromId) |
+| parentId | T | 父节点ID |
 | fromId | String | 起始节点ID |
 | fromType | String | 起始节点类型 |
 | toId | String | 目标节点ID |
 | toType | String | 目标节点类型 |
+| properties | Map<String, Object> | **PG库Link表的业务属性**（如FolderLink的folderCode、PartLink的version等） |
 
 ### 4.8 实体类继承关系
 
@@ -352,12 +356,12 @@ public class GraphEdge {
 
 | 数据库 | 存储内容 | 说明 |
 |-------|---------|------|
-| PostgreSQL | 完整节点属性 + 关系属性 | 主数据存储，所有写操作，节点业务属性查询 |
-| NebulaGraph | 节点公共属性 + **完整的Link表数据** | 图库边的数据等于PG库对应Link表的全部字段 |
+| PostgreSQL | 完整节点属性 + Link表全部字段 | 主数据存储，所有写操作，节点业务属性查询 |
+| NebulaGraph | 节点公共属性 + Link表全部字段（含properties） | 图库边的数据等于PG库对应Link表的全部字段 |
 
 **核心思路**：
-- **节点**：PG库主数据表 → 图库标签（只存公共属性 id, createBy, createTime, updateBy, updateTime）
-- **边**：PG库Link表 → 图库边类型（存储Link表的全部字段，包括公共属性和业务属性）
+- **节点**：PG库主数据表 → 图库标签（只存 BaseEntity 公共属性）
+- **边**：PG库Link表 → 图库边类型（存储 Link 表的全部字段，**properties 字段存储 Link 表的业务属性**）
 
 图数据库存储完整的边数据，查询路径时可直接获取边的所有属性（包含业务属性）。
 
@@ -393,6 +397,9 @@ public class PartLink extends BaseTreeEntity<String> {
 
     @ApiModelProperty("目标节点类型")
     private String toType;
+
+    @ApiModelProperty("Link表业务属性 (版本号等)")
+    private Map<String, Object> properties;
 }
 ```
 
@@ -779,7 +786,8 @@ public class GraphFullSyncService {
 │  │           {"id":"folder001", "type":"FOLDER", ...}]             │        │
 │  │  • edges: [{"id":"edge001", "type":"CONTAIN",                   │        │
 │  │            "fromId":"folder001", "fromType":"FOLDER",           │        │
-│  │            "toId":"product001", "toType":"PRODUCT", ...}]       │        │
+│  │            "toId":"product001", "toType":"PRODUCT",              │        │
+│  │            "properties":{"folderCode":"F001"}}]                  │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │                                         │                                    │
 │                                         ▼                                    │
@@ -819,7 +827,8 @@ public class GraphFullSyncService {
 │  │    "edges": [                                                     │        │
 │  │      {"id":"edge001", "type":"CONTAIN",                           │        │
 │  │       "fromId":"folder001", "fromType":"FOLDER",                 │        │
-│  │       "toId":"product001", "toType":"PRODUCT", ...}              │        │
+│  │       "toId":"product001", "toType":"PRODUCT",                    │        │
+│  │       "properties":{"folderCode":"F001"}}                         │        │
 │  │    ]                                                              │        │
 │  │  }                                                                 │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
@@ -1047,7 +1056,7 @@ nebula:
 
 NebulaGraph 图数据库存储以下数据：
 - **点 (Vertex)**：PG库主数据表的公共属性（id, createBy, createTime, updateBy, updateTime）
-- **边 (Edge)**：PG库Link表的全部字段（包含公共属性和业务属性）
+- **边 (Edge)**：PG库Link表的全部字段（包含公共属性 + **properties 存储业务属性**）
 
 **节点类型**（对应PG库主数据表）：
 | 节点类型 | 说明 |
@@ -1068,8 +1077,8 @@ NebulaGraph 图数据库存储以下数据：
 
 **存储策略**：
 - 节点只存储 BaseEntity 的公共属性
-- 边存储 BaseTreeEntity 的所有字段（包括 Link 表的业务属性）
-- 查询路径时，图库返回完整的边数据，无需再查关系库获取边属性
+- 边存储 BaseTreeEntity 的所有字段，**properties 字段以 JSON 字符串存储 Link 表的业务属性**
+- 查询路径时，图库返回完整的边数据（含业务属性），无需再查关系库获取边属性
 
 ### 9.2 图空间创建
 
@@ -1142,8 +1151,8 @@ CREATE TAG IF NOT EXISTS DOCUMENT(
     update_time datetime
 );
 
--- 创建边类型 - 存储 BaseTreeEntity 所有字段 (包含 Link 表业务属性)
--- id, type, parent_id, create_by, create_time, update_by, update_time, from_id, from_type, to_id, to_type
+-- 创建边类型 - 存储 BaseTreeEntity 所有字段 + Link表业务属性
+-- id, type, parent_id, create_by, create_time, update_by, update_time, from_id, from_type, to_id, to_type, properties
 CREATE EDGE IF NOT EXISTS CONTAIN(
     id string NOT NULL,
     type string NOT NULL,
@@ -1155,7 +1164,8 @@ CREATE EDGE IF NOT EXISTS CONTAIN(
     from_id string NOT NULL,
     from_type string NOT NULL,
     to_id string NOT NULL,
-    to_type string NOT NULL
+    to_type string NOT NULL,
+    properties string
 );
 
 CREATE EDGE IF NOT EXISTS ITERATE(
@@ -1169,7 +1179,8 @@ CREATE EDGE IF NOT EXISTS ITERATE(
     from_id string NOT NULL,
     from_type string NOT NULL,
     to_id string NOT NULL,
-    to_type string NOT NULL
+    to_type string NOT NULL,
+    properties string
 );
 ```
 
@@ -1185,12 +1196,12 @@ INSERT VERTEX PART(id, create_by, create_time) VALUES 'part001':('part001', 'adm
 INSERT VERTEX DOCUMENT_MASTER(id, create_by, create_time) VALUES 'docmaster001':('docmaster001', 'admin', NOW());
 INSERT VERTEX DOCUMENT(id, create_by, create_time) VALUES 'doc001':('doc001', 'admin', NOW());
 
--- 插入边 (包含id, type, parent_id和公共属性)
-INSERT EDGE CONTAIN(id, type, parent_id, from_id, from_type, to_id, to_type, create_by, create_time)
-VALUES 'folder001' -> 'product001':('edge001', 'CONTAIN', NULL, 'folder001', 'FOLDER', 'product001', 'PRODUCT', 'admin', NOW());
+-- 插入边 (包含id, type, parent_id, 公共属性和业务属性)
+INSERT EDGE CONTAIN(id, type, parent_id, from_id, from_type, to_id, to_type, create_by, create_time, properties)
+VALUES 'folder001' -> 'product001':('edge001', 'CONTAIN', NULL, 'folder001', 'FOLDER', 'product001', 'PRODUCT', 'admin', NOW(), '{"folderCode":"F001"}');
 
-INSERT EDGE ITERATE(id, type, parent_id, from_id, from_type, to_id, to_type, create_by, create_time)
-VALUES 'partmaster001' -> 'part001':('edge002', 'ITERATE', NULL, 'partmaster001', 'PART_MASTER', 'part001', 'PART', 'admin', NOW());
+INSERT EDGE ITERATE(id, type, parent_id, from_id, from_type, to_id, to_type, create_by, create_time, properties)
+VALUES 'partmaster001' -> 'part001':('edge002', 'ITERATE', NULL, 'partmaster001', 'PART_MASTER', 'part001', 'PART', 'admin', NOW(), '{"version":"V1.0"}');
 
 -- 查询路径 (多跳) - 返回节点和边的所有属性
 MATCH p=(n)-[e:CONTAIN|ITERATE*1..3]->(m)
