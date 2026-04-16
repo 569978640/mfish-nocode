@@ -257,22 +257,55 @@ public class GraphEdge {
 
 | 节点类型 | 类型码 | 说明 |
 |---------|--------|------|
-| Product | PRODUCT | 产品 |
-| Part | PART | 零部件 |
-| Material | MATERIAL | 原材料 |
-| Vendor | VENDOR | 供应商 |
-| Document | DOCUMENT | 文档 |
+| SsoOrg | SSO_ORG | 组织 |
+| Product | PRODUCT | 产品库 |
+| Folder | FOLDER | 文件夹 |
+| PartMaster | PART_MASTER | 部件主数据 |
+| Part | PART | 部件小版本 |
+| DocumentMaster | DOCUMENT_MASTER | 文档主数据 |
+| Document | DOCUMENT | 文档小版本 |
 
 ### 4.5 边类型定义
 
-| 边类型 | 说明 | 关系属性 |
-|--------|------|---------|
-| CONTAIN | 产品包含零部件 | quantity(数量) |
-| USE | 零部件使用材料 | quantity(数量) |
-| REPLACE | 材料替代关系 | reason(原因) |
-| SUPPLY | 供应商供应材料 | leadTime(交期) |
-| VERSION | 版本关系 | version(版本号) |
-| CHANGE | 变更关联 | changeNo(变更单号) |
+| 边类型 | 说明 | 起始节点 → 目标节点 |
+|--------|------|---------------------|
+| CONTAIN | 包含关系 | SsoOrg→Product, Product→Folder, Folder→Folder, Product→PartMaster, Product→DocumentMaster |
+| ITERATE | 版本迭代关系 | PartMaster→Part, DocumentMaster→Document |
+
+### 4.6 节点属性定义
+
+所有节点都包含以下公共属性：
+
+| 属性 | 类型 | 说明 |
+|-----|------|------|
+| id | String | 节点ID (对应关系库主键) |
+| type | String | 节点类型 |
+| createBy | String | 创建用户 |
+| createTime | DateTime | 创建时间 |
+| updateBy | String | 更新用户 |
+| updateTime | DateTime | 更新时间 |
+
+### 4.7 边属性定义
+
+所有边都包含以下公共属性：
+
+| 属性 | 类型 | 说明 |
+|-----|------|------|
+| fromId | String | 起始节点ID |
+| fromType | String | 起始节点类型 |
+| toId | String | 目标节点ID |
+| toType | String | 目标节点类型 |
+| createBy | String | 创建用户 |
+| createTime | DateTime | 创建时间 |
+| updateBy | String | 更新用户 |
+| updateTime | DateTime | 更新时间 |
+
+### 4.8 关系属性存储策略
+
+| 数据库 | 存储内容 | 说明 |
+|-------|---------|------|
+| PostgreSQL | 完整节点属性 + 关系属性 | 主数据存储，包含所有业务字段 |
+| NebulaGraph | 精简节点 + 边属性 | 只存储节点ID、类型和公共属性，不存储具体业务属性 |
 
 ---
 
@@ -663,23 +696,141 @@ CREATE EDGE IF NOT EXISTS VERSION();
 CREATE EDGE IF NOT EXISTS CHANGE();
 ```
 
-### 9.2 nGQL 示例
+### 9.2 图空间创建
+
+```sql
+-- 创建图空间
+CREATE SPACE IF NOT EXISTS plm_graph(
+    partition_num = 100,
+    replica_factor = 1,
+    charset = utf8,
+    collation = utf8_bin
+);
+
+-- 使用图空间
+USE plm_graph;
+
+-- 创建标签 (节点类型) - 包含公共属性
+CREATE TAG IF NOT EXISTS SSO_ORG(
+    id string NOT NULL,
+    type string NOT NULL,
+    create_by string,
+    create_time datetime,
+    update_by string,
+    update_time datetime
+);
+
+CREATE TAG IF NOT EXISTS PRODUCT(
+    id string NOT NULL,
+    type string NOT NULL,
+    create_by string,
+    create_time datetime,
+    update_by string,
+    update_time datetime
+);
+
+CREATE TAG IF NOT EXISTS FOLDER(
+    id string NOT NULL,
+    type string NOT NULL,
+    create_by string,
+    create_time datetime,
+    update_by string,
+    update_time datetime
+);
+
+CREATE TAG IF NOT EXISTS PART_MASTER(
+    id string NOT NULL,
+    type string NOT NULL,
+    create_by string,
+    create_time datetime,
+    update_by string,
+    update_time datetime
+);
+
+CREATE TAG IF NOT EXISTS PART(
+    id string NOT NULL,
+    type string NOT NULL,
+    create_by string,
+    create_time datetime,
+    update_by string,
+    update_time datetime
+);
+
+CREATE TAG IF NOT EXISTS DOCUMENT_MASTER(
+    id string NOT NULL,
+    type string NOT NULL,
+    create_by string,
+    create_time datetime,
+    update_by string,
+    update_time datetime
+);
+
+CREATE TAG IF NOT EXISTS DOCUMENT(
+    id string NOT NULL,
+    type string NOT NULL,
+    create_by string,
+    create_time datetime,
+    update_by string,
+    update_time datetime
+);
+
+-- 创建边类型 - 包含公共属性
+CREATE EDGE IF NOT EXISTS CONTAIN(
+    from_id string NOT NULL,
+    from_type string NOT NULL,
+    to_id string NOT NULL,
+    to_type string NOT NULL,
+    create_by string,
+    create_time datetime,
+    update_by string,
+    update_time datetime
+);
+
+CREATE EDGE IF NOT EXISTS ITERATE(
+    from_id string NOT NULL,
+    from_type string NOT NULL,
+    to_id string NOT NULL,
+    to_type string NOT NULL,
+    create_by string,
+    create_time datetime,
+    update_by string,
+    update_time datetime
+);
+```
+
+### 9.3 nGQL 示例
 
 ```sql
 -- 插入节点
-INSERT VERTEX PRODUCT() VALUES 'P001':();
+INSERT VERTEX SSO_ORG(id, type, create_by, create_time) VALUES 'org001':('org001', 'SSO_ORG', 'admin', NOW());
+INSERT VERTEX PRODUCT(id, type, create_by, create_time) VALUES 'product001':('product001', 'PRODUCT', 'admin', NOW());
+INSERT VERTEX PART_MASTER(id, type, create_by, create_time) VALUES 'partmaster001':('partmaster001', 'PART_MASTER', 'admin', NOW());
+INSERT VERTEX PART(id, type, create_by, create_time) VALUES 'part001':('part001', 'PART', 'admin', NOW());
 
--- 插入边
-INSERT EDGE CONTAIN() VALUES 'P001' -> 'M001':();
+-- 插入边 (包含from/to类型和公共属性)
+INSERT EDGE CONTAIN(from_id, from_type, to_id, to_type, create_by, create_time)
+VALUES 'org001' -> 'product001':('org001', 'SSO_ORG', 'product001', 'PRODUCT', 'admin', NOW());
 
--- 查询路径 (多跳)
-MATCH p=(p:PART {id:'P001'})-[*1..5]->(n) RETURN p;
+INSERT EDGE ITERATE(from_id, from_type, to_id, to_type, create_by, create_time)
+VALUES 'partmaster001' -> 'part001':('partmaster001', 'PART_MASTER', 'part001', 'PART', 'admin', NOW());
 
--- 查询最短路径
-FIND SHORTEST PATH FROM 'P001' TO 'S001' OVER CONTAIN, USE;
+-- 查询路径 (多跳) - 返回节点和边的所有属性
+MATCH p=(n)-[e:CONTAIN|ITERATE*1..3]->(m)
+WHERE id(n) == 'product001'
+RETURN p;
 
--- 查询邻居
-GO FROM 'P001' OVER CONTAIN;
+-- 查询某个产品的所有文件夹和部件
+MATCH (p:PRODUCT)-[e:CONTAIN]->(n)
+WHERE id(p) == 'product001'
+RETURN n, e;
+
+-- 查询某个部件主数据的版本链
+MATCH (pm:PART_MASTER)-[e:ITERATE]->(p:PART)
+WHERE id(pm) == 'partmaster001'
+RETURN p, e;
+
+-- 统计某个文件夹下的直接子节点数量
+GO FROM 'folder001' OVER CONTAIN YIELD dst(edge);
 ```
 
 ---
