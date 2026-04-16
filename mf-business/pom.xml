@@ -18,6 +18,7 @@
         <module>mf-ai</module>
         <module>mf-workflow</module>
         <module>mf-plm</module>
+        <module>mf-graph</module>
     </modules>
 
     <properties>
