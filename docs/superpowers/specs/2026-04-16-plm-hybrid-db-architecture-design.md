@@ -274,31 +274,32 @@ public class GraphEdge {
 
 ### 4.6 节点属性定义
 
-所有节点都包含以下公共属性：
+所有节点都 extends `cn.com.mfish.common.core.entity.BaseEntity`，包含以下公共属性：
 
 | 属性 | 类型 | 说明 |
 |-----|------|------|
-| id | String | 节点ID (对应关系库主键) |
-| type | String | 节点类型 |
+| id | T | 节点ID (对应关系库主键) |
 | createBy | String | 创建用户 |
-| createTime | DateTime | 创建时间 |
+| createTime | Date | 创建时间 |
 | updateBy | String | 更新用户 |
-| updateTime | DateTime | 更新时间 |
+| updateTime | Date | 更新时间 |
 
 ### 4.7 边属性定义
 
-所有边都包含以下公共属性：
+所有边都 extends `cn.com.mfish.common.core.entity.BaseEntity`，包含以下属性：
 
 | 属性 | 类型 | 说明 |
 |-----|------|------|
+| id | String | 边ID |
+| type | String | 边类型 (CONTAIN/ITERATE) |
 | fromId | String | 起始节点ID |
 | fromType | String | 起始节点类型 |
 | toId | String | 目标节点ID |
 | toType | String | 目标节点类型 |
 | createBy | String | 创建用户 |
-| createTime | DateTime | 创建时间 |
+| createTime | Date | 创建时间 |
 | updateBy | String | 更新用户 |
-| updateTime | DateTime | 更新时间 |
+| updateTime | Date | 更新时间 |
 
 ### 4.8 关系属性存储策略
 
@@ -399,10 +400,18 @@ public class ProductServiceImpl {
 
 | 数据库 | 存储内容 | 用途 |
 |-------|---------|------|
-| PostgreSQL | 完整节点属性 + 关系属性 | 主数据存储，所有写操作，节点属性查询 |
-| NebulaGraph | 精简节点 + 关系拓扑 + 关系属性 | 关系查询，路径查询，关系属性查询 |
+| PostgreSQL | 完整节点属性 + 关系属性 | 主数据存储，所有写操作，节点业务属性查询 |
+| NebulaGraph | 精简节点 + 边属性 | 关系查询，路径查询，边公共属性查询 |
 
-**核心思路**：图数据库存储关系属性，查询时图库直接返回路径+关系属性，无需再查关系库。
+**节点类型**：SsoOrg、Product、Folder、PartMaster、Part、DocumentMaster、Document
+
+**边类型**：CONTAIN（包含关系）、ITERATE（版本迭代关系）
+
+**核心思路**：图数据库存储节点和边的公共属性，查询时图库直接返回路径+边属性，无需再查关系库。
+
+混合查询职责划分：
+- **图库负责**：路径查询 + 边公共属性（fromId, toId, fromType, toType, createBy, createTime等）
+- **关系库负责**：节点业务属性（用节点ID列表批量查询）
 
 ### 6.2 查询流程图
 
@@ -661,8 +670,15 @@ nebula:
 ### 9.1 设计说明
 
 NebulaGraph 图数据库存储以下数据：
-- **点 (Vertex)**：精简节点信息（ID、类型、名称）
-- **边 (Edge)**：关系拓扑 + **关系属性**（数量、单位、版本等）
+- **点 (Vertex)**：精简节点信息（ID、类型、公共属性）
+- **边 (Edge)**：关系拓扑 + 公共属性（fromId, toId, fromType, toType等）
+
+**节点类型**：SsoOrg、Product、Folder、PartMaster、Part、DocumentMaster、Document
+
+**边类型**：CONTAIN（包含关系）、ITERATE（版本迭代关系）
+
+所有节点和边都包含公共属性：id、type、createBy、createTime、updateBy、updateTime
+所有边还包含：fromId、fromType、toId、toType
 
 关系属性存储在边上，查询路径时可直接获取关系属性，无需再查关系库。
 
