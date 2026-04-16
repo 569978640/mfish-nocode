@@ -37,18 +37,19 @@
 
 | 目标 | 说明 |
 |-----|------|
-| 关系库为主 | 存储模型主数据、关系+关系属性，所有写操作、业务逻辑、事务、回滚 |
-| 图库为辅 | 只存储精简节点+关系拓扑+关系属性，异步同步，不承担业务写逻辑 |
+| 关系库为主 | 存储模型主数据，存储完整节点属性+关系属性，所有写操作、业务逻辑、事务、回滚 |
+| 图库为辅 | 存储精简节点+关系拓扑+关系属性，数据来自关系库异步同步，不承担业务写逻辑 |
 | 数据一致性 | 图库数据来自关系库异步同步，保证最终一致性 |
-| 查询效率 | 复杂关系查询通过图库实现，属性查询通过关系库实现 |
+| 查询效率 | 图库查路径+关系属性，关系库查节点属性，混合查询 |
 | 配置灵活 | 单节点/集群模式通过配置切换 |
 
 ### 1.3 设计原则
 
-1. **职责分离**：关系库负责业务逻辑，图库负责关系查询
-2. **事件驱动**：通过 RocketMQ 异步同步数据
+1. **职责分离**：关系库存储完整数据（主数据），图库存储精简数据（用于关系查询）
+2. **事件驱动**：通过 RocketMQ 异步同步数据到图库
 3. **最终一致**：图库数据允许短暂不一致，以性能换可用性
 4. **配置驱动**：单节点/集群模式通过配置切换
+5. **混合查询**：图库负责路径和关系属性查询，关系库负责节点属性查询
 
 ---
 
@@ -226,7 +227,7 @@ public class GraphNode {
 }
 ```
 
-### 4.3 图边 (GraphEdge)
+### 4.3 图边 (GraphEdge) - 关系属性
 
 ```java
 @Data
@@ -247,7 +248,7 @@ public class GraphEdge {
     @ApiModelProperty("关系类型: CONTAIN/USE/REPLACE/SUPPLY等")
     private String edgeType;
 
-    @ApiModelProperty("关系属性")
+    @ApiModelProperty("关系属性 (如数量、单位、版本等)")
     private Map<String, Object> properties;
 }
 ```
@@ -361,7 +362,16 @@ public class ProductServiceImpl {
 
 ## 6. 混合查询流程设计
 
-### 6.1 查询流程图
+### 6.1 数据存储策略
+
+| 数据库 | 存储内容 | 用途 |
+|-------|---------|------|
+| PostgreSQL | 完整节点属性 + 关系属性 | 主数据存储，所有写操作，节点属性查询 |
+| NebulaGraph | 精简节点 + 关系拓扑 + 关系属性 | 关系查询，路径查询，关系属性查询 |
+
+**核心思路**：图数据库存储关系属性，查询时图库直接返回路径+关系属性，无需再查关系库。
+
+### 6.2 查询流程图
 
 ```
 ┌─────────────────────────────────────────────────────────────────────────────┐
@@ -375,7 +385,10 @@ public class ProductServiceImpl {
 │  │                    Step 1: 图数据库查询                          │        │
 │  │  nGQL: MATCH p=(p:Part {id:'P001'})-[*1..5]->(n) RETURN p       │        │
 │  │                                                                    │        │
-│  │  返回: 路径信息，包含节点ID列表和关系路径                           │        │
+│  │  返回: 路径信息 + 关系属性 (直接从图库获取)                         │        │
+│  │  • nodes: [{"id":"P001", "type":"PART"}, {"id":"M001", ...}]    │        │
+│  │  • edges: [{"type":"CONTAIN", "src":"P001", "dst":"M001",        │        │
+│  │            "properties":{"quantity":10, "unit":"个"}}]            │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │                                         │                                    │
 │                                         ▼                                    │
@@ -386,22 +399,39 @@ public class ProductServiceImpl {
 │                                         │                                    │
 │                                         ▼                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐        │
-│  │                 Step 3: 关系库批量查询属性                        │        │
+│  │                 Step 3: 关系库批量查询节点属性                    │        │
 │  │  SQL: SELECT * FROM plm_model WHERE id IN ('P001','M001',...)   │        │
 │  │                                                                    │        │
-│  │  返回: 节点属性映射                                                │        │
+│  │  返回: 节点属性映射 (只查节点属性，关系属性已从图库获取)            │        │
+│  │  {                                                                 │        │
+│  │    "P001": {"name": "装配体A", "spec": "规格1", "material": ...},│        │
+│  │    "M001": {"name": "螺丝M3", "material": "不锈钢", "size": ...} │        │
+│  │  }                                                                 │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │                                         │                                    │
 │                                         ▼                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐        │
 │  │                 Step 4: 合并结果返回                             │        │
-│  │  将图数据库返回的关系路径与关系库返回的属性合并                    │        │
+│  │  • 节点属性: 来自关系库                                           │        │
+│  │  • 关系属性: 来自图库 (已在Step1获取)                              │        │
+│  │                                                                    │        │
+│  │  最终返回:                                                         │        │
+│  │  {                                                                 │        │
+│  │    "nodes": [                                                     │        │
+│  │      {"id":"P001", "type":"PART", "name":"装配体A", "spec":"..."},│        │
+│  │      {"id":"M001", "type":"MATERIAL", "name":"螺丝M3", ...}      │        │
+│  │    ],                                                              │        │
+│  │    "edges": [                                                     │        │
+│  │      {"type":"CONTAIN", "src":"P001", "dst":"M001",              │        │
+│  │       "properties":{"quantity":10, "unit":"个"}}                  │        │
+│  │    ]                                                              │        │
+│  │  }                                                                 │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │                                                                             │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
-### 6.2 查询服务实现
+### 6.3 查询服务实现
 
 ```java
 @Service
@@ -412,20 +442,27 @@ public class GraphQueryServiceImpl {
     @Autowired
     private ProductMapper productMapper;
 
+    /**
+     * BOM链查询 - 混合查询
+     * 图库负责: 路径查询 + 关系属性查询
+     * 关系库负责: 节点属性查询
+     */
     public GraphResult queryBomChain(String partId) {
-        // Step 1: 图数据库查询 - 获取关系路径
-        List<PathInfo> paths = nebulaClient.queryPaths(
+        // Step 1: 图数据库查询 - 获取路径和关系属性 (关系属性直接从图库获取)
+        PathQueryResult pathResult = nebulaClient.queryPathsWithEdgeProps(
             "MATCH p=(p:Part {id:'" + partId + "'})-[*1..5]->(n) RETURN p"
         );
 
         // Step 2: 从路径中提取所有节点ID
-        Set<String> allIds = extractNodeIds(paths);
+        Set<String> allNodeIds = extractNodeIds(pathResult);
 
-        // Step 3: 关系库批量查询节点属性
-        Map<String, Map<String, Object>> attributes = relationDB.batchQuery(allIds);
+        // Step 3: 关系库批量查询节点属性 (只查节点属性，关系属性已在Step1获取)
+        Map<String, NodeAttributes> nodeAttributes = relationDB.batchQueryNodes(allNodeIds);
 
-        // Step 4: 合并返回
-        return mergeResults(paths, attributes);
+        // Step 4: 合并结果
+        // - 节点: 图库ID + 关系库属性
+        // - 边: 关系属性 (直接从图库返回)
+        return mergeResults(pathResult, nodeAttributes);
     }
 }
 ```
@@ -588,7 +625,15 @@ nebula:
 
 ## 9. NebulaGraph 数据模型
 
-### 9.1 图空间创建
+### 9.1 设计说明
+
+NebulaGraph 图数据库存储以下数据：
+- **点 (Vertex)**：精简节点信息（ID、类型、名称）
+- **边 (Edge)**：关系拓扑 + **关系属性**（数量、单位、版本等）
+
+关系属性存储在边上，查询路径时可直接获取关系属性，无需再查关系库。
+
+### 9.2 图空间创建
 
 ```sql
 -- 创建图空间
