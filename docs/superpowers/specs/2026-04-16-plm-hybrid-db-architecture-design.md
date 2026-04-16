@@ -209,6 +209,8 @@ public class GraphSyncEvent {
 
 ### 4.2 图节点 (GraphNode)
 
+图节点对应 PG 库中的主数据表，extends BaseEntity：
+
 ```java
 @Data
 @ApiModel("图节点")
@@ -216,40 +218,63 @@ public class GraphNode {
     @ApiModelProperty("节点ID (对应关系库主键)")
     private String id;
 
-    @ApiModelProperty("节点类型: Product/Part/Material/Vendor等")
+    @ApiModelProperty("节点类型: SSO_ORG/PRODUCT/FOLDER/PART_MASTER/PART/DOCUMENT_MASTER/DOCUMENT")
     private String type;
 
-    @ApiModelProperty("节点名称")
-    private String name;
+    @ApiModelProperty("创建用户")
+    private String createBy;
 
-    @ApiModelProperty("精简属性 (只存图库需要的字段)")
-    private Map<String, Object> properties;
+    @ApiModelProperty("创建时间")
+    private Date createTime;
+
+    @ApiModelProperty("更新用户")
+    private String updateBy;
+
+    @ApiModelProperty("更新时间")
+    private Date updateTime;
 }
 ```
 
-### 4.3 图边 (GraphEdge) - 关系属性
+### 4.3 图边 (GraphEdge)
+
+图边对应 PG 库中的关系表（后缀为Link的表），extends BaseTreeEntity：
 
 ```java
 @Data
 @ApiModel("图边")
 public class GraphEdge {
+    @ApiModelProperty("边ID (对应PG库Link表主键)")
+    private String id;
+
+    @ApiModelProperty("边类型: CONTAIN/ITERATE")
+    private String type;
+
+    @ApiModelProperty("创建用户")
+    private String createBy;
+
+    @ApiModelProperty("创建时间")
+    private Date createTime;
+
+    @ApiModelProperty("更新用户")
+    private String updateBy;
+
+    @ApiModelProperty("更新时间")
+    private Date updateTime;
+
+    @ApiModelProperty("父节点ID (存储fromId)")
+    private String parentId;
+
     @ApiModelProperty("起始节点ID")
-    private String srcId;
+    private String fromId;
 
     @ApiModelProperty("起始节点类型")
-    private String srcType;
+    private String fromType;
 
     @ApiModelProperty("目标节点ID")
-    private String dstId;
+    private String toId;
 
     @ApiModelProperty("目标节点类型")
-    private String dstType;
-
-    @ApiModelProperty("关系类型: CONTAIN/USE/REPLACE/SUPPLY等")
-    private String edgeType;
-
-    @ApiModelProperty("关系属性 (如数量、单位、版本等)")
-    private Map<String, Object> properties;
+    private String toType;
 }
 ```
 
@@ -302,12 +327,167 @@ public class GraphEdge {
 | toId | String | 目标节点ID |
 | toType | String | 目标节点类型 |
 
-### 4.8 关系属性存储策略
+### 4.8 实体类继承关系
+
+| 实体类型 | 父类 | 说明 |
+|---------|------|------|
+| 节点实体类 | extends BaseEntity | 如 Product, PartMaster, Document 等 |
+| 边实体类 | extends BaseTreeEntity | 如 PartLink, DocumentLink 等（后缀为 Link 的关系表） |
+
+### 4.9 关系表命名规范
+
+关系表（边）命名规范：**主数据表名 + Link**
+
+| 主数据表 | 关系表 | 说明 |
+|---------|--------|------|
+| SsoOrg | - | 组织无对应关系表（顶级） |
+| Product | - | 产品库无上级关系表 |
+| Folder | FolderLink | 文件夹包含文件夹 |
+| PartMaster | - | 部件主数据无上级关系表 |
+| PartMaster | PartLink | 部件版本迭代关系 |
+| DocumentMaster | - | 文档主数据无上级关系表 |
+| DocumentMaster | DocumentLink | 文档版本迭代关系 |
+
+### 4.10 关系属性存储策略
 
 | 数据库 | 存储内容 | 说明 |
 |-------|---------|------|
-| PostgreSQL | 完整节点属性 + 关系属性 | 主数据存储，包含所有业务字段 |
-| NebulaGraph | 精简节点 + 边属性 | 只存储节点ID、类型和公共属性，不存储具体业务属性 |
+| PostgreSQL | 完整节点属性 + 关系属性 | 主数据存储，所有写操作，节点业务属性查询 |
+| NebulaGraph | 节点公共属性 + **完整的Link表数据** | 图库边的数据等于PG库对应Link表的全部字段 |
+
+**核心思路**：
+- **节点**：PG库主数据表 → 图库标签（只存公共属性 id, createBy, createTime, updateBy, updateTime）
+- **边**：PG库Link表 → 图库边类型（存储Link表的全部字段，包括公共属性和业务属性）
+
+图数据库存储完整的边数据，查询路径时可直接获取边的所有属性（包含业务属性）。
+
+### 4.11 示例代码
+
+```java
+// 节点实体类 - extends BaseEntity
+@Data
+@ApiModel("产品库节点")
+public class Product extends BaseEntity<String> {
+    @ApiModelProperty("产品库编号")
+    private String productCode;
+
+    @ApiModelProperty("产品库名称")
+    private String productName;
+
+    @ApiModelProperty("所属组织ID")
+    private String orgId;
+}
+
+// 边实体类 - extends BaseTreeEntity
+@Data
+@ApiModel("部件版本迭代边")
+public class PartLink extends BaseTreeEntity<String> {
+    @ApiModelProperty("部件主数据ID")
+    private String partMasterId;
+
+    @ApiModelProperty("部件版本ID")
+    private String partId;
+
+    @ApiModelProperty("起始节点类型")
+    private String fromType;
+
+    @ApiModelProperty("目标节点类型")
+    private String toType;
+}
+```
+
+### 4.12 图同步事件模型
+
+```java
+@Data
+@ApiModel("图数据库同步事件")
+public class GraphSyncEvent {
+    @ApiModelProperty("事件ID")
+    private String eventId;
+
+    @ApiModelProperty("事件类型: CREATE/UPDATE/DELETE/FULL_SYNC")
+    private String eventType;
+
+    @ApiModelProperty("时间戳")
+    private Long timestamp;
+
+    @ApiModelProperty("业务来源服务")
+    private String source;
+
+    @ApiModelProperty("操作用户")
+    private String operator;
+
+    @ApiModelProperty("节点变更列表")
+    private List<GraphNode> nodes;
+
+    @ApiModelProperty("边变更列表")
+    private List<GraphEdge> edges;
+}
+```
+
+### 4.13 图节点模型
+
+```java
+@Data
+@ApiModel("图节点")
+public class GraphNode {
+    @ApiModelProperty("节点ID (对应关系库主键)")
+    private String id;
+
+    @ApiModelProperty("节点类型: SSO_ORG/PRODUCT/FOLDER/PART_MASTER/PART/DOCUMENT_MASTER/DOCUMENT")
+    private String type;
+
+    @ApiModelProperty("创建用户")
+    private String createBy;
+
+    @ApiModelProperty("创建时间")
+    private Date createTime;
+
+    @ApiModelProperty("更新用户")
+    private String updateBy;
+
+    @ApiModelProperty("更新时间")
+    private Date updateTime;
+}
+```
+
+### 4.14 图边模型
+
+```java
+@Data
+@ApiModel("图边")
+public class GraphEdge {
+    @ApiModelProperty("边ID")
+    private String id;
+
+    @ApiModelProperty("边类型: CONTAIN/ITERATE")
+    private String type;
+
+    @ApiModelProperty("起始节点ID")
+    private String fromId;
+
+    @ApiModelProperty("起始节点类型")
+    private String fromType;
+
+    @ApiModelProperty("目标节点ID")
+    private String toId;
+
+    @ApiModelProperty("目标节点类型")
+    private String toType;
+
+    @ApiModelProperty("创建用户")
+    private String createBy;
+
+    @ApiModelProperty("创建时间")
+    private Date createTime;
+
+    @ApiModelProperty("更新用户")
+    private String updateBy;
+
+    @ApiModelProperty("更新时间")
+    private Date updateTime;
+}
+```
 
 ---
 
@@ -393,6 +573,169 @@ public class ProductServiceImpl {
 }
 ```
 
+### 5.3 全量同步功能
+
+全量同步功能：清空图数据库所有数据，然后将关系数据库所有后缀为Link表的数据同步到图数据库。
+
+**触发方式**：
+- 手动触发：通过管理接口调用
+- 定时触发：可配置定时任务
+
+**同步流程**：
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                         全量同步流程 (FULL_SYNC)                           │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  触发全量同步                                                                │
+│       │                                                                      │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐        │
+│  │  Step 1: 清空图数据库                                            │        │
+│  │  nGQL: DELETE SPACE plm_graph; CREATE SPACE plm_graph;         │        │
+│  └─────────────────────────────────────────────────────────────────┘        │
+│       │                                                                      │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐        │
+│  │  Step 2: 重新创建图空间 Schema                                   │        │
+│  │  创建所有标签 (SSO_ORG, PRODUCT, FOLDER, PART_MASTER, PART,      │        │
+│  │              DOCUMENT_MASTER, DOCUMENT)                           │        │
+│  │  创建所有边类型 (CONTAIN, ITERATE)                                │        │
+│  └─────────────────────────────────────────────────────────────────┘        │
+│       │                                                                      │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐        │
+│  │  Step 3: 查询所有节点数据                                        │        │
+│  │  SELECT * FROM sso_org UNION ALL                               │        │
+│  │  SELECT * FROM product UNION ALL                                │        │
+│  │  SELECT * FROM folder UNION ALL                                 │        │
+│  │  SELECT * FROM part_master UNION ALL                            │        │
+│  │  SELECT * FROM part UNION ALL                                   │        │
+│  │  SELECT * FROM document_master UNION ALL                        │        │
+│  │  SELECT * FROM document                                          │        │
+│  └─────────────────────────────────────────────────────────────────┘        │
+│       │                                                                      │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐        │
+│  │  Step 4: 查询所有边数据                                          │        │
+│  │  SELECT * FROM folder_link UNION ALL                             │        │
+│  │  SELECT * FROM part_link UNION ALL                               │        │
+│  │  SELECT * FROM document_link                                     │        │
+│  └─────────────────────────────────────────────────────────────────┘        │
+│       │                                                                      │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐        │
+│  │  Step 5: 批量写入图数据库                                        │        │
+│  │  批量 INSERT VERTEX ... VALUES ...                              │        │
+│  │  批量 INSERT EDGE ... VALUES ...                                │        │
+│  └─────────────────────────────────────────────────────────────────┘        │
+│       │                                                                      │
+│       ▼                                                                      │
+│  ┌─────────────────────────────────────────────────────────────────┐        │
+│  │  Step 6: 记录同步状态                                            │        │
+│  │  记录同步时间、同步数量、是否成功                                 │        │
+│  └─────────────────────────────────────────────────────────────────┘        │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
+```
+
+**全量同步接口**：
+
+| 接口路径 | 方法 | 说明 | 权限 |
+|---------|------|------|-----|
+| /graph/sync/full | POST | 触发全量同步 | graph:sync:full |
+| /graph/sync/status | GET | 查询同步状态 | graph:sync:status |
+
+**全量同步服务实现**：
+
+```java
+@Service
+public class GraphFullSyncService {
+    @Autowired
+    private NebulaClient nebulaClient;
+
+    @Autowired
+    private SsoOrgMapper ssoOrgMapper;
+    @Autowired
+    private ProductMapper productMapper;
+    @Autowired
+    private FolderMapper folderMapper;
+    @Autowired
+    private PartMasterMapper partMasterMapper;
+    @Autowired
+    private PartMapper partMapper;
+    @Autowired
+    private DocumentMasterMapper documentMasterMapper;
+    @Autowired
+    private DocumentMapper documentMapper;
+    @Autowired
+    private FolderLinkMapper folderLinkMapper;
+    @Autowired
+    private PartLinkMapper partLinkMapper;
+    @Autowired
+    private DocumentLinkMapper documentLinkMapper;
+
+    /**
+     * 全量同步：清空图库，重新同步所有数据
+     */
+    public void fullSync() {
+        // Step 1: 清空图数据库并重建Schema
+        nebulaClient.clearAndRecreateSpace();
+
+        // Step 2: 同步所有节点
+        syncAllNodes();
+
+        // Step 3: 同步所有边
+        syncAllEdges();
+    }
+
+    private void syncAllNodes() {
+        // 同步 SsoOrg
+        List<SsoOrg> orgs = ssoOrgMapper.selectList(null);
+        nebulaClient.batchInsertVertices("SSO_ORG", convertToGraphNodes(orgs, "SSO_ORG"));
+
+        // 同步 Product
+        List<Product> products = productMapper.selectList(null);
+        nebulaClient.batchInsertVertices("PRODUCT", convertToGraphNodes(products, "PRODUCT"));
+
+        // 同步 Folder
+        List<Folder> folders = folderMapper.selectList(null);
+        nebulaClient.batchInsertVertices("FOLDER", convertToGraphNodes(folders, "FOLDER"));
+
+        // 同步 PartMaster
+        List<PartMaster> partMasters = partMasterMapper.selectList(null);
+        nebulaClient.batchInsertVertices("PART_MASTER", convertToGraphNodes(partMasters, "PART_MASTER"));
+
+        // 同步 Part
+        List<Part> parts = partMapper.selectList(null);
+        nebulaClient.batchInsertVertices("PART", convertToGraphNodes(parts, "PART"));
+
+        // 同步 DocumentMaster
+        List<DocumentMaster> docMasters = documentMasterMapper.selectList(null);
+        nebulaClient.batchInsertVertices("DOCUMENT_MASTER", convertToGraphNodes(docMasters, "DOCUMENT_MASTER"));
+
+        // 同步 Document
+        List<Document> documents = documentMapper.selectList(null);
+        nebulaClient.batchInsertVertices("DOCUMENT", convertToGraphNodes(documents, "DOCUMENT"));
+    }
+
+    private void syncAllEdges() {
+        // 同步 FolderLink -> CONTAIN 边
+        List<FolderLink> folderLinks = folderLinkMapper.selectList(null);
+        nebulaClient.batchInsertEdges("CONTAIN", convertToGraphEdges(folderLinks, "CONTAIN"));
+
+        // 同步 PartLink -> ITERATE 边
+        List<PartLink> partLinks = partLinkMapper.selectList(null);
+        nebulaClient.batchInsertEdges("ITERATE", convertToGraphEdges(partLinks, "ITERATE"));
+
+        // 同步 DocumentLink -> ITERATE 边
+        List<DocumentLink> docLinks = documentLinkMapper.selectList(null);
+        nebulaClient.batchInsertEdges("ITERATE", convertToGraphEdges(docLinks, "ITERATE"));
+    }
+}
+```
+
 ---
 
 ## 6. 混合查询流程设计
@@ -401,17 +744,19 @@ public class ProductServiceImpl {
 
 | 数据库 | 存储内容 | 用途 |
 |-------|---------|------|
-| PostgreSQL | 完整节点属性 + 关系属性 | 主数据存储，所有写操作，节点业务属性查询 |
-| NebulaGraph | 精简节点 + 边属性 | 关系查询，路径查询，边公共属性查询 |
+| PostgreSQL | 完整节点属性 + Link表全部字段 | 主数据存储，所有写操作，节点业务属性查询 |
+| NebulaGraph | 节点公共属性 + **Link表全部字段** | 图库边数据等于PG库Link表的全部字段 |
 
 **节点类型**：SsoOrg、Product、Folder、PartMaster、Part、DocumentMaster、Document
 
 **边类型**：CONTAIN（包含关系）、ITERATE（版本迭代关系）
 
-**核心思路**：图数据库存储节点和边的公共属性，查询时图库直接返回路径+边属性，无需再查关系库。
+**核心思路**：
+- **节点**：PG库主数据表 → 图库标签（只存 BaseEntity 公共属性）
+- **边**：PG库Link表 → 图库边类型（存储 Link 表的全部字段，包含公共属性和业务属性）
 
 混合查询职责划分：
-- **图库负责**：路径查询 + 边公共属性（fromId, toId, fromType, toType, createBy, createTime等）
+- **图库负责**：路径查询 + **边的所有属性**（包含Link表业务属性）
 - **关系库负责**：节点业务属性（用节点ID列表批量查询）
 
 ### 6.2 查询流程图
@@ -421,52 +766,60 @@ public class ProductServiceImpl {
 │                           混合查询流程                                       │
 ├─────────────────────────────────────────────────────────────────────────────┤
 │                                                                             │
-│  请求: queryBomChain(partId="P001")                                         │
+│  请求: queryProductTree(productId="product001")                            │
 │                                         │                                    │
 │                                         ▼                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐        │
 │  │                    Step 1: 图数据库查询                          │        │
-│  │  nGQL: MATCH p=(p:Part {id:'P001'})-[*1..5]->(n) RETURN p       │        │
+│  │  nGQL: MATCH p=(p:PRODUCT {id:'product001'})-[*1..5]->(n)     │        │
+│  │        RETURN p                                                 │        │
 │  │                                                                    │        │
-│  │  返回: 路径信息 + 关系属性 (直接从图库获取)                         │        │
-│  │  • nodes: [{"id":"P001", "type":"PART"}, {"id":"M001", ...}]    │        │
-│  │  • edges: [{"type":"CONTAIN", "src":"P001", "dst":"M001",        │        │
-│  │            "properties":{"quantity":10, "unit":"个"}}]            │        │
+│  │  返回: 路径信息 + 边所有属性 (直接从图库获取)                      │        │
+│  │  • nodes: [{"id":"product001", "type":"PRODUCT", ...},          │        │
+│  │           {"id":"folder001", "type":"FOLDER", ...}]             │        │
+│  │  • edges: [{"id":"edge001", "type":"CONTAIN",                   │        │
+│  │            "fromId":"folder001", "fromType":"FOLDER",           │        │
+│  │            "toId":"product001", "toType":"PRODUCT", ...}]       │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │                                         │                                    │
 │                                         ▼                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐        │
 │  │                 Step 2: 提取节点ID列表                           │        │
-│  │  allIds = ["P001", "M001", "M002", "S001"]                      │        │
+│  │  allNodeIds = ["product001", "folder001", "part001", ...]      │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │                                         │                                    │
 │                                         ▼                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐        │
-│  │                 Step 3: 关系库批量查询节点属性                    │        │
-│  │  SQL: SELECT * FROM plm_model WHERE id IN ('P001','M001',...)   │        │
+│  │                 Step 3: 关系库批量查询节点业务属性                │        │
+│  │  SQL: SELECT * FROM product WHERE id IN ('product001',...)     │        │
+│  │       UNION ALL SELECT * FROM folder WHERE id IN (...)          │        │
 │  │                                                                    │        │
-│  │  返回: 节点属性映射 (只查节点属性，关系属性已从图库获取)            │        │
+│  │  返回: 节点业务属性映射 (从PG库获取)                              │        │
 │  │  {                                                                 │        │
-│  │    "P001": {"name": "装配体A", "spec": "规格1", "material": ...},│        │
-│  │    "M001": {"name": "螺丝M3", "material": "不锈钢", "size": ...} │        │
+│  │    "product001": {"productCode": "P001", "productName": "产品A"},│        │
+│  │    "folder001": {"folderName": "设计文件夹", "folderCode": "F001"},│        │
+│  │    "part001": {"partName": "部件A", "partCode": "PA001", ...}  │        │
 │  │  }                                                                 │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │                                         │                                    │
 │                                         ▼                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐        │
 │  │                 Step 4: 合并结果返回                             │        │
-│  │  • 节点属性: 来自关系库                                           │        │
-│  │  • 关系属性: 来自图库 (已在Step1获取)                              │        │
+│  │  • 节点: 图库ID + 类型 + 关系库业务属性                          │        │
+│  │  • 边: 来自图库 (包含Link表所有字段)                             │        │
 │  │                                                                    │        │
 │  │  最终返回:                                                         │        │
 │  │  {                                                                 │        │
 │  │    "nodes": [                                                     │        │
-│  │      {"id":"P001", "type":"PART", "name":"装配体A", "spec":"..."},│        │
-│  │      {"id":"M001", "type":"MATERIAL", "name":"螺丝M3", ...}      │        │
-│  │    ],                                                              │        │
+│  │      {"id":"product001", "type":"PRODUCT",                        │        │
+│  │       "productCode":"P001", "productName":"产品A", ...},          │        │
+│  │      {"id":"folder001", "type":"FOLDER",                          │        │
+│  │       "folderName":"设计文件夹", ...}                             │        │
+│  │    ],                                                             │        │
 │  │    "edges": [                                                     │        │
-│  │      {"type":"CONTAIN", "src":"P001", "dst":"M001",              │        │
-│  │       "properties":{"quantity":10, "unit":"个"}}                  │        │
+│  │      {"id":"edge001", "type":"CONTAIN",                           │        │
+│  │       "fromId":"folder001", "fromType":"FOLDER",                 │        │
+│  │       "toId":"product001", "toType":"PRODUCT", ...}              │        │
 │  │    ]                                                              │        │
 │  │  }                                                                 │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
@@ -484,27 +837,31 @@ public class GraphQueryServiceImpl {
 
     @Autowired
     private ProductMapper productMapper;
+    @Autowired
+    private FolderMapper folderMapper;
+    @Autowired
+    private PartMasterMapper partMasterMapper;
 
     /**
-     * BOM链查询 - 混合查询
-     * 图库负责: 路径查询 + 关系属性查询
-     * 关系库负责: 节点属性查询
+     * 产品结构树查询 - 混合查询
+     * 图库负责: 路径查询 + 边的所有属性 (包含Link表业务属性)
+     * 关系库负责: 节点业务属性 (用节点ID列表批量查询)
      */
-    public GraphResult queryBomChain(String partId) {
-        // Step 1: 图数据库查询 - 获取路径和关系属性 (关系属性直接从图库获取)
+    public GraphResult queryProductTree(String productId) {
+        // Step 1: 图数据库查询 - 获取路径和边的所有属性
         PathQueryResult pathResult = nebulaClient.queryPathsWithEdgeProps(
-            "MATCH p=(p:Part {id:'" + partId + "'})-[*1..5]->(n) RETURN p"
+            "MATCH p=(p:PRODUCT {id:'" + productId + "'})-[*1..5]->(n) RETURN p"
         );
 
         // Step 2: 从路径中提取所有节点ID
         Set<String> allNodeIds = extractNodeIds(pathResult);
 
-        // Step 3: 关系库批量查询节点属性 (只查节点属性，关系属性已在Step1获取)
-        Map<String, NodeAttributes> nodeAttributes = relationDB.batchQueryNodes(allNodeIds);
+        // Step 3: 关系库批量查询节点业务属性
+        Map<String, Map<String, Object>> nodeAttributes = relationDB.batchQueryNodes(allNodeIds);
 
         // Step 4: 合并结果
-        // - 节点: 图库ID + 关系库属性
-        // - 边: 关系属性 (直接从图库返回)
+        // - 节点: 图库ID + 类型 + 关系库业务属性
+        // - 边: 来自图库 (包含Link表所有字段)
         return mergeResults(pathResult, nodeAttributes);
     }
 }
@@ -529,9 +886,9 @@ public class GraphQueryServiceImpl {
 ```json
 // 路径查询请求
 {
-  "startId": "P001",
-  "startType": "PART",
-  "edgeTypes": ["CONTAIN", "USE"],
+  "startId": "product001",
+  "startType": "PRODUCT",
+  "edgeTypes": ["CONTAIN", "ITERATE"],
   "direction": "OUT",
   "depth": 5
 }
@@ -541,15 +898,33 @@ public class GraphQueryServiceImpl {
   "success": true,
   "code": 200,
   "data": {
-    "paths": [
+    "nodes": [
       {
-        "nodes": [
-          {"id": "P001", "type": "PART", "name": "装配体A", ...},
-          {"id": "M001", "type": "MATERIAL", "name": "螺丝M3", ...}
-        ],
-        "edges": [
-          {"type": "CONTAIN", "src": "P001", "dst": "M001", "properties": {"quantity": 10}}
-        ]
+        "id": "product001",
+        "type": "PRODUCT",
+        "productCode": "P001",
+        "productName": "产品A",
+        "createBy": "admin",
+        "createTime": "2026-04-16 10:00:00"
+      },
+      {
+        "id": "folder001",
+        "type": "FOLDER",
+        "folderName": "设计文件夹",
+        "createBy": "admin",
+        "createTime": "2026-04-16 11:00:00"
+      }
+    ],
+    "edges": [
+      {
+        "id": "edge001",
+        "type": "CONTAIN",
+        "fromId": "folder001",
+        "fromType": "FOLDER",
+        "toId": "product001",
+        "toType": "PRODUCT",
+        "createBy": "admin",
+        "createTime": "2026-04-16 11:00:00"
       }
     ]
   }
@@ -671,47 +1046,30 @@ nebula:
 ### 9.1 设计说明
 
 NebulaGraph 图数据库存储以下数据：
-- **点 (Vertex)**：精简节点信息（ID、类型、公共属性）
-- **边 (Edge)**：关系拓扑 + 公共属性（fromId, toId, fromType, toType等）
+- **点 (Vertex)**：PG库主数据表的公共属性（id, createBy, createTime, updateBy, updateTime）
+- **边 (Edge)**：PG库Link表的全部字段（包含公共属性和业务属性）
 
-**节点类型**：SsoOrg、Product、Folder、PartMaster、Part、DocumentMaster、Document
+**节点类型**（对应PG库主数据表）：
+| 节点类型 | 说明 |
+|---------|------|
+| SSO_ORG | 组织 |
+| PRODUCT | 产品库 |
+| FOLDER | 文件夹 |
+| PART_MASTER | 部件主数据 |
+| PART | 部件小版本 |
+| DOCUMENT_MASTER | 文档主数据 |
+| DOCUMENT | 文档小版本 |
 
-**边类型**：CONTAIN（包含关系）、ITERATE（版本迭代关系）
+**边类型**（对应PG库Link表）：
+| 边类型 | 说明 | Link表 |
+|--------|------|--------|
+| CONTAIN | 包含关系 | FolderLink |
+| ITERATE | 版本迭代关系 | PartLink, DocumentLink |
 
-所有节点和边都包含公共属性：id、type、createBy、createTime、updateBy、updateTime
-所有边还包含：fromId、fromType、toId、toType
-
-关系属性存储在边上，查询路径时可直接获取关系属性，无需再查关系库。
-
-### 9.2 图空间创建
-
-```sql
--- 创建图空间
-CREATE SPACE IF NOT EXISTS plm_graph(
-    partition_num = 100,
-    replica_factor = 1,
-    charset = utf8,
-    collation = utf8_bin
-);
-
--- 使用图空间
-USE plm_graph;
-
--- 创建标签 (节点类型)
-CREATE TAG IF NOT EXISTS PRODUCT();
-CREATE TAG IF NOT EXISTS PART();
-CREATE TAG IF NOT EXISTS MATERIAL();
-CREATE TAG IF NOT EXISTS VENDOR();
-CREATE TAG IF NOT EXISTS DOCUMENT();
-
--- 创建边类型
-CREATE EDGE IF NOT EXISTS CONTAIN();
-CREATE EDGE IF NOT EXISTS USE();
-CREATE EDGE IF NOT EXISTS REPLACE();
-CREATE EDGE IF NOT EXISTS SUPPLY();
-CREATE EDGE IF NOT EXISTS VERSION();
-CREATE EDGE IF NOT EXISTS CHANGE();
-```
+**存储策略**：
+- 节点只存储 BaseEntity 的公共属性
+- 边存储 BaseTreeEntity 的所有字段（包括 Link 表的业务属性）
+- 查询路径时，图库返回完整的边数据，无需再查关系库获取边属性
 
 ### 9.2 图空间创建
 
@@ -727,10 +1085,9 @@ CREATE SPACE IF NOT EXISTS plm_graph(
 -- 使用图空间
 USE plm_graph;
 
--- 创建标签 (节点类型) - 包含公共属性
+-- 创建标签 (节点类型) - 存储 BaseEntity 公共属性
 CREATE TAG IF NOT EXISTS SSO_ORG(
     id string NOT NULL,
-    type string NOT NULL,
     create_by string,
     create_time datetime,
     update_by string,
@@ -739,7 +1096,6 @@ CREATE TAG IF NOT EXISTS SSO_ORG(
 
 CREATE TAG IF NOT EXISTS PRODUCT(
     id string NOT NULL,
-    type string NOT NULL,
     create_by string,
     create_time datetime,
     update_by string,
@@ -748,7 +1104,6 @@ CREATE TAG IF NOT EXISTS PRODUCT(
 
 CREATE TAG IF NOT EXISTS FOLDER(
     id string NOT NULL,
-    type string NOT NULL,
     create_by string,
     create_time datetime,
     update_by string,
@@ -757,7 +1112,6 @@ CREATE TAG IF NOT EXISTS FOLDER(
 
 CREATE TAG IF NOT EXISTS PART_MASTER(
     id string NOT NULL,
-    type string NOT NULL,
     create_by string,
     create_time datetime,
     update_by string,
@@ -766,7 +1120,6 @@ CREATE TAG IF NOT EXISTS PART_MASTER(
 
 CREATE TAG IF NOT EXISTS PART(
     id string NOT NULL,
-    type string NOT NULL,
     create_by string,
     create_time datetime,
     update_by string,
@@ -775,7 +1128,6 @@ CREATE TAG IF NOT EXISTS PART(
 
 CREATE TAG IF NOT EXISTS DOCUMENT_MASTER(
     id string NOT NULL,
-    type string NOT NULL,
     create_by string,
     create_time datetime,
     update_by string,
@@ -784,34 +1136,40 @@ CREATE TAG IF NOT EXISTS DOCUMENT_MASTER(
 
 CREATE TAG IF NOT EXISTS DOCUMENT(
     id string NOT NULL,
-    type string NOT NULL,
     create_by string,
     create_time datetime,
     update_by string,
     update_time datetime
 );
 
--- 创建边类型 - 包含公共属性
+-- 创建边类型 - 存储 BaseTreeEntity 所有字段 (包含 Link 表业务属性)
+-- id, type, parent_id, create_by, create_time, update_by, update_time, from_id, from_type, to_id, to_type
 CREATE EDGE IF NOT EXISTS CONTAIN(
-    from_id string NOT NULL,
-    from_type string NOT NULL,
-    to_id string NOT NULL,
-    to_type string NOT NULL,
+    id string NOT NULL,
+    type string NOT NULL,
+    parent_id string,
     create_by string,
     create_time datetime,
     update_by string,
-    update_time datetime
+    update_time datetime,
+    from_id string NOT NULL,
+    from_type string NOT NULL,
+    to_id string NOT NULL,
+    to_type string NOT NULL
 );
 
 CREATE EDGE IF NOT EXISTS ITERATE(
-    from_id string NOT NULL,
-    from_type string NOT NULL,
-    to_id string NOT NULL,
-    to_type string NOT NULL,
+    id string NOT NULL,
+    type string NOT NULL,
+    parent_id string,
     create_by string,
     create_time datetime,
     update_by string,
-    update_time datetime
+    update_time datetime,
+    from_id string NOT NULL,
+    from_type string NOT NULL,
+    to_id string NOT NULL,
+    to_type string NOT NULL
 );
 ```
 
@@ -819,17 +1177,20 @@ CREATE EDGE IF NOT EXISTS ITERATE(
 
 ```sql
 -- 插入节点
-INSERT VERTEX SSO_ORG(id, type, create_by, create_time) VALUES 'org001':('org001', 'SSO_ORG', 'admin', NOW());
-INSERT VERTEX PRODUCT(id, type, create_by, create_time) VALUES 'product001':('product001', 'PRODUCT', 'admin', NOW());
-INSERT VERTEX PART_MASTER(id, type, create_by, create_time) VALUES 'partmaster001':('partmaster001', 'PART_MASTER', 'admin', NOW());
-INSERT VERTEX PART(id, type, create_by, create_time) VALUES 'part001':('part001', 'PART', 'admin', NOW());
+INSERT VERTEX SSO_ORG(id, create_by, create_time) VALUES 'org001':('org001', 'admin', NOW());
+INSERT VERTEX PRODUCT(id, create_by, create_time) VALUES 'product001':('product001', 'admin', NOW());
+INSERT VERTEX FOLDER(id, create_by, create_time) VALUES 'folder001':('folder001', 'admin', NOW());
+INSERT VERTEX PART_MASTER(id, create_by, create_time) VALUES 'partmaster001':('partmaster001', 'admin', NOW());
+INSERT VERTEX PART(id, create_by, create_time) VALUES 'part001':('part001', 'admin', NOW());
+INSERT VERTEX DOCUMENT_MASTER(id, create_by, create_time) VALUES 'docmaster001':('docmaster001', 'admin', NOW());
+INSERT VERTEX DOCUMENT(id, create_by, create_time) VALUES 'doc001':('doc001', 'admin', NOW());
 
--- 插入边 (包含from/to类型和公共属性)
-INSERT EDGE CONTAIN(from_id, from_type, to_id, to_type, create_by, create_time)
-VALUES 'org001' -> 'product001':('org001', 'SSO_ORG', 'product001', 'PRODUCT', 'admin', NOW());
+-- 插入边 (包含id, type, parent_id和公共属性)
+INSERT EDGE CONTAIN(id, type, parent_id, from_id, from_type, to_id, to_type, create_by, create_time)
+VALUES 'folder001' -> 'product001':('edge001', 'CONTAIN', NULL, 'folder001', 'FOLDER', 'product001', 'PRODUCT', 'admin', NOW());
 
-INSERT EDGE ITERATE(from_id, from_type, to_id, to_type, create_by, create_time)
-VALUES 'partmaster001' -> 'part001':('partmaster001', 'PART_MASTER', 'part001', 'PART', 'admin', NOW());
+INSERT EDGE ITERATE(id, type, parent_id, from_id, from_type, to_id, to_type, create_by, create_time)
+VALUES 'partmaster001' -> 'part001':('edge002', 'ITERATE', NULL, 'partmaster001', 'PART_MASTER', 'part001', 'PART', 'admin', NOW());
 
 -- 查询路径 (多跳) - 返回节点和边的所有属性
 MATCH p=(n)-[e:CONTAIN|ITERATE*1..3]->(m)
