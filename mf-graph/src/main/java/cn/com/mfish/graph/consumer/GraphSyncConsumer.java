@@ -10,6 +10,13 @@ import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
+/**
+ * 图同步MQ消费端
+ * 监听RocketMQ消息，异步同步数据到NebulaGraph
+ *
+ * @author mfish
+ * @date 2026-04-16
+ */
 @Slf4j
 @Component
 @RocketMQMessageListener(
@@ -45,16 +52,40 @@ public class GraphSyncConsumer implements RocketMQListener<GraphSyncEvent> {
 
     private void processCreateOrUpdate(GraphSyncEvent event) {
         if (event.getNodes() != null && !event.getNodes().isEmpty()) {
-            nebulaClient.insertVertex(getTagName(event), event.getNodes());
+            String tagName = getTagName(event);
+            nebulaClient.insertVertex(tagName, event.getNodes());
+            log.info("处理节点{}个, tagName={}", event.getNodes().size(), tagName);
         }
 
         if (event.getEdges() != null && !event.getEdges().isEmpty()) {
-            nebulaClient.insertEdge(getEdgeName(event), event.getEdges());
+            String edgeName = getEdgeName(event);
+            nebulaClient.insertEdge(edgeName, event.getEdges());
+            log.info("处理边{}条, edgeName={}", event.getEdges().size(), edgeName);
         }
     }
 
     private void processDelete(GraphSyncEvent event) {
-        // 处理删除逻辑
+        if (event.getNodes() != null && !event.getNodes().isEmpty()) {
+            for (GraphNode node : event.getNodes()) {
+                try {
+                    nebulaClient.deleteVertex(node.getType(), node.getId());
+                    log.info("删除节点: id={}, type={}", node.getId(), node.getType());
+                } catch (Exception e) {
+                    log.error("删除节点失败: id={}, type={}", node.getId(), node.getType(), e);
+                }
+            }
+        }
+
+        if (event.getEdges() != null && !event.getEdges().isEmpty()) {
+            for (GraphEdge edge : event.getEdges()) {
+                try {
+                    nebulaClient.deleteEdge(edge.getType(), edge.getFromId(), edge.getToId());
+                    log.info("删除边: fromId={}, toId={}, type={}", edge.getFromId(), edge.getToId(), edge.getType());
+                } catch (Exception e) {
+                    log.error("删除边失败: fromId={}, toId={}, type={}", edge.getFromId(), edge.getToId(), edge.getType(), e);
+                }
+            }
+        }
     }
 
     private String getTagName(GraphSyncEvent event) {
