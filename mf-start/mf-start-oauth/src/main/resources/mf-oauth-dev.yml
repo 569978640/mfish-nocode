@@ -1,5 +1,5 @@
 swagger:
-  title: '摸鱼认证中心'
+  title: 'WindFlow认证中心'
   needAuth: true
 # mybatis配置
 mybatis-plus:

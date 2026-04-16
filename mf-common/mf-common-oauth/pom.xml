@@ -8,7 +8,7 @@
         <version>mf-2.3.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
-    <description>摸鱼认证中心核心</description>
+    <description>WindFlow认证中心核心</description>
     <artifactId>mf-common-oauth</artifactId>
     <dependencies>
         <dependency>

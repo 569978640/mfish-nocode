@@ -1,5 +1,5 @@
 swagger:
-  title: '摸鱼监控中心'
+  title: 'WindFlow监控中心'
 spring: 
   security:
     user:
@@ -8,4 +8,4 @@ spring:
   boot:
     admin:
       ui:
-        title: 摸鱼监控中心
+        title: WindFlow监控中心

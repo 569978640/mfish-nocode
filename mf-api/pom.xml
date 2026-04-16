@@ -19,7 +19,6 @@
         <module>mf-workflow-api</module>
         <module>mf-nocode-api</module>
         <module>mf-plm-api</module>
-        <module>mf-graph-api</module>
     </modules>
 
     <properties>
