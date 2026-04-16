@@ -2,15 +2,15 @@
 
 ## 文档信息
 
-| 项目 | 内容 |
-|-----|------|
+| 项目   | 内容                       |
+| ---- | ------------------------ |
 | 项目名称 | mfish-nocode PLM 混合数据库架构 |
-| 当前版本 | mf-2.3.1 |
-| 更新日期 | 2026-04-16 |
-| 文档状态 | 设计阶段 |
-| 适用对象 | 后端开发工程师、架构师、运维工程师 |
+| 当前版本 | mf-2.3.1                 |
+| 更新日期 | 2026-04-16               |
+| 文档状态 | 设计阶段                     |
+| 适用对象 | 后端开发工程师、架构师、运维工程师        |
 
----
+***
 
 ## 目录
 
@@ -22,10 +22,10 @@
 6. [混合查询流程设计](#6-混合查询流程设计)
 7. [接口设计](#7-接口设计)
 8. [配置设计](#8-配置设计)
-9. [ NebulaGraph 数据模型](#9-nebulagraph-数据模型)
+9. &#x20;[NebulaGraph 数据模型](#9-nebulagraph-数据模型)
 10. [错误处理与容灾](#10-错误处理与容灾)
 
----
+***
 
 ## 1. 背景与目标
 
@@ -35,13 +35,13 @@
 
 ### 1.2 设计目标
 
-| 目标 | 说明 |
-|-----|------|
-| 关系库为主 | 存储模型主数据，存储完整节点属性+关系属性，所有写操作、业务逻辑、事务、回滚 |
-| 图库为辅 | 存储精简节点+完整边数据(含公共属性+业务属性)，数据来自关系库异步同步，不承担业务写逻辑 |
-| 数据一致性 | 图库数据来自关系库异步同步，保证最终一致性 |
-| 查询效率 | 图库查路径+边业务属性，PG库查节点业务属性，混合查询 |
-| 配置灵活 | 单节点/集群模式通过配置切换 |
+| 目标    | 说明                                            |
+| ----- | --------------------------------------------- |
+| 关系库为主 | 存储模型主数据，存储完整节点属性+关系属性，所有写操作、业务逻辑、事务、回滚        |
+| 图库为辅  | 存储精简节点+完整边数据(含公共属性+业务属性)，数据来自关系库异步同步，不承担业务写逻辑 |
+| 数据一致性 | 图库数据来自关系库异步同步，保证最终一致性                         |
+| 查询效率  | 图库查路径+边业务属性，PG库查节点业务属性，混合查询                   |
+| 配置灵活  | 单节点/集群模式通过配置切换                                |
 
 ### 1.3 设计原则
 
@@ -51,7 +51,7 @@
 4. **配置驱动**：单节点/集群模式通过配置切换
 5. **混合查询**：图库负责路径和边业务属性查询，关系库负责节点业务属性查询
 
----
+***
 
 ## 2. 架构设计
 
@@ -107,13 +107,13 @@
 
 ### 2.2 数据流向
 
-| 方向 | 流程 | 说明 |
-|-----|------|------|
-| 写操作 | 业务Service → 关系库事务 → RocketMQ | 所有写操作在关系库完成 |
-| 同步 | RocketMQ → mf-graph消费 → NebulaGraph | 异步写入 |
-| 查询 | 图库查路径 → 关系库查属性 → 合并返回 | 混合查询 |
+| 方向  | 流程                                  | 说明          |
+| --- | ----------------------------------- | ----------- |
+| 写操作 | 业务Service → 关系库事务 → RocketMQ        | 所有写操作在关系库完成 |
+| 同步  | RocketMQ → mf-graph消费 → NebulaGraph | 异步写入        |
+| 查询  | 图库查路径 → 关系库查属性 → 合并返回               | 混合查询        |
 
----
+***
 
 ## 3. 模块结构
 
@@ -174,7 +174,7 @@ mf-start-graph
     └── mf-common RocketMQ (传递)
 ```
 
----
+***
 
 ## 4. 数据模型设计
 
@@ -273,58 +273,58 @@ public class GraphEdge {
     @ApiModelProperty("目标节点类型")
     private String toType;
 
-    @ApiModelProperty("PG库Link表的业务属性 (如FolderLink的folderCode、PartLink的version等)")
+    @ApiModelProperty("PG库Link表的业务属性")
     private Map<String, Object> properties;
 }
 ```
 
 ### 4.4 节点类型定义
 
-| 节点类型 | 类型码 | 说明 |
-|---------|--------|------|
-| SsoOrg | SsoOrg | 组织 |
-| Product | Product | 产品库 |
-| Folder | Folder | 文件夹 |
-| PartMaster | PartMaster | 部件主数据 |
-| Part | Part | 部件小版本 |
+| 节点类型           | 类型码            | 说明    |
+| -------------- | -------------- | ----- |
+| SsoOrg         | SsoOrg         | 组织    |
+| Product        | Product        | 产品库   |
+| Folder         | Folder         | 文件夹   |
+| PartMaster     | PartMaster     | 部件主数据 |
+| Part           | Part           | 部件小版本 |
 | DocumentMaster | DocumentMaster | 文档主数据 |
-| Document | Document | 文档小版本 |
+| Document       | Document       | 文档小版本 |
 
 ### 4.5 边类型定义
 
-| 边类型 | 说明 | 起始节点 → 目标节点 |
-|--------|------|---------------------|
-| Contain | 包含关系 | SsoOrg→Product, Product→Folder, Folder→Folder, Product→PartMaster, Product→DocumentMaster |
-| Iterate | 版本迭代关系 | PartMaster→Part, DocumentMaster→Document |
+| 边类型     | 说明     | 起始节点 → 目标节点                                                                               |
+| ------- | ------ | ----------------------------------------------------------------------------------------- |
+| Contain | 包含关系   | SsoOrg→Product, Product→Folder, Folder→Folder, Product→PartMaster, Product→DocumentMaster |
+| Iterate | 版本迭代关系 | PartMaster→Part, DocumentMaster→Document                                                  |
 
 ### 4.6 节点属性定义
 
 所有节点都 **extends BaseEntity (cn.com.mfish.common.core.entity.BaseEntity)**，包含以下公共属性：
 
-| 属性 | 类型 | 说明 |
-|-----|------|------|
-| id | T | 节点ID (对应关系库主键) |
-| createBy | String | 创建用户 |
-| createTime | DateTime | 创建时间 |
-| updateBy | String | 更新用户 |
-| updateTime | DateTime | 更新时间 |
+| 属性         | 类型       | 说明             |
+| ---------- | -------- | -------------- |
+| id         | String   | 节点ID (对应关系库主键) |
+| createBy   | String   | 创建用户           |
+| createTime | DateTime | 创建时间           |
+| updateBy   | String   | 更新用户           |
+| updateTime | DateTime | 更新时间           |
 
 ### 4.7 边属性定义
 
 所有边都 **extends BaseTreeEntity (cn.com.mfish.common.core.entity.BaseTreeEntity)**，包含以下公共属性：
 
-| 属性 | 类型 | 说明 |
-|-----|------|------|
-| id | T | 边ID |
-| type | String | 边类型 (Contain/Iterate) |
-| createBy | String | 创建用户 |
-| createTime | DateTime | 创建时间 |
-| updateBy | String | 更新用户 |
-| updateTime | DateTime | 更新时间 |
-| fromId | String | 起始节点ID |
-| fromType | String | 起始节点类型 |
-| toId | String | 目标节点ID |
-| toType | String | 目标节点类型 |
+| 属性         | 类型                   | 说明                                                          |
+| ---------- | -------------------- | ----------------------------------------------------------- |
+| id         | String               | 边ID                                                         |
+| type       | String               | 边类型 (Contain/Iterate)                                       |
+| createBy   | String               | 创建用户                                                        |
+| createTime | DateTime             | 创建时间                                                        |
+| updateBy   | String               | 更新用户                                                        |
+| updateTime | DateTime             | 更新时间                                                        |
+| fromId     | String               | 起始节点ID                                                      |
+| fromType   | String               | 起始节点类型                                                      |
+| toId       | String               | 目标节点ID                                                      |
+| toType     | String               | 目标节点类型                                                      |
 | properties | Map<String, Object> | **PG库Link表的业务属性**（如FolderLink的folderCode、PartLink的version等） |
 
 ### 4.8 实体类继承关系
@@ -332,28 +332,29 @@ public class GraphEdge {
 | 实体类型 | 父类 | 说明 |
 |---------|------|------|
 | 节点实体类 | extends BaseEntity | 如 Product, PartMaster, Document 等 |
-| 边实体类 | extends BaseTreeEntity | 如 PartLink, DocumentLink 等（后缀为 Link 的关系表） |
+| 边实体类 | extends BaseTreeEntity | 如 FolderLink, PartLink, DocumentLink 等（后缀为 Link 的关系表） |
 
 ### 4.9 关系表命名规范
 
-关系表（边）命名规范：**主数据表名 + Link**
+关系表（边）命名规范：**主数据表名（小写下划线）+ Link**
 
 根据边类型定义中的起始节点到目标节点信息：
 
-| 边类型 | 关系表 | 说明 |
-|--------|--------|------|
-| Contain | FolderLink | 存储所有包含关系（SsoOrg包含Product, Product包含Folder, Folder包含Folder, Product包含PartMaster, Product包含DocumentMaster） |
-| Iterate | PartLink | 存储部件主数据到部件小版本的版本迭代关系 |
-| Iterate | DocumentLink | 存储文档主数据到文档小版本的版本迭代关系 |
+| 边类型 | 关系表 | PG库表名 | 说明 |
+|--------|--------|---------|------|
+| Contain | FolderLink | folder_link | 存储所有包含关系（SsoOrg包含Product, Product包含Folder, Folder包含Folder, Product包含PartMaster, Product包含DocumentMaster） |
+| Iterate | PartLink | part_link | 存储部件主数据到部件小版本的版本迭代关系 |
+| Iterate | DocumentLink | document_link | 存储文档主数据到文档小版本的版本迭代关系 |
 
 ### 4.10 关系属性存储策略
 
-| 数据库 | 存储内容 | 说明 |
-|-------|---------|------|
-| PostgreSQL | 完整节点属性 + Link表全部字段 | 主数据存储，所有写操作，节点业务属性查询 |
+| 数据库         | 存储内容                            | 说明                      |
+| ----------- | ------------------------------- | ----------------------- |
+| PostgreSQL  | 完整节点属性 + Link表全部字段              | 主数据存储，所有写操作，节点业务属性查询    |
 | NebulaGraph | 节点公共属性 + Link表全部字段（含properties） | 图库边的数据等于PG库对应Link表的全部字段 |
 
 **核心思路**：
+
 - **节点**：PG库主数据表 → 图库标签（只存 BaseEntity 公共属性）
 - **边**：PG库Link表 → 图库边类型（存储 Link 表的全部字段，**properties 字段存储 Link 表的业务属性**）
 
@@ -493,7 +494,7 @@ public class GraphEdge {
 }
 ```
 
----
+***
 
 ## 5. 同步流程设计
 
@@ -582,6 +583,7 @@ public class ProductServiceImpl {
 全量同步功能：清空图数据库所有数据，然后将关系数据库所有后缀为Link表的数据同步到图数据库。
 
 **触发方式**：
+
 - 手动触发：通过管理接口调用
 - 定时触发：可配置定时任务
 
@@ -646,10 +648,10 @@ public class ProductServiceImpl {
 
 **全量同步接口**：
 
-| 接口路径 | 方法 | 说明 | 权限 |
-|---------|------|------|-----|
-| /graph/sync/full | POST | 触发全量同步 | graph:sync:full |
-| /graph/sync/status | GET | 查询同步状态 | graph:sync:status |
+| 接口路径               | 方法   | 说明     | 权限                |
+| ------------------ | ---- | ------ | ----------------- |
+| /graph/sync/full   | POST | 触发全量同步 | graph:sync:full   |
+| /graph/sync/status | GET  | 查询同步状态 | graph:sync:status |
 
 **全量同步服务实现**：
 
@@ -740,15 +742,15 @@ public class GraphFullSyncService {
 }
 ```
 
----
+***
 
 ## 6. 混合查询流程设计
 
 ### 6.1 数据存储策略
 
-| 数据库 | 存储内容 | 用途 |
-|-------|---------|------|
-| PostgreSQL | 完整节点属性 + Link表全部字段 | 主数据存储，所有写操作，节点业务属性查询 |
+| 数据库         | 存储内容                   | 用途                   |
+| ----------- | ---------------------- | -------------------- |
+| PostgreSQL  | 完整节点属性 + Link表全部字段     | 主数据存储，所有写操作，节点业务属性查询 |
 | NebulaGraph | 节点公共属性 + **Link表全部字段** | 图库边数据等于PG库Link表的全部字段 |
 
 **节点类型**：SsoOrg、Product、Folder、PartMaster、Part、DocumentMaster、Document
@@ -756,10 +758,12 @@ public class GraphFullSyncService {
 **边类型**：Contain（包含关系）、Iterate（版本迭代关系）
 
 **核心思路**：
+
 - **节点**：PG库主数据表 → 图库标签（只存 BaseEntity 公共属性）
 - **边**：PG库Link表 → 图库边类型（存储 Link 表的全部字段，包含公共属性和业务属性）
 
 混合查询职责划分：
+
 - **图库负责**：路径查询 + **边的所有属性**（包含Link表业务属性）
 - **关系库负责**：节点业务属性（用节点ID列表批量查询）
 
@@ -873,19 +877,19 @@ public class GraphQueryServiceImpl {
 }
 ```
 
----
+***
 
 ## 7. 接口设计
 
 ### 7.1 图谱查询接口
 
-| 接口路径 | 方法 | 说明 | 权限 |
-|---------|------|------|-----|
-| /graph/query/paths | POST | 路径查询 | graph:query:paths |
+| 接口路径                   | 方法   | 说明   | 权限                    |
+| ---------------------- | ---- | ---- | --------------------- |
+| /graph/query/paths     | POST | 路径查询 | graph:query:paths     |
 | /graph/query/neighbors | POST | 邻居查询 | graph:query:neighbors |
-| /graph/query/subgraph | POST | 子图查询 | graph:query:subgraph |
-| /graph/query/shortest | POST | 最短路径 | graph:query:shortest |
-| /graph/sync/status | GET | 同步状态 | graph:sync:status |
+| /graph/query/subgraph  | POST | 子图查询 | graph:query:subgraph  |
+| /graph/query/shortest  | POST | 最短路径 | graph:query:shortest  |
+| /graph/sync/status     | GET  | 同步状态 | graph:sync:status     |
 
 ### 7.2 请求/响应模型
 
@@ -938,7 +942,7 @@ public class GraphQueryServiceImpl {
 }
 ```
 
----
+***
 
 ## 8. 配置设计
 
@@ -1041,39 +1045,43 @@ nebula:
 
 ### 8.3 配置切换说明
 
-| 模式 | 配置 | 说明 |
-|-----|------|------|
-| 单节点 | `nebula.single.enabled: true` | 适用于开发/测试环境 |
-| 集群 | `nebula.cluster.enabled: true` | 适用于生产环境 |
+| 模式  | 配置                             | 说明         |
+| --- | ------------------------------ | ---------- |
+| 单节点 | `nebula.single.enabled: true`  | 适用于开发/测试环境 |
+| 集群  | `nebula.cluster.enabled: true` | 适用于生产环境    |
 
----
+***
 
 ## 9. NebulaGraph 数据模型
 
 ### 9.1 设计说明
 
 NebulaGraph 图数据库存储以下数据：
+
 - **点 (Vertex)**：PG库主数据表的公共属性（id, createBy, createTime, updateBy, updateTime）
 - **边 (Edge)**：PG库Link表的全部字段（包含公共属性 + **properties 存储业务属性**）
 
 **节点类型**（对应PG库主数据表）：
-| 节点类型 | 说明 |
-|---------|------|
-| SsoOrg | 组织 |
-| Product | 产品库 |
-| Folder | 文件夹 |
-| PartMaster | 部件主数据 |
-| Part | 部件小版本 |
+
+| 节点类型           | 说明    |
+| -------------- | ----- |
+| SsoOrg         | 组织    |
+| Product        | 产品库   |
+| Folder         | 文件夹   |
+| PartMaster     | 部件主数据 |
+| Part           | 部件小版本 |
 | DocumentMaster | 文档主数据 |
-| Document | 文档小版本 |
+| Document       | 文档小版本 |
 
 **边类型**（对应PG库Link表）：
+
 | 边类型 | 说明 | Link表 |
 |--------|------|--------|
 | Contain | 包含关系 | FolderLink |
 | Iterate | 版本迭代关系 | PartLink, DocumentLink |
 
 **存储策略**：
+
 - 节点只存储 BaseEntity 的公共属性
 - 边存储 BaseTreeEntity 的所有字段，**properties 字段以 JSON 字符串存储 Link 表的业务属性**
 - 查询路径时，图库返回完整的边数据（含业务属性），无需再查关系库获取边属性
@@ -1093,8 +1101,8 @@ CREATE SPACE IF NOT EXISTS plm_graph(
 USE plm_graph;
 
 -- 创建标签 (节点类型) - 存储 BaseEntity 公共属性
--- 注意: NebulaGraph标签名使用下划线分隔的大写形式
-CREATE TAG IF NOT EXISTS SSO_ORG(
+-- 注意: NebulaGraph标签名与Java类名一致
+CREATE TAG IF NOT EXISTS SsoOrg(
     id string NOT NULL,
     create_by string,
     create_time datetime,
@@ -1102,7 +1110,7 @@ CREATE TAG IF NOT EXISTS SSO_ORG(
     update_time datetime
 );
 
-CREATE TAG IF NOT EXISTS PRODUCT(
+CREATE TAG IF NOT EXISTS Product(
     id string NOT NULL,
     create_by string,
     create_time datetime,
@@ -1110,7 +1118,7 @@ CREATE TAG IF NOT EXISTS PRODUCT(
     update_time datetime
 );
 
-CREATE TAG IF NOT EXISTS FOLDER(
+CREATE TAG IF NOT EXISTS Folder(
     id string NOT NULL,
     create_by string,
     create_time datetime,
@@ -1118,7 +1126,7 @@ CREATE TAG IF NOT EXISTS FOLDER(
     update_time datetime
 );
 
-CREATE TAG IF NOT EXISTS PART_MASTER(
+CREATE TAG IF NOT EXISTS PartMaster(
     id string NOT NULL,
     create_by string,
     create_time datetime,
@@ -1126,7 +1134,7 @@ CREATE TAG IF NOT EXISTS PART_MASTER(
     update_time datetime
 );
 
-CREATE TAG IF NOT EXISTS PART(
+CREATE TAG IF NOT EXISTS Part(
     id string NOT NULL,
     create_by string,
     create_time datetime,
@@ -1134,7 +1142,7 @@ CREATE TAG IF NOT EXISTS PART(
     update_time datetime
 );
 
-CREATE TAG IF NOT EXISTS DOCUMENT_MASTER(
+CREATE TAG IF NOT EXISTS DocumentMaster(
     id string NOT NULL,
     create_by string,
     create_time datetime,
@@ -1142,7 +1150,7 @@ CREATE TAG IF NOT EXISTS DOCUMENT_MASTER(
     update_time datetime
 );
 
-CREATE TAG IF NOT EXISTS DOCUMENT(
+CREATE TAG IF NOT EXISTS Document(
     id string NOT NULL,
     create_by string,
     create_time datetime,
@@ -1152,7 +1160,7 @@ CREATE TAG IF NOT EXISTS DOCUMENT(
 
 -- 创建边类型 - 存储 BaseTreeEntity 所有字段 + Link表业务属性
 -- id, type, create_by, create_time, update_by, update_time, from_id, from_type, to_id, to_type, properties
-CREATE EDGE IF NOT EXISTS CONTAIN(
+CREATE EDGE IF NOT EXISTS Contain(
     id string NOT NULL,
     type string NOT NULL,
     create_by string,
@@ -1166,7 +1174,7 @@ CREATE EDGE IF NOT EXISTS CONTAIN(
     properties string
 );
 
-CREATE EDGE IF NOT EXISTS ITERATE(
+CREATE EDGE IF NOT EXISTS Iterate(
     id string NOT NULL,
     type string NOT NULL,
     create_by string,
@@ -1219,16 +1227,16 @@ RETURN p, e;
 GO FROM 'folder001' OVER Contain YIELD dst(edge);
 ```
 
----
+***
 
 ## 10. 错误处理与容灾
 
 ### 10.1 失败处理策略
 
-| 失败次数 | 策略 |
-|---------|------|
+| 失败次数 | 策略                     |
+| ---- | ---------------------- |
 | 1-3次 | 指数退避重试 (1s, 2s, 4s...) |
-| 4次+ | 转入死信队列，等待人工处理 |
+| 4次+  | 转入死信队列，等待人工处理          |
 
 ### 10.2 死信队列配置
 
@@ -1244,20 +1252,20 @@ rocketmq:
 
 ### 10.3 同步状态监控
 
-| 指标 | 说明 |
-|-----|------|
-| pendingEvents | 待处理事件数 |
+| 指标              | 说明     |
+| --------------- | ------ |
+| pendingEvents   | 待处理事件数 |
 | processedEvents | 已处理事件数 |
-| failedEvents | 失败事件数 |
-| lastSyncTime | 最后同步时间 |
+| failedEvents    | 失败事件数  |
+| lastSyncTime    | 最后同步时间 |
 
----
+***
 
 ## 11. 实现计划
 
 待设计文档审批通过后，将使用 writing-plans 技能生成详细实现计划。
 
----
+***
 
 **文档编写日期**：2026-04-16
 **文档版本**：v1.0
