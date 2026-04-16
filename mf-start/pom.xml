@@ -23,7 +23,6 @@
         <module>mf-start-ai</module>
         <module>mf-start-workflow</module>
         <module>mf-start-plm</module>
-        <module>mf-start-graph</module>
     </modules>
     <properties>
         <maven.compiler.source>${java.version}</maven.compiler.source>
