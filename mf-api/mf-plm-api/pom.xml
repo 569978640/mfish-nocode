@@ -19,10 +19,12 @@
         <dependency>
             <groupId>cn.com.mfish</groupId>
             <artifactId>mf-common-core</artifactId>
+            <version>${mfish.version}</version>
         </dependency>
         <dependency>
             <groupId>cn.com.mfish</groupId>
             <artifactId>mf-common-dataset</artifactId>
+            <version>${mfish.version}</version>
         </dependency>
         <dependency>
             <groupId>com.baomidou</groupId>

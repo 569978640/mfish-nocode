@@ -1,15 +1,9 @@
-package wf.base.bean.part;
+package wf.base.bean;
 
 import cn.com.mfish.common.core.entity.BaseLinkEntity;
-import cn.com.mfish.common.core.entity.BaseTreeEntity;
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import wf.base.bean.WFLink;
-
-import java.util.Map;
 
 /**
  * 部件版本迭代关系实体
@@ -20,5 +14,5 @@ import java.util.Map;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("part_version_link")
-public class PartVersionLink extends WFLink {
+public class WFLink extends BaseLinkEntity<String> {
 }

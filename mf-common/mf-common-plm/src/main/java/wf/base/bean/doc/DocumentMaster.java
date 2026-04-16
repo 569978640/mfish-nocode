@@ -6,6 +6,7 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import wf.base.bean.WFObject;
 
 /**
  * 文档主数据实体
@@ -16,7 +17,7 @@ import lombok.EqualsAndHashCode;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("document_master")
-public class DocumentMaster extends BaseEntity<String> {
+public class DocumentMaster extends WFObject {
     private String number;
     private String name;
 }

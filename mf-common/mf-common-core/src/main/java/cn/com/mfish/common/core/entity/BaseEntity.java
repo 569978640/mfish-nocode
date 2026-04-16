@@ -27,9 +27,6 @@ public class BaseEntity<T> implements Serializable {
     @Schema(description = "ID")
     @Accessors(chain = true)
     private T id;
-    @ExcelIgnore
-    @Schema(description = "类型")
-    private T type;
     @ExcelProperty("创建用户")
     @Schema(description = "创建用户")
     private String createBy;

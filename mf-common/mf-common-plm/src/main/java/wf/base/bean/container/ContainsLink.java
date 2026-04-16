@@ -7,6 +7,8 @@ import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import wf.base.bean.WFLink;
+import wf.base.bean.WFObject;
 
 import java.util.Map;
 
@@ -19,5 +21,6 @@ import java.util.Map;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("contains_link")
-public class ContainsLink extends BaseLinkEntity<String> {
+public class ContainsLink extends WFLink {
+
 }

@@ -1,10 +1,9 @@
-package wf.base.bean.container;
+package wf.base.bean;
 
 import cn.com.mfish.common.core.entity.BaseEntity;
 import com.baomidou.mybatisplus.annotation.TableName;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import wf.base.bean.WFObject;
 
 /**
  * 产品库实体
@@ -15,6 +14,6 @@ import wf.base.bean.WFObject;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("product")
-public class Product extends WFObject {
-    private String name;
+public class WFObject extends BaseEntity<String> {
+    private String type;
 }
