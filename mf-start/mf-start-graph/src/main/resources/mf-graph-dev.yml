@@ -1,0 +1,70 @@
+server:
+  port: 9232
+
+spring:
+  application:
+    name: mf-graph
+  profiles:
+    active: dev
+  cloud:
+    nacos:
+      username: nacos
+      password: nacos
+      server-addr: 192.168.111.103:19014
+      config:
+        file-extension: yml
+  config:
+    import:
+      - nacos:application-${spring.profiles.active}.${spring.cloud.nacos.config.file-extension}?refreshEnabled=true
+      - nacos:${spring.application.name}-${spring.profiles.active}.${spring.cloud.nacos.config.file-extension}?refreshEnabled=true
+
+mybatis-plus:
+  mapper-locations: classpath*:cn/com/mfish/graph/mapper/**/*Mapper.xml
+  global-config:
+    banner: false
+    db-config:
+      table-underline: true
+      logic-not-delete-value: 0
+      logic-delete-value: 1
+
+spring:
+  datasource:
+    dynamic:
+      primary: master
+      druid:
+        initial-size: 5
+        min-idle: 5
+        maxActive: 20
+      datasource:
+        master:
+          driver-class-name: org.postgresql.Driver
+          url: jdbc:postgresql://192.168.111.103:5432/mf_plm
+          username: postgres
+          password: postgres
+
+rocketmq:
+  consumer:
+    group: plm-graph-sync-group
+    topic: plm-graph-sync
+    enableDLQ: true
+    maxRetryTimes: 3
+
+nebula:
+  single:
+    enabled: true
+    addresses: 192.168.111.103:9669
+  cluster:
+    enabled: false
+    addresses: []
+  username: root
+  password: nebula
+  pool:
+    min-conns: 10
+    max-conns: 100
+    timeout: 3000
+    idle-timeout: 60
+  space:
+    name: plm_graph
+    charset: utf8
+    replica-factor: 1
+    partition-num: 100
