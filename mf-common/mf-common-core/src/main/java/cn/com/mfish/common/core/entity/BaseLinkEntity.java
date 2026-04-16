@@ -7,6 +7,7 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * @author: mfish
@@ -16,12 +17,15 @@ import java.util.List;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "基础树对象")
-public class BaseTreeEntity<T> extends BaseEntity<T> {
-    @Schema(description = "父节点ID")
-    @Accessors(chain = true)
-    private T parentId;
-
-    @Schema(description = "子节点")
-    @TableField(exist = false)
-    private List<BaseTreeEntity<T>> children;
+public class BaseLinkEntity<T> extends BaseEntity<T> {
+    @Schema(description = "起始节点ID")
+    private String fromId;
+    @Schema(description = "起始节点类型")
+    private String fromType;
+    @Schema(description = "目标节点ID")
+    private String toId;
+    @Schema(description = "目标节点类型")
+    private String toType;
+    @Schema(description = "PG库Link表的业务属性")
+    private Map<String, Object> properties;
 }

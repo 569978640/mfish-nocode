@@ -11,6 +11,7 @@ import org.springframework.format.annotation.DateTimeFormat;
 import java.io.Serial;
 import java.io.Serializable;
 import java.util.Date;
+import java.lang.reflect.ParameterizedType;
 
 /**
  * @author: mfish
@@ -26,6 +27,9 @@ public class BaseEntity<T> implements Serializable {
     @Schema(description = "ID")
     @Accessors(chain = true)
     private T id;
+    @ExcelIgnore
+    @Schema(description = "类型")
+    private String type;
     @ExcelProperty("创建用户")
     @Schema(description = "创建用户")
     private String createBy;
@@ -42,4 +46,11 @@ public class BaseEntity<T> implements Serializable {
     @ExcelProperty("更新时间")
     @Schema(description = "更新时间")
     private Date updateTime;
+
+    /**
+     * 构造方法，自动设置type为当前类名
+     */
+    public BaseEntity() {
+        this.type = this.getClass().getSimpleName();
+    }
 }

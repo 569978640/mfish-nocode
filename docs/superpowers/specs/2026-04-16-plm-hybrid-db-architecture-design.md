@@ -237,7 +237,7 @@ public class GraphNode {
 
 ### 4.3 图边 (GraphEdge)
 
-图边对应 PG 库中的关系表（后缀为Link的表），extends BaseTreeEntity：
+图边对应 PG 库中的关系表（后缀为Link的表），extends BaseLinkEntity：
 
 ```java
 @Data
@@ -313,7 +313,7 @@ public class GraphEdge {
 
 ### 4.7 边属性定义
 
-所有边都 **extends BaseTreeEntity (cn.com.mfish.common.core.entity.BaseTreeEntity)**，包含以下公共属性：
+所有边都 **extends BaseLinkEntity (cn.com.mfish.common.core.entity.BaseLinkEntity)**，包含以下公共属性：
 
 | 属性         | 类型                   | 说明                                                          |
 | ---------- | -------------------- | ----------------------------------------------------------- |
@@ -334,7 +334,7 @@ public class GraphEdge {
 | 实体类型  | 父类                     | 说明                                                               |
 | ----- | ---------------------- | ---------------------------------------------------------------- |
 | 节点实体类 | extends BaseEntity     | 如 Product, PartMaster, Document 等                                |
-| 边实体类  | extends BaseTreeEntity | 如 ContainsLink, PartVersionLink, DocVersionLink 等（后缀为 Link 的关系表） |
+| 边实体类  | extends BaseLinkEntity | 如 ContainsLink, PartVersionLink, DocVersionLink 等（后缀为 Link 的关系表） |
 
 ### 4.9 关系表命名规范
 
@@ -377,10 +377,10 @@ public class Product extends BaseEntity<String> {
     private String orgId;
 }
 
-// 边实体类 - extends BaseTreeEntity
+// 边实体类 - extends BaseLinkEntity
 @Data
 @ApiModel("部件版本迭代边")
-public class PartVersionLink extends BaseTreeEntity<String> {
+public class PartVersionLink extends BaseLinkEntity<String> {
     @ApiModelProperty("部件主数据ID")
     private String partMasterId;
 
@@ -1084,7 +1084,7 @@ NebulaGraph 图数据库存储以下数据：
 **存储策略**：
 
 - 节点只存储 BaseEntity 的公共属性
-- 边存储 BaseTreeEntity 的所有字段，**properties 字段以 JSON 字符串存储 Link 表的业务属性**
+- 边存储 BaseLinkEntity 的所有字段，**properties 字段以 JSON 字符串存储 Link 表的业务属性**
 - 查询路径时，图库返回完整的边数据（含业务属性），无需再查关系库获取边属性
 
 ### 9.2 图空间创建
@@ -1159,7 +1159,7 @@ CREATE TAG IF NOT EXISTS Document(
     update_time datetime
 );
 
--- 创建边类型 - 存储 BaseTreeEntity 所有字段 + Link表业务属性
+-- 创建边类型 - 存储 BaseLinkEntity 所有字段 + Link表业务属性
 -- id, type, create_by, create_time, update_by, update_time, from_id, from_type, to_id, to_type, properties
 CREATE EDGE IF NOT EXISTS ContainsLink(
     id string NOT NULL,
