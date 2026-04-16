@@ -14,9 +14,9 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 @Slf4j
 @AutoCloud
-public class GraphApplication {
+public class MfGraphApplication {
     public static void main(String[] args) {
-        ConfigurableApplicationContext application = SpringApplication.run(GraphApplication.class, args);
+        ConfigurableApplicationContext application = SpringApplication.run(MfGraphApplication.class, args);
         Utils.printServerRun(application);
     }
 }

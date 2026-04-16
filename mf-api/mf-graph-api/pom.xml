@@ -25,5 +25,10 @@
             <groupId>cn.com.mfish</groupId>
             <artifactId>mf-common-core</artifactId>
         </dependency>
+        <!-- Spring Cloud OpenFeign 依赖 -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+        </dependency>
     </dependencies>
 </project>

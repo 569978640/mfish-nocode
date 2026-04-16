@@ -1001,7 +1001,10 @@ git commit -m "feat(graph): 添加NebulaGraph建表SQL"
    - [x] NebulaGraph Schema - 任务8完成
 
 2. **占位符扫描：**
-   - 已识别 TODO 项已在代码注释中标注实现位置
+   - [x] 已实现 NebulaClient 核心方法 (insertVertex, batchInsertVertices, insertEdge, batchInsertEdges, queryPaths, clearAndRecreateSpace, deleteVertex, deleteEdge)
+   - [x] 已实现 GraphSyncService 全量同步 (syncAllNodes, syncAllEdges, batchQueryNodes)
+   - [x] 已实现 GraphQueryService 混合查询 (queryProductTree, queryDirectChildren, queryShortestPath, queryNeighbors, querySubgraph)
+   - [x] 已实现 GraphSyncConsumer DELETE事件处理
 
 3. **类型一致性检查：**
    - GraphNode 字段：id, type, createBy, createTime, updateBy, updateTime
@@ -1009,7 +1012,17 @@ git commit -m "feat(graph): 添加NebulaGraph建表SQL"
    - 边类型：ContainsLink, PartVersionLink, DocVersionLink
    - 节点类型：SsoOrg, Product, Folder, PartMaster, Part, DocumentMaster, Document
 
+4. **新增实体类：**
+   - SsoOrg, Product, Folder, PartMaster, Part, DocumentMaster, Document
+   - ContainsLink, PartVersionLink, DocVersionLink
+
+5. **新增Mapper接口：**
+   - SsoOrgMapper, ProductMapper, FolderMapper, PartMasterMapper, PartMapper, DocumentMasterMapper, DocumentMapper
+   - ContainsLinkMapper, PartVersionLinkMapper, DocVersionLinkMapper
+
 ---
 
 **计划完成日期：** 2026-04-16
+**实现完成日期：** 2026-04-16
 **设计文档：** docs/superpowers/specs/2026-04-16-plm-hybrid-db-architecture-design.md
+**Git分支：** plm-hybrid-db

@@ -1,25 +1,5 @@
-server:
-  port: 9232
-
-spring:
-  application:
-    name: mf-graph
-  profiles:
-    active: dev
-  cloud:
-    nacos:
-      username: nacos
-      password: nacos
-      server-addr: 192.168.111.103:19014
-      config:
-        file-extension: yml
-  config:
-    import:
-      - nacos:application-${spring.profiles.active}.${spring.cloud.nacos.config.file-extension}?refreshEnabled=true
-      - nacos:${spring.application.name}-${spring.profiles.active}.${spring.cloud.nacos.config.file-extension}?refreshEnabled=true
-
 mybatis-plus:
-  mapper-locations: classpath*:cn/com/mfish/graph/mapper/**/*Mapper.xml
+  mapper-locations: classpath*:cn/com/mfish/graph/**/*Mapper.xml
   global-config:
     banner: false
     db-config:

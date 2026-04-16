@@ -2,7 +2,7 @@ mfish:
   version: 2.3.1
 # Tomcat服务配置
 server:
-  port: 9230
+  port: 9232
 
 # Spring应用配置
 spring:
