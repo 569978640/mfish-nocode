@@ -62,7 +62,7 @@
 │                           PLM 服务层 (mf-plm)                               │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐  │
 │  │  业务Service    │  │  事件发布Service │  │  混合查询Service            │  │
-│  │  (写操作)       │  │  (发送MQ消息)    │  │ (图库查路径+边属性)       │  │
+│  │  (写操作)       │  │  (发送MQ消息)    │  │ (图库查关系+关系库查属性)   │  │
 │  └────────┬────────┘  └────────┬────────┘  └──────────────┬──────────────┘  │
 └───────────┼────────────────────┼──────────────────────────┼─────────────────┘
             │                    │                          │
@@ -70,7 +70,7 @@
 ┌───────────────────────────────────────┐                   │
 │           关系库 (PostgreSQL)          │                   │
 │  ┌─────────────────────────────────┐  │                   │
-│  │  模型主数据表  │  Link表        │  │                   │
+│  │  模型主数据表  │  关系+关系属性表 │  │                   │
 │  └─────────────────────────────────┘  │                   │
 │              │                        │                   │
 │              │ 事务提交成功            │                   │
@@ -99,19 +99,19 @@
 │              ▼
 │  ┌─────────────────────────────────┐
 │  │      NebulaGraph 图数据库        │
-│  │  • 点 (精简节点公共属性)         │
-│  │  • 边 (ContainsLink/PartVersionLink/DocVersionLink)           │
+│  │  • 点 (精简节点)                │
+│  │  • 边 (关系拓扑+属性)           │
 │  └─────────────────────────────────┘
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.2 数据流向
 
-| 方向 | 流程 | 说明 |
-|-----|------|------|
-| 写操作 | 业务Service → 关系库事务 → RocketMQ | 所有写操作在关系库完成 |
-| 同步 | RocketMQ → mf-graph消费 → NebulaGraph | 异步同步 |
-| 查询 | 图库查路径+边属性 → 关系库查节点属性 → 合并返回 | 混合查询 |
+| 方向  | 流程                                  | 说明          |
+| --- | ----------------------------------- | ----------- |
+| 写操作 | 业务Service → 关系库事务 → RocketMQ        | 所有写操作在关系库完成 |
+| 同步  | RocketMQ → mf-graph消费 → NebulaGraph | 异步写入        |
+| 查询  | 图库查路径 → 关系库查属性 → 合并返回               | 混合查询        |
 
 ***
 
@@ -246,7 +246,7 @@ public class GraphEdge {
     @ApiModelProperty("边ID (对应PG库Link表主键)")
     private String id;
 
-    @ApiModelProperty("边类型: Contain/Iterate")
+    @ApiModelProperty("边类型: ContainsLink/PartVersionLink/DocVersionLink")
     private String type;
 
     @ApiModelProperty("创建用户")
@@ -302,13 +302,14 @@ public class GraphEdge {
 
 所有节点都 **extends BaseEntity (cn.com.mfish.common.core.entity.BaseEntity)**，包含以下公共属性：
 
-| 属性         | 类型       | 说明             |
-| ---------- | -------- | -------------- |
-| id         | String   | 节点ID (对应关系库主键) |
-| createBy   | String   | 创建用户           |
-| createTime | DateTime | 创建时间           |
-| updateBy   | String   | 更新用户           |
-| updateTime | DateTime | 更新时间           |
+| 属性         | 类型       | 说明                                                |
+| ---------- | -------- | ------------------------------------------------- |
+| id         | String   | 节点ID (对应关系库主键)                                    |
+| type       | String   | 节点类型 (SsoOrg/Product/Folder/PartMaster/Part/DocumentMaster/Document) |
+| createBy   | String   | 创建用户                                              |
+| createTime | DateTime | 创建时间                                              |
+| updateBy   | String   | 更新用户                                              |
+| updateTime | DateTime | 更新时间                                              |
 
 ### 4.7 边属性定义
 
@@ -606,7 +607,7 @@ public class ProductServiceImpl {
 │  │  Step 2: 重新创建图空间 Schema                                   │        │
 │  │  创建所有标签 (SsoOrg, Product, Folder, PartMaster, Part,        │        │
 │  │              DocumentMaster, Document)                           │        │
-│  │  创建所有边类型 (Contain, Iterate)                              │        │
+│  │  创建所有边类型 (ContainsLink, PartVersionLink, DocVersionLink)                        │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │       │                                                                      │
 │       ▼                                                                      │
