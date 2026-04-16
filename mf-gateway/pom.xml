@@ -11,7 +11,7 @@
 
     <artifactId>mf-gateway</artifactId>
     <description>
-        摸鱼网关模块
+        WindFlow网关模块
     </description>
     <dependencies>
 

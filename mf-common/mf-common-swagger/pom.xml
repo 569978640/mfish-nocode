@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <description>
-        摸鱼通用swagger配置模块
+        WindFlow通用swagger配置模块
     </description>
     <artifactId>mf-common-swagger</artifactId>
     <dependencies>

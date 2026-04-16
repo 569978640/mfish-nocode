@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>mf-common-redis</artifactId>
-    <description>摸鱼通用redis模块</description>
+    <description>WindFlow通用redis模块</description>
 
     <dependencies>
         <!-- SpringBoot Boot Redis -->

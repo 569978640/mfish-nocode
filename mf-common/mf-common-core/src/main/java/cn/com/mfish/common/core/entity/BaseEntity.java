@@ -29,7 +29,7 @@ public class BaseEntity<T> implements Serializable {
     private T id;
     @ExcelIgnore
     @Schema(description = "类型")
-    private String type;
+    private T type;
     @ExcelProperty("创建用户")
     @Schema(description = "创建用户")
     private String createBy;
@@ -46,11 +46,4 @@ public class BaseEntity<T> implements Serializable {
     @ExcelProperty("更新时间")
     @Schema(description = "更新时间")
     private Date updateTime;
-
-    /**
-     * 构造方法，自动设置type为当前类名
-     */
-    public BaseEntity() {
-        this.type = this.getClass().getSimpleName();
-    }
 }

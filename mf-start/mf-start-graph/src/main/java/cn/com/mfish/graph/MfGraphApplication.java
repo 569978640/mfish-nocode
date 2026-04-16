@@ -3,6 +3,7 @@ package cn.com.mfish.graph;
 import cn.com.mfish.common.cloud.annotation.AutoCloud;
 import cn.com.mfish.common.core.utils.Utils;
 import lombok.extern.slf4j.Slf4j;
+import org.mybatis.spring.annotation.MapperScan;
 import org.springframework.boot.SpringApplication;
 import org.springframework.context.ConfigurableApplicationContext;
 
@@ -14,6 +15,10 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 @Slf4j
 @AutoCloud
+@MapperScan({
+    "cn.com.mfish.oauth.mapper",
+    "wf.base.mapper"
+})
 public class MfGraphApplication {
     public static void main(String[] args) {
         ConfigurableApplicationContext application = SpringApplication.run(MfGraphApplication.class, args);

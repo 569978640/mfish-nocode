@@ -9,7 +9,7 @@
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>mf-common-captcha</artifactId>
-    <description>摸鱼通用验证码</description>
+    <description>WindFlow通用验证码</description>
 
     <properties>
         <maven.compiler.source>${java.version}</maven.compiler.source>

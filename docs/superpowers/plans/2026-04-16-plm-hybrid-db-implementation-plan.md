@@ -517,7 +517,7 @@ public class RocketMQConfig {
 ```java
 package cn.com.mfish.graph.consumer;
 
-import cn.com.mfish.graph.client.NebulaClient;
+import client.cn.com.mfish.graph.NebulaClient;
 import cn.com.mfish.graph.model.event.GraphSyncEvent;
 import cn.com.mfish.graph.model.node.GraphNode;
 import cn.com.mfish.graph.model.edge.GraphEdge;
@@ -612,7 +612,7 @@ git commit -m "feat(graph): 添加RocketMQ消费配置和消费者"
 ```java
 package cn.com.mfish.graph.service;
 
-import cn.com.mfish.graph.client.NebulaClient;
+import client.cn.com.mfish.graph.NebulaClient;
 import cn.com.mfish.graph.model.node.GraphNode;
 import cn.com.mfish.graph.model.edge.GraphEdge;
 import lombok.extern.slf4j.Slf4j;
@@ -674,7 +674,7 @@ git commit -m "feat(graph): 添加全量同步服务"
 ```java
 package cn.com.mfish.graph.service;
 
-import cn.com.mfish.graph.client.NebulaClient;
+import client.cn.com.mfish.graph.NebulaClient;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

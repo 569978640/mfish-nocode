@@ -17,7 +17,7 @@ import java.util.Map;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "基础树对象")
-public class BaseLinkEntity<T> extends BaseEntity<T> {
+public class BaseLinkEntity<T> extends BaseEntity<String> {
     @Schema(description = "起始节点ID")
     private String fromId;
     @Schema(description = "起始节点类型")
