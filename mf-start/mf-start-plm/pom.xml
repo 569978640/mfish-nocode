@@ -34,7 +34,7 @@
             <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
-                <version>3.3.3</version>
+                <version>${spring-boot.version}</version>
                 <executions>
                     <execution>
                         <goals>

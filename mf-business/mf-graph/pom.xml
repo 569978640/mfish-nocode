@@ -56,11 +56,5 @@
             <artifactId>client</artifactId>
             <version>3.8.4</version> <!-- 推荐版本 -->
         </dependency>
-        <dependency>
-            <groupId>cn.com.mfish</groupId>
-            <artifactId>mf-common-graph</artifactId>
-            <version>mf-2.3.1</version>
-            <scope>compile</scope>
-        </dependency>
     </dependencies>
 </project>
