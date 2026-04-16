@@ -62,7 +62,7 @@
 │                           PLM 服务层 (mf-plm)                               │
 │  ┌─────────────────┐  ┌─────────────────┐  ┌─────────────────────────────┐  │
 │  │  业务Service    │  │  事件发布Service │  │  混合查询Service            │  │
-│  │  (写操作)       │  │  (发送MQ消息)    │  │ (图库查关系+关系库查属性)   │  │
+│  │  (写操作)       │  │  (发送MQ消息)    │  │ (图库查路径+边属性)       │  │
 │  └────────┬────────┘  └────────┬────────┘  └──────────────┬──────────────┘  │
 └───────────┼────────────────────┼──────────────────────────┼─────────────────┘
             │                    │                          │
@@ -70,7 +70,7 @@
 ┌───────────────────────────────────────┐                   │
 │           关系库 (PostgreSQL)          │                   │
 │  ┌─────────────────────────────────┐  │                   │
-│  │  模型主数据表  │  关系+关系属性表 │  │                   │
+│  │  模型主数据表  │  Link表        │  │                   │
 │  └─────────────────────────────────┘  │                   │
 │              │                        │                   │
 │              │ 事务提交成功            │                   │
@@ -99,19 +99,19 @@
 │              ▼
 │  ┌─────────────────────────────────┐
 │  │      NebulaGraph 图数据库        │
-│  │  • 点 (精简节点)                │
-│  │  • 边 (关系拓扑+属性)           │
+│  │  • 点 (精简节点公共属性)         │
+│  │  • 边 (ContainsLink/PartVersionLink/DocVersionLink)           │
 │  └─────────────────────────────────┘
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ### 2.2 数据流向
 
-| 方向  | 流程                                  | 说明          |
-| --- | ----------------------------------- | ----------- |
-| 写操作 | 业务Service → 关系库事务 → RocketMQ        | 所有写操作在关系库完成 |
-| 同步  | RocketMQ → mf-graph消费 → NebulaGraph | 异步写入        |
-| 查询  | 图库查路径 → 关系库查属性 → 合并返回               | 混合查询        |
+| 方向 | 流程 | 说明 |
+|-----|------|------|
+| 写操作 | 业务Service → 关系库事务 → RocketMQ | 所有写操作在关系库完成 |
+| 同步 | RocketMQ → mf-graph消费 → NebulaGraph | 异步同步 |
+| 查询 | 图库查路径+边属性 → 关系库查节点属性 → 合并返回 | 混合查询 |
 
 ***
 
@@ -292,11 +292,11 @@ public class GraphEdge {
 
 ### 4.5 边类型定义
 
-| 边类型 | 说明 | 起始节点 → 目标节点 |
-|--------|------|---------------------|
-| ContainsLink | 包含关系 | SsoOrg→Product, Product→Folder, Folder→Folder, Product→PartMaster, Product→DocumentMaster |
-| PartVersionLink | 部件版本迭代关系 | PartMaster→Part |
-| DocVersionLink | 文档版本迭代关系 | DocumentMaster→Document |
+| 边类型             | 说明       | 起始节点 → 目标节点                                                                               |
+| --------------- | -------- | ----------------------------------------------------------------------------------------- |
+| ContainsLink    | 包含关系     | SsoOrg→Product, Product→Folder, Folder→Folder, Product→PartMaster, Product→DocumentMaster |
+| PartVersionLink | 部件版本迭代关系 | PartMaster→Part                                                                           |
+| DocVersionLink  | 文档版本迭代关系 | DocumentMaster→Document                                                                   |
 
 ### 4.6 节点属性定义
 
@@ -317,7 +317,7 @@ public class GraphEdge {
 | 属性         | 类型                   | 说明                                                          |
 | ---------- | -------------------- | ----------------------------------------------------------- |
 | id         | String               | 边ID                                                         |
-| type       | String               | 边类型 (ContainsLink/PartVersionLink/DocVersionLink) |
+| type       | String               | 边类型 (ContainsLink/PartVersionLink/DocVersionLink)           |
 | createBy   | String               | 创建用户                                                        |
 | createTime | DateTime             | 创建时间                                                        |
 | updateBy   | String               | 更新用户                                                        |
@@ -326,24 +326,24 @@ public class GraphEdge {
 | fromType   | String               | 起始节点类型                                                      |
 | toId       | String               | 目标节点ID                                                      |
 | toType     | String               | 目标节点类型                                                      |
-| properties | Map<String, Object> | **PG库Link表的业务属性**（如FolderLink的folderCode、PartLink的version等） |
+| properties | Map\<String, Object> | **PG库Link表的业务属性**（如FolderLink的folderCode、PartLink的version等） |
 
 ### 4.8 实体类继承关系
 
-| 实体类型 | 父类 | 说明 |
-|---------|------|------|
-| 节点实体类 | extends BaseEntity | 如 Product, PartMaster, Document 等 |
-| 边实体类 | extends BaseTreeEntity | 如 ContainsLink, PartVersionLink, DocVersionLink 等（后缀为 Link 的关系表） |
+| 实体类型  | 父类                     | 说明                                                               |
+| ----- | ---------------------- | ---------------------------------------------------------------- |
+| 节点实体类 | extends BaseEntity     | 如 Product, PartMaster, Document 等                                |
+| 边实体类  | extends BaseTreeEntity | 如 ContainsLink, PartVersionLink, DocVersionLink 等（后缀为 Link 的关系表） |
 
 ### 4.9 关系表命名规范
 
 根据边类型定义中的起始节点到目标节点信息：
 
-| 边类型（Java类名） | PG库表名 | 说明 |
-|------------------|---------|------|
-| ContainsLink | contains_link | 存储所有包含关系（SsoOrg包含Product, Product包含Folder, Folder包含Folder, Product包含PartMaster, Product包含DocumentMaster） |
-| PartVersionLink | part_version_link | 存储部件主数据到部件小版本的版本迭代关系 |
-| DocVersionLink | doc_version_link | 存储文档主数据到文档小版本的版本迭代关系 |
+| 边类型（Java类名）     | PG库表名               | 说明                                                                                                       |
+| --------------- | ------------------- | -------------------------------------------------------------------------------------------------------- |
+| ContainsLink    | contains\_link      | 存储所有包含关系（SsoOrg包含Product, Product包含Folder, Folder包含Folder, Product包含PartMaster, Product包含DocumentMaster） |
+| PartVersionLink | part\_version\_link | 存储部件主数据到部件小版本的版本迭代关系                                                                                     |
+| DocVersionLink  | doc\_version\_link  | 存储文档主数据到文档小版本的版本迭代关系                                                                                     |
 
 ### 4.10 关系属性存储策略
 
@@ -1074,11 +1074,11 @@ NebulaGraph 图数据库存储以下数据：
 
 **边类型**（对应PG库Link表）：
 
-| 边类型 | 说明 | PG库表名 |
-|--------|------|---------|
-| ContainsLink | 包含关系 | contains_link |
-| PartVersionLink | 部件版本迭代关系 | part_version_link |
-| DocVersionLink | 文档版本迭代关系 | doc_version_link |
+| 边类型             | 说明       | PG库表名               |
+| --------------- | -------- | ------------------- |
+| ContainsLink    | 包含关系     | contains\_link      |
+| PartVersionLink | 部件版本迭代关系 | part\_version\_link |
+| DocVersionLink  | 文档版本迭代关系 | doc\_version\_link  |
 
 **存储策略**：
 
