@@ -38,18 +38,18 @@
 | 目标 | 说明 |
 |-----|------|
 | 关系库为主 | 存储模型主数据，存储完整节点属性+关系属性，所有写操作、业务逻辑、事务、回滚 |
-| 图库为辅 | 存储精简节点+边公共属性，数据来自关系库异步同步，不承担业务写逻辑 |
+| 图库为辅 | 存储精简节点+完整边数据(含公共属性+业务属性)，数据来自关系库异步同步，不承担业务写逻辑 |
 | 数据一致性 | 图库数据来自关系库异步同步，保证最终一致性 |
-| 查询效率 | 图库查路径，PG库查节点+边的业务属性，混合查询 |
+| 查询效率 | 图库查路径+边业务属性，PG库查节点业务属性，混合查询 |
 | 配置灵活 | 单节点/集群模式通过配置切换 |
 
 ### 1.3 设计原则
 
-1. **职责分离**：关系库存储完整数据（主数据），图库存储精简数据（用于关系查询）
+1. **职责分离**：关系库存储完整数据（主数据），图库存储精简节点+完整边数据（用于关系查询）
 2. **事件驱动**：通过 RocketMQ 异步同步数据到图库
 3. **最终一致**：图库数据允许短暂不一致，以性能换可用性
 4. **配置驱动**：单节点/集群模式通过配置切换
-5. **混合查询**：图库负责路径和关系属性查询，关系库负责节点属性查询
+5. **混合查询**：图库负责路径和边业务属性查询，关系库负责节点业务属性查询
 
 ---
 
@@ -218,7 +218,7 @@ public class GraphNode {
     @ApiModelProperty("节点ID (对应关系库主键)")
     private String id;
 
-    @ApiModelProperty("节点类型: SSO_ORG/PRODUCT/FOLDER/PART_MASTER/PART/DOCUMENT_MASTER/DOCUMENT")
+    @ApiModelProperty("节点类型: SsoOrg/Product/Folder/PartMaster/Part/DocumentMaster/Document")
     private String type;
 
     @ApiModelProperty("创建用户")
@@ -246,7 +246,7 @@ public class GraphEdge {
     @ApiModelProperty("边ID (对应PG库Link表主键)")
     private String id;
 
-    @ApiModelProperty("边类型: CONTAIN/ITERATE")
+    @ApiModelProperty("边类型: Contain/Iterate")
     private String type;
 
     @ApiModelProperty("创建用户")
@@ -260,9 +260,6 @@ public class GraphEdge {
 
     @ApiModelProperty("更新时间")
     private Date updateTime;
-
-    @ApiModelProperty("父节点ID")
-    private String parentId;
 
     @ApiModelProperty("起始节点ID")
     private String fromId;
@@ -285,20 +282,20 @@ public class GraphEdge {
 
 | 节点类型 | 类型码 | 说明 |
 |---------|--------|------|
-| SsoOrg | SSO_ORG | 组织 |
-| Product | PRODUCT | 产品库 |
-| Folder | FOLDER | 文件夹 |
-| PartMaster | PART_MASTER | 部件主数据 |
-| Part | PART | 部件小版本 |
-| DocumentMaster | DOCUMENT_MASTER | 文档主数据 |
-| Document | DOCUMENT | 文档小版本 |
+| SsoOrg | SsoOrg | 组织 |
+| Product | Product | 产品库 |
+| Folder | Folder | 文件夹 |
+| PartMaster | PartMaster | 部件主数据 |
+| Part | Part | 部件小版本 |
+| DocumentMaster | DocumentMaster | 文档主数据 |
+| Document | Document | 文档小版本 |
 
 ### 4.5 边类型定义
 
 | 边类型 | 说明 | 起始节点 → 目标节点 |
 |--------|------|---------------------|
-| CONTAIN | 包含关系 | SsoOrg→Product, Product→Folder, Folder→Folder, Product→PartMaster, Product→DocumentMaster |
-| ITERATE | 版本迭代关系 | PartMaster→Part, DocumentMaster→Document |
+| Contain | 包含关系 | SsoOrg→Product, Product→Folder, Folder→Folder, Product→PartMaster, Product→DocumentMaster |
+| Iterate | 版本迭代关系 | PartMaster→Part, DocumentMaster→Document |
 
 ### 4.6 节点属性定义
 
@@ -319,12 +316,11 @@ public class GraphEdge {
 | 属性 | 类型 | 说明 |
 |-----|------|------|
 | id | T | 边ID |
-| type | String | 边类型 (CONTAIN/ITERATE) |
+| type | String | 边类型 (Contain/Iterate) |
 | createBy | String | 创建用户 |
 | createTime | DateTime | 创建时间 |
 | updateBy | String | 更新用户 |
 | updateTime | DateTime | 更新时间 |
-| parentId | T | 父节点ID |
 | fromId | String | 起始节点ID |
 | fromType | String | 起始节点类型 |
 | toId | String | 目标节点ID |
@@ -342,15 +338,13 @@ public class GraphEdge {
 
 关系表（边）命名规范：**主数据表名 + Link**
 
-| 主数据表 | 关系表 | 说明 |
-|---------|--------|------|
-| SsoOrg | - | 组织无对应关系表（顶级） |
-| Product | - | 产品库无上级关系表 |
-| Folder | FolderLink | 文件夹包含文件夹 |
-| PartMaster | - | 部件主数据无上级关系表 |
-| PartMaster | PartLink | 部件版本迭代关系 |
-| DocumentMaster | - | 文档主数据无上级关系表 |
-| DocumentMaster | DocumentLink | 文档版本迭代关系 |
+根据边类型定义中的起始节点到目标节点信息：
+
+| 边类型 | 关系表 | 说明 |
+|--------|--------|------|
+| Contain | FolderLink | 存储所有包含关系（SsoOrg包含Product, Product包含Folder, Folder包含Folder, Product包含PartMaster, Product包含DocumentMaster） |
+| Iterate | PartLink | 存储部件主数据到部件小版本的版本迭代关系 |
+| Iterate | DocumentLink | 存储文档主数据到文档小版本的版本迭代关系 |
 
 ### 4.10 关系属性存储策略
 
@@ -441,7 +435,7 @@ public class GraphNode {
     @ApiModelProperty("节点ID (对应关系库主键)")
     private String id;
 
-    @ApiModelProperty("节点类型: SSO_ORG/PRODUCT/FOLDER/PART_MASTER/PART/DOCUMENT_MASTER/DOCUMENT")
+    @ApiModelProperty("节点类型: SsoOrg/Product/Folder/PartMaster/Part/DocumentMaster/Document")
     private String type;
 
     @ApiModelProperty("创建用户")
@@ -467,7 +461,7 @@ public class GraphEdge {
     @ApiModelProperty("边ID")
     private String id;
 
-    @ApiModelProperty("边类型: CONTAIN/ITERATE")
+    @ApiModelProperty("边类型: Contain/Iterate")
     private String type;
 
     @ApiModelProperty("起始节点ID")
@@ -493,6 +487,9 @@ public class GraphEdge {
 
     @ApiModelProperty("更新时间")
     private Date updateTime;
+
+    @ApiModelProperty("PG库Link表的业务属性")
+    private Map<String, Object> properties;
 }
 ```
 
@@ -606,9 +603,9 @@ public class ProductServiceImpl {
 │       ▼                                                                      │
 │  ┌─────────────────────────────────────────────────────────────────┐        │
 │  │  Step 2: 重新创建图空间 Schema                                   │        │
-│  │  创建所有标签 (SSO_ORG, PRODUCT, FOLDER, PART_MASTER, PART,      │        │
-│  │              DOCUMENT_MASTER, DOCUMENT)                           │        │
-│  │  创建所有边类型 (CONTAIN, ITERATE)                                │        │
+│  │  创建所有标签 (SsoOrg, Product, Folder, PartMaster, Part,        │        │
+│  │              DocumentMaster, Document)                           │        │
+│  │  创建所有边类型 (Contain, Iterate)                              │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │       │                                                                      │
 │       ▼                                                                      │
@@ -700,45 +697,45 @@ public class GraphFullSyncService {
     private void syncAllNodes() {
         // 同步 SsoOrg
         List<SsoOrg> orgs = ssoOrgMapper.selectList(null);
-        nebulaClient.batchInsertVertices("SSO_ORG", convertToGraphNodes(orgs, "SSO_ORG"));
+        nebulaClient.batchInsertVertices("SsoOrg", convertToGraphNodes(orgs, "SsoOrg"));
 
         // 同步 Product
         List<Product> products = productMapper.selectList(null);
-        nebulaClient.batchInsertVertices("PRODUCT", convertToGraphNodes(products, "PRODUCT"));
+        nebulaClient.batchInsertVertices("Product", convertToGraphNodes(products, "Product"));
 
         // 同步 Folder
         List<Folder> folders = folderMapper.selectList(null);
-        nebulaClient.batchInsertVertices("FOLDER", convertToGraphNodes(folders, "FOLDER"));
+        nebulaClient.batchInsertVertices("Folder", convertToGraphNodes(folders, "Folder"));
 
         // 同步 PartMaster
         List<PartMaster> partMasters = partMasterMapper.selectList(null);
-        nebulaClient.batchInsertVertices("PART_MASTER", convertToGraphNodes(partMasters, "PART_MASTER"));
+        nebulaClient.batchInsertVertices("PartMaster", convertToGraphNodes(partMasters, "PartMaster"));
 
         // 同步 Part
         List<Part> parts = partMapper.selectList(null);
-        nebulaClient.batchInsertVertices("PART", convertToGraphNodes(parts, "PART"));
+        nebulaClient.batchInsertVertices("Part", convertToGraphNodes(parts, "Part"));
 
         // 同步 DocumentMaster
         List<DocumentMaster> docMasters = documentMasterMapper.selectList(null);
-        nebulaClient.batchInsertVertices("DOCUMENT_MASTER", convertToGraphNodes(docMasters, "DOCUMENT_MASTER"));
+        nebulaClient.batchInsertVertices("DocumentMaster", convertToGraphNodes(docMasters, "DocumentMaster"));
 
         // 同步 Document
         List<Document> documents = documentMapper.selectList(null);
-        nebulaClient.batchInsertVertices("DOCUMENT", convertToGraphNodes(documents, "DOCUMENT"));
+        nebulaClient.batchInsertVertices("Document", convertToGraphNodes(documents, "Document"));
     }
 
     private void syncAllEdges() {
-        // 同步 FolderLink -> CONTAIN 边
+        // 同步 FolderLink -> Contain 边
         List<FolderLink> folderLinks = folderLinkMapper.selectList(null);
-        nebulaClient.batchInsertEdges("CONTAIN", convertToGraphEdges(folderLinks, "CONTAIN"));
+        nebulaClient.batchInsertEdges("Contain", convertToGraphEdges(folderLinks, "Contain"));
 
-        // 同步 PartLink -> ITERATE 边
+        // 同步 PartLink -> Iterate 边
         List<PartLink> partLinks = partLinkMapper.selectList(null);
-        nebulaClient.batchInsertEdges("ITERATE", convertToGraphEdges(partLinks, "ITERATE"));
+        nebulaClient.batchInsertEdges("Iterate", convertToGraphEdges(partLinks, "Iterate"));
 
-        // 同步 DocumentLink -> ITERATE 边
+        // 同步 DocumentLink -> Iterate 边
         List<DocumentLink> docLinks = documentLinkMapper.selectList(null);
-        nebulaClient.batchInsertEdges("ITERATE", convertToGraphEdges(docLinks, "ITERATE"));
+        nebulaClient.batchInsertEdges("Iterate", convertToGraphEdges(docLinks, "Iterate"));
     }
 }
 ```
@@ -756,7 +753,7 @@ public class GraphFullSyncService {
 
 **节点类型**：SsoOrg、Product、Folder、PartMaster、Part、DocumentMaster、Document
 
-**边类型**：CONTAIN（包含关系）、ITERATE（版本迭代关系）
+**边类型**：Contain（包含关系）、Iterate（版本迭代关系）
 
 **核心思路**：
 - **节点**：PG库主数据表 → 图库标签（只存 BaseEntity 公共属性）
@@ -778,15 +775,15 @@ public class GraphFullSyncService {
 │                                         ▼                                    │
 │  ┌─────────────────────────────────────────────────────────────────┐        │
 │  │                    Step 1: 图数据库查询                          │        │
-│  │  nGQL: MATCH p=(p:PRODUCT {id:'product001'})-[*1..5]->(n)     │        │
+│  │  nGQL: MATCH p=(p:Product {id:'product001'})-[*1..5]->(n)     │        │
 │  │        RETURN p                                                 │        │
 │  │                                                                    │        │
 │  │  返回: 路径信息 + 边所有属性 (直接从图库获取)                      │        │
-│  │  • nodes: [{"id":"product001", "type":"PRODUCT", ...},          │        │
-│  │           {"id":"folder001", "type":"FOLDER", ...}]             │        │
-│  │  • edges: [{"id":"edge001", "type":"CONTAIN",                   │        │
-│  │            "fromId":"folder001", "fromType":"FOLDER",           │        │
-│  │            "toId":"product001", "toType":"PRODUCT",              │        │
+│  │  • nodes: [{"id":"product001", "type":"Product", ...},          │        │
+│  │           {"id":"folder001", "type":"Folder", ...}]             │        │
+│  │  • edges: [{"id":"edge001", "type":"Contain",                   │        │
+│  │            "fromId":"folder001", "fromType":"Folder",           │        │
+│  │            "toId":"product001", "toType":"Product",              │        │
 │  │            "properties":{"folderCode":"F001"}}]                  │        │
 │  └─────────────────────────────────────────────────────────────────┘        │
 │                                         │                                    │
@@ -819,15 +816,15 @@ public class GraphFullSyncService {
 │  │  最终返回:                                                         │        │
 │  │  {                                                                 │        │
 │  │    "nodes": [                                                     │        │
-│  │      {"id":"product001", "type":"PRODUCT",                        │        │
+│  │      {"id":"product001", "type":"Product",                        │        │
 │  │       "productCode":"P001", "productName":"产品A", ...},          │        │
-│  │      {"id":"folder001", "type":"FOLDER",                          │        │
+│  │      {"id":"folder001", "type":"Folder",                          │        │
 │  │       "folderName":"设计文件夹", ...}                             │        │
 │  │    ],                                                             │        │
 │  │    "edges": [                                                     │        │
-│  │      {"id":"edge001", "type":"CONTAIN",                           │        │
-│  │       "fromId":"folder001", "fromType":"FOLDER",                 │        │
-│  │       "toId":"product001", "toType":"PRODUCT",                    │        │
+│  │      {"id":"edge001", "type":"Contain",                           │        │
+│  │       "fromId":"folder001", "fromType":"Folder",                 │        │
+│  │       "toId":"product001", "toType":"Product",                    │        │
 │  │       "properties":{"folderCode":"F001"}}                         │        │
 │  │    ]                                                              │        │
 │  │  }                                                                 │        │
@@ -859,7 +856,7 @@ public class GraphQueryServiceImpl {
     public GraphResult queryProductTree(String productId) {
         // Step 1: 图数据库查询 - 获取路径和边的所有属性
         PathQueryResult pathResult = nebulaClient.queryPathsWithEdgeProps(
-            "MATCH p=(p:PRODUCT {id:'" + productId + "'})-[*1..5]->(n) RETURN p"
+            "MATCH p=(p:Product {id:'" + productId + "'})-[*1..5]->(n) RETURN p"
         );
 
         // Step 2: 从路径中提取所有节点ID
@@ -896,8 +893,8 @@ public class GraphQueryServiceImpl {
 // 路径查询请求
 {
   "startId": "product001",
-  "startType": "PRODUCT",
-  "edgeTypes": ["CONTAIN", "ITERATE"],
+  "startType": "Product",
+  "edgeTypes": ["Contain", "Iterate"],
   "direction": "OUT",
   "depth": 5
 }
@@ -910,7 +907,7 @@ public class GraphQueryServiceImpl {
     "nodes": [
       {
         "id": "product001",
-        "type": "PRODUCT",
+        "type": "Product",
         "productCode": "P001",
         "productName": "产品A",
         "createBy": "admin",
@@ -918,7 +915,7 @@ public class GraphQueryServiceImpl {
       },
       {
         "id": "folder001",
-        "type": "FOLDER",
+        "type": "Folder",
         "folderName": "设计文件夹",
         "createBy": "admin",
         "createTime": "2026-04-16 11:00:00"
@@ -927,13 +924,14 @@ public class GraphQueryServiceImpl {
     "edges": [
       {
         "id": "edge001",
-        "type": "CONTAIN",
+        "type": "Contain",
         "fromId": "folder001",
-        "fromType": "FOLDER",
+        "fromType": "Folder",
         "toId": "product001",
-        "toType": "PRODUCT",
+        "toType": "Product",
         "createBy": "admin",
-        "createTime": "2026-04-16 11:00:00"
+        "createTime": "2026-04-16 11:00:00",
+        "properties": {"folderCode": "F001"}
       }
     ]
   }
@@ -1061,19 +1059,19 @@ NebulaGraph 图数据库存储以下数据：
 **节点类型**（对应PG库主数据表）：
 | 节点类型 | 说明 |
 |---------|------|
-| SSO_ORG | 组织 |
-| PRODUCT | 产品库 |
-| FOLDER | 文件夹 |
-| PART_MASTER | 部件主数据 |
-| PART | 部件小版本 |
-| DOCUMENT_MASTER | 文档主数据 |
-| DOCUMENT | 文档小版本 |
+| SsoOrg | 组织 |
+| Product | 产品库 |
+| Folder | 文件夹 |
+| PartMaster | 部件主数据 |
+| Part | 部件小版本 |
+| DocumentMaster | 文档主数据 |
+| Document | 文档小版本 |
 
 **边类型**（对应PG库Link表）：
 | 边类型 | 说明 | Link表 |
 |--------|------|--------|
-| CONTAIN | 包含关系 | FolderLink |
-| ITERATE | 版本迭代关系 | PartLink, DocumentLink |
+| Contain | 包含关系 | FolderLink |
+| Iterate | 版本迭代关系 | PartLink, DocumentLink |
 
 **存储策略**：
 - 节点只存储 BaseEntity 的公共属性
@@ -1095,6 +1093,7 @@ CREATE SPACE IF NOT EXISTS plm_graph(
 USE plm_graph;
 
 -- 创建标签 (节点类型) - 存储 BaseEntity 公共属性
+-- 注意: NebulaGraph标签名使用下划线分隔的大写形式
 CREATE TAG IF NOT EXISTS SSO_ORG(
     id string NOT NULL,
     create_by string,
@@ -1152,11 +1151,10 @@ CREATE TAG IF NOT EXISTS DOCUMENT(
 );
 
 -- 创建边类型 - 存储 BaseTreeEntity 所有字段 + Link表业务属性
--- id, type, parent_id, create_by, create_time, update_by, update_time, from_id, from_type, to_id, to_type, properties
+-- id, type, create_by, create_time, update_by, update_time, from_id, from_type, to_id, to_type, properties
 CREATE EDGE IF NOT EXISTS CONTAIN(
     id string NOT NULL,
     type string NOT NULL,
-    parent_id string,
     create_by string,
     create_time datetime,
     update_by string,
@@ -1171,7 +1169,6 @@ CREATE EDGE IF NOT EXISTS CONTAIN(
 CREATE EDGE IF NOT EXISTS ITERATE(
     id string NOT NULL,
     type string NOT NULL,
-    parent_id string,
     create_by string,
     create_time datetime,
     update_by string,
@@ -1188,38 +1185,38 @@ CREATE EDGE IF NOT EXISTS ITERATE(
 
 ```sql
 -- 插入节点
-INSERT VERTEX SSO_ORG(id, create_by, create_time) VALUES 'org001':('org001', 'admin', NOW());
-INSERT VERTEX PRODUCT(id, create_by, create_time) VALUES 'product001':('product001', 'admin', NOW());
-INSERT VERTEX FOLDER(id, create_by, create_time) VALUES 'folder001':('folder001', 'admin', NOW());
-INSERT VERTEX PART_MASTER(id, create_by, create_time) VALUES 'partmaster001':('partmaster001', 'admin', NOW());
-INSERT VERTEX PART(id, create_by, create_time) VALUES 'part001':('part001', 'admin', NOW());
-INSERT VERTEX DOCUMENT_MASTER(id, create_by, create_time) VALUES 'docmaster001':('docmaster001', 'admin', NOW());
-INSERT VERTEX DOCUMENT(id, create_by, create_time) VALUES 'doc001':('doc001', 'admin', NOW());
+INSERT VERTEX SsoOrg(id, create_by, create_time) VALUES 'org001':('org001', 'admin', NOW());
+INSERT VERTEX Product(id, create_by, create_time) VALUES 'product001':('product001', 'admin', NOW());
+INSERT VERTEX Folder(id, create_by, create_time) VALUES 'folder001':('folder001', 'admin', NOW());
+INSERT VERTEX PartMaster(id, create_by, create_time) VALUES 'partmaster001':('partmaster001', 'admin', NOW());
+INSERT VERTEX Part(id, create_by, create_time) VALUES 'part001':('part001', 'admin', NOW());
+INSERT VERTEX DocumentMaster(id, create_by, create_time) VALUES 'docmaster001':('docmaster001', 'admin', NOW());
+INSERT VERTEX Document(id, create_by, create_time) VALUES 'doc001':('doc001', 'admin', NOW());
 
--- 插入边 (包含id, type, parent_id, 公共属性和业务属性)
-INSERT EDGE CONTAIN(id, type, parent_id, from_id, from_type, to_id, to_type, create_by, create_time, properties)
-VALUES 'folder001' -> 'product001':('edge001', 'CONTAIN', NULL, 'folder001', 'FOLDER', 'product001', 'PRODUCT', 'admin', NOW(), '{"folderCode":"F001"}');
+-- 插入边 (包含id, type, 公共属性和业务属性)
+INSERT EDGE Contain(id, type, from_id, from_type, to_id, to_type, create_by, create_time, properties)
+VALUES 'folder001' -> 'product001':('edge001', 'Contain', 'folder001', 'Folder', 'product001', 'Product', 'admin', NOW(), '{"folderCode":"F001"}');
 
-INSERT EDGE ITERATE(id, type, parent_id, from_id, from_type, to_id, to_type, create_by, create_time, properties)
-VALUES 'partmaster001' -> 'part001':('edge002', 'ITERATE', NULL, 'partmaster001', 'PART_MASTER', 'part001', 'PART', 'admin', NOW(), '{"version":"V1.0"}');
+INSERT EDGE Iterate(id, type, from_id, from_type, to_id, to_type, create_by, create_time, properties)
+VALUES 'partmaster001' -> 'part001':('edge002', 'Iterate', 'partmaster001', 'PartMaster', 'part001', 'Part', 'admin', NOW(), '{"version":"V1.0"}');
 
 -- 查询路径 (多跳) - 返回节点和边的所有属性
-MATCH p=(n)-[e:CONTAIN|ITERATE*1..3]->(m)
+MATCH p=(n)-[e:Contain|Iterate*1..3]->(m)
 WHERE id(n) == 'product001'
 RETURN p;
 
 -- 查询某个产品的所有文件夹和部件
-MATCH (p:PRODUCT)-[e:CONTAIN]->(n)
+MATCH (p:Product)-[e:Contain]->(n)
 WHERE id(p) == 'product001'
 RETURN n, e;
 
 -- 查询某个部件主数据的版本链
-MATCH (pm:PART_MASTER)-[e:ITERATE]->(p:PART)
+MATCH (pm:PartMaster)-[e:Iterate]->(p:Part)
 WHERE id(pm) == 'partmaster001'
 RETURN p, e;
 
 -- 统计某个文件夹下的直接子节点数量
-GO FROM 'folder001' OVER CONTAIN YIELD dst(edge);
+GO FROM 'folder001' OVER Contain YIELD dst(edge);
 ```
 
 ---
