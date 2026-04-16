@@ -274,32 +274,33 @@ public class GraphEdge {
 
 ### 4.6 节点属性定义
 
-所有节点都 extends `cn.com.mfish.common.core.entity.BaseEntity`，包含以下公共属性：
+所有节点都 **extends BaseEntity (cn.com.mfish.common.core.entity.BaseEntity)**，包含以下公共属性：
 
 | 属性 | 类型 | 说明 |
 |-----|------|------|
 | id | T | 节点ID (对应关系库主键) |
 | createBy | String | 创建用户 |
-| createTime | Date | 创建时间 |
+| createTime | DateTime | 创建时间 |
 | updateBy | String | 更新用户 |
-| updateTime | Date | 更新时间 |
+| updateTime | DateTime | 更新时间 |
 
 ### 4.7 边属性定义
 
-所有边都 extends `cn.com.mfish.common.core.entity.BaseEntity`，包含以下属性：
+所有边都 **extends BaseTreeEntity (cn.com.mfish.common.core.entity.BaseTreeEntity)**，包含以下公共属性：
 
 | 属性 | 类型 | 说明 |
 |-----|------|------|
-| id | String | 边ID |
+| id | T | 边ID |
 | type | String | 边类型 (CONTAIN/ITERATE) |
+| createBy | String | 创建用户 |
+| createTime | DateTime | 创建时间 |
+| updateBy | String | 更新用户 |
+| updateTime | DateTime | 更新时间 |
+| parentId | T | 父节点ID (存储fromId) |
 | fromId | String | 起始节点ID |
 | fromType | String | 起始节点类型 |
 | toId | String | 目标节点ID |
 | toType | String | 目标节点类型 |
-| createBy | String | 创建用户 |
-| createTime | Date | 创建时间 |
-| updateBy | String | 更新用户 |
-| updateTime | Date | 更新时间 |
 
 ### 4.8 关系属性存储策略
 
