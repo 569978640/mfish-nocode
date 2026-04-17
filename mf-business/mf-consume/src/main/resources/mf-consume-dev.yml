@@ -2,9 +2,10 @@ swagger:
   title: 'WindFlow调度中心-MQ消费端测试'
 #rocketmq配置信息
 rocketmq:
+  name-server: 192.168.111.103:9876
   #生产者配置
   consumer:
-    nameServer: 192.168.111.103:9876
+    #nameServer: 192.168.111.103:9876
     #topic
     topic: mfish-scheduler-topic
     #组名
