@@ -2,6 +2,8 @@ package cn.com.mfish.plm.producer;
 
 import cn.com.mfish.graph.model.event.GraphSyncEvent;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.rocketmq.client.producer.SendCallback;
+import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
@@ -42,9 +44,9 @@ public class PlmGraphSyncProducer {
             event.setSource("mf-plm");
         }
         try {
-            rocketMQTemplate.asyncSend(topic, event, new org.apache.rocketmq.spring.core.SendCallback() {
+            rocketMQTemplate.asyncSend(topic, event, new SendCallback() {
                 @Override
-                public void onSuccess(org.apache.rocketmq.client.producer.SendResult sendResult) {
+                public void onSuccess(SendResult sendResult) {
                     log.info("图同步事件发送成功, eventId={}, result={}", event.getEventId(), sendResult.getMsgId());
                 }
 
