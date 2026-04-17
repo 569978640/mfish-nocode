@@ -16,9 +16,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
-import java.io.Serializable;
 import java.text.SimpleDateFormat;
-import java.util.Arrays;
 import java.util.Date;
 import java.util.List;
 
@@ -52,12 +50,6 @@ public class ProductServiceImpl extends PlmBaseServiceImpl<Product, ProductMappe
     }
 
     @Override
-    public Result<Product> queryById(Serializable id) {
-        Product product = getById(id);
-        return Result.ok(product, "产品库-查询成功!");
-    }
-
-    @Override
     public void export(ReqProduct reqProduct, ReqPage reqPage) throws IOException {
         PageHelper.startPage(reqPage.getPageNum(), reqPage.getPageSize());
         LambdaQueryWrapper<Product> wrapper = new LambdaQueryWrapper<Product>()
@@ -66,73 +58,4 @@ public class ProductServiceImpl extends PlmBaseServiceImpl<Product, ProductMappe
         List<Product> list = list(wrapper);
         ExcelUtils.write("产品库_" + new SimpleDateFormat("yyyy-MM-dd").format(new Date()), list);
     }
-
-    /**
-     * 添加
-     *
-     * @param product 产品库对象
-     * @return 返回产品库-添加结果
-     */
-    @Override
-    public Result<Product> add(Product product) {
-        if (save(product)) {
-            return Result.ok(product, "产品库-添加成功!");
-        }
-        return Result.fail(product, "错误:产品库-添加失败!");
-    }
-
-    /**
-     * 编辑
-     *
-     * @param product 产品库对象
-     * @return 返回产品库-编辑结果
-     */
-    @Override
-    public Result<Product> edit(Product product) {
-        if (updateById(product)) {
-            return Result.ok(product, "产品库-编辑成功!");
-        }
-        return Result.fail(product, "错误:产品库-编辑失败!");
-    }
-
-    /**
-     * 通过id删除
-     *
-     * @param id 唯一ID
-     * @return 返回产品库-删除结果
-     */
-    @Override
-    public Result<Boolean> delete(String id) {
-        if (removeById(id)) {
-            return Result.ok(true, "产品库-删除成功!");
-        }
-        return Result.fail(false, "错误:产品库-删除失败!");
-    }
-
-    /**
-     * 批量删除
-     *
-     * @param ids 批量ID
-     * @return 返回产品库-删除结果
-     */
-    @Override
-    public Result<Boolean> deleteBatch(String ids) {
-        if (removeByIds(Arrays.asList(ids.split(",")))) {
-            return Result.ok(true, "产品库-批量删除成功!");
-        }
-        return Result.fail(false, "错误:产品库-批量删除失败!");
-    }
-
-    /**
-     * 通过id查询
-     *
-     * @param id 唯一ID
-     * @return 返回产品库对象
-     */
-    @Override
-    public Result<Product> queryById(String id) {
-        Product product = getById(id);
-        return Result.ok(product, "产品库-查询成功!");
-    }
-
 }
