@@ -6,8 +6,8 @@
 | ---- | ---------------------------- |
 | 项目名称 | mfish-nocode PLM 图同步消费端通用化架构 |
 | 当前版本 | mf-2.3.1                     |
-| 更新日期 | 2026-04-17                   |
-| 文档状态 | 待审查                          |
+| 更新日期 | 2026-04-18                   |
+| 文档状态 | 已更新（基于代码实现）                  |
 | 适用对象 | 后端开发工程师、架构师                  |
 
 ***
@@ -78,7 +78,7 @@
 │  │  │              IdempotentService (幂等服务)                         │   │   │
 │  │  │  1. 幂等检查：eventId 是否已处理                                  │   │   │
 │  │  │  2. 状态管理：PROCESSING → COMPLETED / FAILED                    │   │   │
-│  │  │  3. 失败标记：FAILED 状态触发 MQ 重试                             │   │   │
+│  │  │  3. 超时处理：PROCESSING 状态超过30分钟允许重试                   │   │   │
 │  │  └────────────────────────────┬────────────────────────────────────┘   │   │
 │  │                               │                                          │   │
 │  │                               ▼                                          │   │
@@ -87,6 +87,14 @@
 │  │  │  1. 预检：检查节点/边是否已存在                                    │   │   │
 │  │  │  2. 批量写入：INSERT VERTEX/EDGE IF NOT EXISTS                    │   │   │
 │  │  │  3. 失败回滚：标记 FAILED 状态                                    │   │   │
+│  │  └────────────────────────────┬────────────────────────────────────┘   │   │
+│  │                               │                                          │   │
+│  │                               ▼                                          │   │
+│  │  ┌─────────────────────────────────────────────────────────────────┐   │   │
+│  │  │              SyncLogService (操作日志服务)                        │   │   │
+│  │  │  1. 记录操作日志：接收、处理、成功、失败                          │   │   │
+│  │  │  2. 支持按 eventId 查询处理状态                                  │   │   │
+│  │  │  3. 支持统计和监控                                                │   │   │
 │  │  └────────────────────────────┬────────────────────────────────────┘   │   │
 │  └──────────────────────────────┼──────────────────────────────────────────┘   │
 │                                  │                                              │
@@ -124,20 +132,23 @@
 │                                      │                                           │
 │              ┌───────────────────────┼───────────────────────┐                │
 │              ▼                       ▼                       ▼                 │
-│     ┌─────────────┐          ┌─────────────┐        ┌─────────────┐          │
-│     │ COMPLETED   │          │ PROCESSING  │        │   FAILED   │          │
-│     │ (已成功)    │          │  (处理中)   │        │   (失败)    │          │
-│     └──────┬──────┘          └──────┬──────┘        └──────┬──────┘          │
-│            │                        │                       │                  │
-│            ▼                        ▼                       ▼                  │
-│     记录日志，跳过          记录日志，跳过           由补偿任务处理              │
-│     (幂等保证)              (防重复消费)           (或人工干预)                │
+│     ┌─────────────┐          ┌─────────────────────────────────┐        ┌─────────────┐          │
+│     │ COMPLETED   │          │         PROCESSING               │        │   FAILED   │          │
+│     │ (已成功)    │          │           (处理中)               │        │   (失败)    │          │
+│     └──────┬──────┘          └─────────────────┬───────────────┘        └──────┬──────┘          │
+│            │                        ┌──────────────┴──────────────┐               │                  │
+│            ▼                        ▼                              ▼               ▼                  │
+│     记录日志，跳过          ┌──────────────┐              ┌──────────────┐      由补偿任务处理              │
+│     (幂等保证)              │   超时内      │              │   超时后     │      (或人工干预)                │
+│                             │ 记录日志，跳过 │              │  允许重试    │                              │
+│                             │ (防重复消费)  │              │ (继续处理)   │                              │
+│                             └──────────────┘              └──────────────┘                              │
 │                                                                                 │
 │  3. 创建幂等记录 (status = PROCESSING)                                         │
 │     ┌─────────────────────────────────────────────────────────────────┐        │
 │     │ INSERT INTO sync_idempotent_log                                 │        │
-│     │ (event_id, event_type, node_count, edge_count,                 │        │
-│     │  status, create_time, update_time, remark)                       │        │
+│     │ (id, event_id, event_type, node_count, edge_count,            │        │
+│     │  status, retry_count, create_time, update_time)                  │        │
 │     └─────────────────────────────────────────────────────────────────┘        │
 │                                      │                                           │
 │                                      ▼                                           │
@@ -173,11 +184,11 @@
 │     └─────────────────────────────────────────────────────────────────┘        │
 │                                      │                                           │
 │                                      ▼                                           │
-│  7. 手动 ACK + 记录操作日志                                                       │
+│  7. 记录操作日志 + 手动 ACK                                             │
 │     ┌─────────────────────────────────────────────────────────────────┐        │
 │     │ INSERT INTO sync_operation_log                                  │        │
 │     │ (event_id, operation, node_count, edge_count,                  │        │
-│     │  start_time, end_time, status, error_message)                   │        │
+│     │  start_time, end_time, duration_ms, status, error_message)      │        │
 │     └─────────────────────────────────────────────────────────────────┘        │
 │                                      │                                           │
 │                                      ▼                                           │
@@ -245,44 +256,129 @@ public class GraphEdge {
 
 ### 3.4 幂等表：sync\_idempotent\_log
 
+**数据库**：plm 模块 PostgreSQL (mf_plm)
+
+**实体类**：[SyncIdempotentLog.java](../../mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/entity/SyncIdempotentLog.java)
+
+```java
+@Data
+@TableName("sync_idempotent_log")
+@EqualsAndHashCode(callSuper = true)
+@Schema(description = "sync_idempotent_log对象 幂等表")
+public class SyncIdempotentLog extends BaseEntity<String> {
+    @TableId(type = IdType.ASSIGN_UUID)
+    private String id;                  // 唯一ID（UUID）
+    private String eventId;             // 事件唯一ID
+    private String eventType;           // 事件类型：CREATE/UPDATE/DELETE
+    private Long nodeCount;             // 节点数量
+    private Long edgeCount;            // 边数量
+    private String status;              // 状态：PROCESSING/COMPLETED/FAILED
+    private Long retryCount;            // 处理版本/轮次（每次处理递增）
+    private String errorMessage;        // 错误信息
+}
+```
+
+**Mapper**：[SyncIdempotentLogMapper.java](../../mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/mapper/SyncIdempotentLogMapper.java)
+
+继承 MyBatis-Plus `BaseMapper<SyncIdempotentLog>`，提供基础的 CRUD 操作。
+
+**SQL Schema**：
+
 ```sql
 CREATE TABLE sync_idempotent_log (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-    event_id        VARCHAR(64) NOT NULL UNIQUE COMMENT '事件唯一ID',
+    id              VARCHAR(64) PRIMARY KEY COMMENT '唯一ID（UUID）',
+    event_id        VARCHAR(64) NOT NULL COMMENT '事件唯一ID',
     event_type      VARCHAR(20) NOT NULL COMMENT '事件类型：CREATE/UPDATE/DELETE',
-    node_count      INT DEFAULT 0 COMMENT '节点数量',
-    edge_count      INT DEFAULT 0 COMMENT '边数量',
+    node_count      BIGINT DEFAULT 0 COMMENT '节点数量',
+    edge_count      BIGINT DEFAULT 0 COMMENT '边数量',
     status          VARCHAR(20) NOT NULL DEFAULT 'PROCESSING' COMMENT '状态：PROCESSING/COMPLETED/FAILED',
-    retry_count     INT DEFAULT 0 COMMENT '重试次数',
+    retry_count     BIGINT DEFAULT 0 COMMENT '处理版本/轮次',
     error_message   TEXT COMMENT '错误信息',
-    create_time     DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time     DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_event_id (event_id),
-    INDEX idx_status (status),
-    INDEX idx_create_time (create_time)
-) COMMENT '图同步幂等表';
+    create_time     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX uq_sync_idempotent_log_event_id ON sync_idempotent_log(event_id);
+
+CREATE INDEX idx_sync_idempotent_log_status ON sync_idempotent_log(status);
+CREATE INDEX idx_sync_idempotent_log_create_time ON sync_idempotent_log(create_time);
+
+COMMENT ON TABLE sync_idempotent_log IS '图同步幂等表';
+COMMENT ON COLUMN sync_idempotent_log.id IS '唯一ID（UUID）';
+COMMENT ON COLUMN sync_idempotent_log.event_id IS '事件唯一ID';
+COMMENT ON COLUMN sync_idempotent_log.event_type IS '事件类型：CREATE/UPDATE/DELETE';
+COMMENT ON COLUMN sync_idempotent_log.node_count IS '节点数量';
+COMMENT ON COLUMN sync_idempotent_log.edge_count IS '边数量';
+COMMENT ON COLUMN sync_idempotent_log.status IS '状态：PROCESSING/COMPLETED/FAILED';
+COMMENT ON COLUMN sync_idempotent_log.retry_count IS '重试次数';
+COMMENT ON COLUMN sync_idempotent_log.error_message IS '错误信息';
 ```
 
 ### 3.5 操作日志表：sync\_operation\_log
 
+**数据库**：plm 模块 PostgreSQL (mf_plm)
+
+**实体类**：[SyncOperationLog.java](../../mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/entity/SyncOperationLog.java)
+
+```java
+@Data
+@TableName("sync_operation_log")
+@EqualsAndHashCode(callSuper = true)
+@Schema(description = "sync_operation_log对象 图同步操作日志")
+public class SyncOperationLog extends BaseEntity<Long> {
+    @TableId(type = IdType.AUTO)
+    private Long id;                  // 唯一ID（自增）
+    private String eventId;           // 事件唯一ID
+    private String operation;         // 操作类型：PREPARE/PROCESS/COMPLETE/FAILED
+    private Long nodeCount;           // 节点数量
+    private Long edgeCount;          // 边数量
+    private Date startTime;           // 开始时间
+    private Date endTime;            // 结束时间
+    private Long durationMs;          // 耗时(毫秒)
+    private String status;            // 状态：SUCCESS/FAILED
+    private String errorMessage;      // 错误信息
+    private Object detail;            // 详细信息（JSON格式）
+}
+```
+
+**Mapper**：[SyncOperationLogMapper.java](../../mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/mapper/SyncOperationLogMapper.java)
+
+继承 MyBatis-Plus `BaseMapper<SyncOperationLog>`，提供基础的 CRUD 操作。
+
+**SQL Schema**：
+
 ```sql
 CREATE TABLE sync_operation_log (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id              BIGSERIAL PRIMARY KEY,
     event_id        VARCHAR(64) NOT NULL COMMENT '事件唯一ID',
     operation       VARCHAR(20) NOT NULL COMMENT '操作类型：PREPARE/PROCESS/COMPLETE/FAILED',
-    node_count      INT DEFAULT 0 COMMENT '节点数量',
-    edge_count      INT DEFAULT 0 COMMENT '边数量',
-    start_time      DATETIME NOT NULL COMMENT '开始时间',
-    end_time        DATETIME COMMENT '结束时间',
+    node_count      BIGINT DEFAULT 0 COMMENT '节点数量',
+    edge_count      BIGINT DEFAULT 0 COMMENT '边数量',
+    start_time      TIMESTAMP NOT NULL COMMENT '开始时间',
+    end_time        TIMESTAMP COMMENT '结束时间',
     duration_ms     BIGINT COMMENT '耗时(毫秒)',
     status          VARCHAR(20) NOT NULL COMMENT '状态：SUCCESS/FAILED',
     error_message   TEXT COMMENT '错误信息',
-    detail          JSON COMMENT '详细信息',
-    create_time     DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_event_id (event_id),
-    INDEX idx_status (status),
-    INDEX idx_create_time (create_time)
-) COMMENT '图同步操作日志表';
+    detail          JSONB COMMENT '详细信息',
+    create_time     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_sync_operation_log_event_id ON sync_operation_log(event_id);
+CREATE INDEX idx_sync_operation_log_status ON sync_operation_log(status);
+CREATE INDEX idx_sync_operation_log_create_time ON sync_operation_log(create_time);
+
+COMMENT ON TABLE sync_operation_log IS '图同步操作日志表';
+COMMENT ON COLUMN sync_operation_log.id IS '唯一ID（自增）';
+COMMENT ON COLUMN sync_operation_log.event_id IS '事件唯一ID';
+COMMENT ON COLUMN sync_operation_log.operation IS '操作类型：PREPARE/PROCESS/COMPLETE/FAILED';
+COMMENT ON COLUMN sync_operation_log.node_count IS '节点数量';
+COMMENT ON COLUMN sync_operation_log.edge_count IS '边数量';
+COMMENT ON COLUMN sync_operation_log.start_time IS '开始时间';
+COMMENT ON COLUMN sync_operation_log.end_time IS '结束时间';
+COMMENT ON COLUMN sync_operation_log.duration_ms IS '耗时(毫秒)';
+COMMENT ON COLUMN sync_operation_log.status IS '状态：SUCCESS/FAILED';
+COMMENT ON COLUMN sync_operation_log.error_message IS '错误信息';
+COMMENT ON COLUMN sync_operation_log.detail IS '详细信息';
 ```
 
 ***
@@ -326,7 +422,7 @@ public class GraphSyncConsumer implements RocketMQListener<GraphSyncEvent> {
     private RocketMQTemplate rocketMQTemplate;
 
     @Override
-    public void onMessage(GraphSyncEvent event) {
+    public void onMessage(GraphSyncEvent event, Message message, ConsumeConcurrentlyContext context) {
         String eventId = event.getEventId();
         long startTime = System.currentTimeMillis();
 
@@ -334,7 +430,7 @@ public class GraphSyncConsumer implements RocketMQListener<GraphSyncEvent> {
         syncLogService.logReceive(event);
 
         // 2. 幂等检查
-        IdempotentLog idempotentLog = idempotentService.checkAndCreate(event);
+        SyncIdempotentLog idempotentLog = idempotentService.checkAndCreate(event);
         if (idempotentLog == null) {
             // 已处理过，跳过
             syncLogService.logSkip(event, "幂等检查跳过");
@@ -343,7 +439,7 @@ public class GraphSyncConsumer implements RocketMQListener<GraphSyncEvent> {
 
         // 3. 记录处理开始
         syncLogService.logStart(event);
-        int retryCount = idempotentLog.getRetryCount();
+        int retryCount = idempotentLog.getRetryCount().intValue();
 
         try {
             // 4. 根据事件类型处理
@@ -367,7 +463,7 @@ public class GraphSyncConsumer implements RocketMQListener<GraphSyncEvent> {
             syncLogService.logSuccess(event, duration);
 
             // 7. 手动 ACK
-            rocketMQTemplate.ack(message);
+            rocketMQTemplate.ack(message, context);
 
         } catch (Exception e) {
             log.error("处理图同步事件失败: eventId={}", eventId, e);
@@ -392,13 +488,15 @@ public class GraphSyncConsumer implements RocketMQListener<GraphSyncEvent> {
 
 - eventId 幂等检查
 - 幂等记录状态管理
-- 重试次数管理
+- 处理版本/轮次管理
 
 **设计要点**：
 
 - 基于 eventId 唯一索引保证幂等
 - 状态流转：PROCESSING → COMPLETED / FAILED
 - FAILED 状态可由补偿任务或人工处理
+
+**实体类**：使用 `SyncIdempotentLog`
 
 ```java
 @Slf4j
@@ -408,15 +506,18 @@ public class IdempotentService {
     @Autowired
     private SyncIdempotentLogMapper idempotentLogMapper;
 
+    // 处理超时时间，默认 30 分钟
+    private static final long PROCESSING_TIMEOUT_MS = 30 * 60 * 1000;
+
     /**
      * 幂等检查并创建处理记录
      * @return null 表示已处理过，非 null 表示需要处理
      */
-    public IdempotentLog checkAndCreate(GraphSyncEvent event) {
+    public SyncIdempotentLog checkAndCreate(GraphSyncEvent event) {
         String eventId = event.getEventId();
 
         // 查询是否存在
-        IdempotentLog existing = idempotentLogMapper.selectByEventId(eventId);
+        SyncIdempotentLog existing = idempotentLogMapper.selectByEventId(eventId);
         if (existing != null) {
             // 已存在，根据状态判断
             if ("COMPLETED".equals(existing.getStatus())) {
@@ -424,55 +525,61 @@ public class IdempotentService {
                 return null;
             }
             if ("PROCESSING".equals(existing.getStatus())) {
-                log.warn("事件正在处理中，防止重复消费: eventId={}", eventId);
-                return null;
+                // 检查是否超时，允许超时后重试
+                if (existing.getUpdateTime() != null &&
+                    System.currentTimeMillis() - existing.getUpdateTime().getTime() < PROCESSING_TIMEOUT_MS) {
+                    log.warn("事件正在处理中，防止重复消费: eventId={}", eventId);
+                    return null;
+                }
+                log.warn("事件处理超时，允许重试: eventId={}", eventId);
             }
             // FAILED 状态，允许重试
             log.info("事件处理失败，允许重试: eventId={}", eventId);
         }
 
         // 创建或更新幂等记录
-        IdempotentLog log = new IdempotentLog();
-        log.setEventId(eventId);
-        log.setEventType(event.getEventType());
-        log.setNodeCount(CollectionUtils.isEmpty(event.getNodes()) ? 0 : event.getNodes().size());
-        log.setEdgeCount(CollectionUtils.isEmpty(event.getEdges()) ? 0 : event.getEdges().size());
-        log.setStatus("PROCESSING");
-        log.setRetryCount(existing == null ? 0 : existing.getRetryCount() + 1);
-        log.setUpdateTime(new Date());
+        SyncIdempotentLog syncLog = new SyncIdempotentLog();
+        syncLog.setEventId(eventId);
+        syncLog.setEventType(event.getEventType());
+        syncLog.setNodeCount(event.getNodes() == null ? 0L : (long) event.getNodes().size());
+        syncLog.setEdgeCount(event.getEdges() == null ? 0L : (long) event.getEdges().size());
+        syncLog.setStatus("PROCESSING");
+        // 处理版本：每次处理递增，用于追踪处理轮次
+        syncLog.setRetryCount(existing == null ? 0L : existing.getRetryCount() + 1);
+        syncLog.setUpdateTime(new Date());
 
         if (existing == null) {
-            idempotentLogMapper.insert(log);
+            idempotentLogMapper.insert(syncLog);
         } else {
-            log.setId(existing.getId());
-            idempotentLogMapper.updateById(log);
+            syncLog.setId(existing.getId());
+            idempotentLogMapper.updateById(syncLog);
         }
 
-        return log;
+        return syncLog;
     }
 
     /**
      * 标记处理成功
      */
     public void markCompleted(String eventId) {
-        IdempotentLog log = new IdempotentLog();
-        log.setEventId(eventId);
-        log.setStatus("COMPLETED");
-        log.setUpdateTime(new Date());
-        idempotentLogMapper.updateStatusByEventId(log);
+        SyncIdempotentLog syncLog = new SyncIdempotentLog();
+        syncLog.setEventId(eventId);
+        syncLog.setStatus("COMPLETED");
+        syncLog.setUpdateTime(new Date());
+        idempotentLogMapper.updateStatusByEventId(syncLog);
     }
 
     /**
      * 标记处理失败
      */
     public void markFailed(String eventId, String errorMessage, int retryCount) {
-        IdempotentLog log = new IdempotentLog();
-        log.setEventId(eventId);
-        log.setStatus("FAILED");
-        log.setErrorMessage(errorMessage);
-        log.setRetryCount(retryCount);
-        log.setUpdateTime(new Date());
-        idempotentLogMapper.updateStatusByEventId(log);
+        SyncIdempotentLog syncLog = new SyncIdempotentLog();
+        syncLog.setEventId(eventId);
+        syncLog.setStatus("FAILED");
+        syncLog.setErrorMessage(errorMessage);
+        syncLog.setRetryCount((long) retryCount);
+        syncLog.setUpdateTime(new Date());
+        idempotentLogMapper.updateStatusByEventId(syncLog);
     }
 }
 ```
@@ -561,91 +668,162 @@ public class NebulaWriteService {
 在现有 NebulaClient 基础上增加：
 
 ```java
-/**
- * 批量 Upsert 节点（INSERT VERTEX IF NOT EXISTS）
- */
-public void batchUpsertVertices(String tagName, List<GraphNode> nodes) {
-    if (nodes == null || nodes.isEmpty()) {
-        return;
+@Slf4j
+@Service
+public class NebulaClient {
+
+    @Autowired
+    private NebulaPoolConfig nebulaPoolConfig;
+
+    private NebulaPool nebulaPool;
+
+    /**
+     * 获取图数据库会话
+     */
+    public com.vesoft.nebula.client.graph.net.Session getSession() {
+        if (nebulaPool == null) {
+            nebulaPool = new NebulaPool();
+            nebulaPool.init(nebulaPoolConfig);
+        }
+        return nebulaPool.getSession("root", "nebula", false);
     }
 
-    try (com.vesoft.nebula.client.graph.net.Session session = getSession()) {
-        // 构建批量插入语句
-        StringBuilder ngql = new StringBuilder();
-        ngql.append("INSERT VERTEX ").append(tagName)
-            .append("(id, create_by, create_time, update_by, update_time) VALUES ");
+    /**
+     * 关闭连接池，应用关闭时调用
+     */
+    public void close() {
+        if (nebulaPool != null) {
+            nebulaPool.close();
+            nebulaPool = null;
+        }
+    }
 
-        boolean first = true;
-        for (GraphNode node : nodes) {
-            if (!first) {
-                ngql.append(",");
+    /**
+     * 字符串转义，防止注入
+     */
+    private String escapeString(String value) {
+        if (value == null) {
+            return "NULL";
+        }
+        return value.replace("\\", "\\\\")
+                   .replace("'", "\\'")
+                   .replace("\"", "\\\"");
+    }
+
+    /**
+     * 日期时间格式化
+     */
+    private String formatDateTime(Date date) {
+        if (date == null) {
+            return "NULL";
+        }
+        SimpleDateFormat sdf = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'");
+        sdf.setTimeZone(TimeZone.getTimeZone("UTC"));
+        return "\"" + sdf.format(date) + "\"";
+    }
+
+    /**
+     * 对象转 JSON 字符串
+     */
+    private String toJsonString(Object obj) {
+        if (obj == null) {
+            return "NULL";
+        }
+        try {
+            ObjectMapper mapper = new ObjectMapper();
+            return "\"" + escapeString(mapper.writeValueAsString(obj)) + "\"";
+        } catch (JsonProcessingException e) {
+            log.error("对象转JSON失败", e);
+            return "NULL";
+        }
+    }
+
+    /**
+     * 批量 Upsert 节点（INSERT VERTEX IF NOT EXISTS）
+     */
+    public void batchUpsertVertices(String tagName, List<GraphNode> nodes) {
+        if (nodes == null || nodes.isEmpty()) {
+            return;
+        }
+
+        try (com.vesoft.nebula.client.graph.net.Session session = getSession()) {
+            // 构建批量插入语句
+            StringBuilder ngql = new StringBuilder();
+            ngql.append("INSERT VERTEX ").append(tagName)
+                .append("(id, create_by, create_time, update_by, update_time) VALUES ");
+
+            boolean first = true;
+            for (GraphNode node : nodes) {
+                if (!first) {
+                    ngql.append(",");
+                }
+                first = false;
+
+                ngql.append(escapeString(node.getId()))
+                    .append(":( ")
+                    .append(escapeString(node.getId())).append(",")
+                    .append(escapeString(node.getCreateBy())).append(",")
+                    .append(formatDateTime(node.getCreateTime())).append(",")
+                    .append(escapeString(node.getUpdateBy())).append(",")
+                    .append(formatDateTime(node.getUpdateTime()))
+                    .append(" )");
             }
-            first = false;
 
-            ngql.append(escapeString(node.getId()))
-                .append(":( ")
-                .append(escapeString(node.getId())).append(",")
-                .append(escapeString(node.getCreateBy())).append(",")
-                .append(formatDateTime(node.getCreateTime())).append(",")
-                .append(escapeString(node.getUpdateBy())).append(",")
-                .append(formatDateTime(node.getUpdateTime()))
-                .append(" )");
-        }
-
-        ResultSet resultSet = session.execute(ngql.toString());
-        if (!resultSet.isSucceeded()) {
-            throw new RuntimeException("批量写入节点失败: " + resultSet.getErrorMessage());
-        }
-
-        log.info("批量Upsert节点成功: tagName={}, count={}", tagName, nodes.size());
-    }
-}
-
-/**
- * 批量 Upsert 边（INSERT EDGE IF NOT EXISTS）
- */
-public void batchUpsertEdges(String edgeName, List<GraphEdge> edges) {
-    if (edges == null || edges.isEmpty()) {
-        return;
-    }
-
-    try (com.vesoft.nebula.client.graph.net.Session session = getSession()) {
-        StringBuilder ngql = new StringBuilder();
-        ngql.append("INSERT EDGE ").append(edgeName)
-            .append("(id, type, create_by, create_time, update_by, update_time, ")
-            .append("from_id, from_type, to_id, to_type, properties) VALUES ");
-
-        boolean first = true;
-        for (GraphEdge edge : edges) {
-            if (!first) {
-                ngql.append(",");
+            ResultSet resultSet = session.execute(ngql.toString());
+            if (!resultSet.isSucceeded()) {
+                throw new RuntimeException("批量写入节点失败: " + resultSet.getErrorMessage());
             }
-            first = false;
 
-            ngql.append(escapeString(edge.getFromId()))
-                .append("->")
-                .append(escapeString(edge.getToId()))
-                .append(":( ")
-                .append(escapeString(edge.getId())).append(",")
-                .append(escapeString(edge.getType())).append(",")
-                .append(escapeString(edge.getCreateBy())).append(",")
-                .append(formatDateTime(edge.getCreateTime())).append(",")
-                .append(escapeString(edge.getUpdateBy())).append(",")
-                .append(formatDateTime(edge.getUpdateTime())).append(",")
-                .append(escapeString(edge.getFromId())).append(",")
-                .append(escapeString(edge.getFromType())).append(",")
-                .append(escapeString(edge.getToId())).append(",")
-                .append(escapeString(edge.getToType())).append(",")
-                .append(escapeString(toJsonString(edge.getProperties())))
-                .append(" )");
+            log.info("批量Upsert节点成功: tagName={}, count={}", tagName, nodes.size());
+        }
+    }
+
+    /**
+     * 批量 Upsert 边（INSERT EDGE IF NOT EXISTS）
+     */
+    public void batchUpsertEdges(String edgeName, List<GraphEdge> edges) {
+        if (edges == null || edges.isEmpty()) {
+            return;
         }
 
-        ResultSet resultSet = session.execute(ngql.toString());
-        if (!resultSet.isSucceeded()) {
-            throw new RuntimeException("批量写入边失败: " + resultSet.getErrorMessage());
-        }
+        try (com.vesoft.nebula.client.graph.net.Session session = getSession()) {
+            StringBuilder ngql = new StringBuilder();
+            ngql.append("INSERT EDGE ").append(edgeName)
+                .append("(id, type, create_by, create_time, update_by, update_time, ")
+                .append("from_id, from_type, to_id, to_type, properties) VALUES ");
 
-        log.info("批量Upsert边成功: edgeName={}, count={}", edgeName, edges.size());
+            boolean first = true;
+            for (GraphEdge edge : edges) {
+                if (!first) {
+                    ngql.append(",");
+                }
+                first = false;
+
+                ngql.append(escapeString(edge.getFromId()))
+                    .append("->")
+                    .append(escapeString(edge.getToId()))
+                    .append(":( ")
+                    .append(escapeString(edge.getId())).append(",")
+                    .append(escapeString(edge.getType())).append(",")
+                    .append(escapeString(edge.getCreateBy())).append(",")
+                    .append(formatDateTime(edge.getCreateTime())).append(",")
+                    .append(escapeString(edge.getUpdateBy())).append(",")
+                    .append(formatDateTime(edge.getUpdateTime())).append(",")
+                    .append(escapeString(edge.getFromId())).append(",")
+                    .append(escapeString(edge.getFromType())).append(",")
+                    .append(escapeString(edge.getToId())).append(",")
+                    .append(escapeString(edge.getToType())).append(",")
+                    .append(toJsonString(edge.getProperties()))
+                    .append(" )");
+            }
+
+            ResultSet resultSet = session.execute(ngql.toString());
+            if (!resultSet.isSucceeded()) {
+                throw new RuntimeException("批量写入边失败: " + resultSet.getErrorMessage());
+            }
+
+            log.info("批量Upsert边成功: edgeName={}, count={}", edgeName, edges.size());
+        }
     }
 }
 ```
@@ -658,6 +836,8 @@ public void batchUpsertEdges(String edgeName, List<GraphEdge> edges) {
 - 支持按 eventId 查询处理状态
 - 支持统计和监控
 
+**实体类**：使用 `SyncOperationLog`
+
 ```java
 @Slf4j
 @Service
@@ -669,8 +849,8 @@ public class SyncLogService {
     public void logReceive(GraphSyncEvent event) {
         log.info("[MQ接收] eventId={}, eventType={}, nodes={}, edges={}",
             event.getEventId(), event.getEventType(),
-            event.getNodes() == null ? 0 : event.getNodes().size(),
-            event.getEdges() == null ? 0 : event.getEdges().size());
+            event.getNodes() == null ? 0L : (long) event.getNodes().size(),
+            event.getEdges() == null ? 0L : (long) event.getEdges().size());
     }
 
     public void logSkip(GraphSyncEvent event, String reason) {
@@ -681,8 +861,8 @@ public class SyncLogService {
         SyncOperationLog opLog = new SyncOperationLog();
         opLog.setEventId(event.getEventId());
         opLog.setOperation("PROCESS");
-        opLog.setNodeCount(event.getNodes() == null ? 0 : event.getNodes().size());
-        opLog.setEdgeCount(event.getEdges() == null ? 0 : event.getEdges().size());
+        opLog.setNodeCount(event.getNodes() == null ? 0L : (long) event.getNodes().size());
+        opLog.setEdgeCount(event.getEdges() == null ? 0L : (long) event.getEdges().size());
         opLog.setStartTime(new Date());
         opLog.setStatus("PROCESSING");
         operationLogMapper.insert(opLog);
@@ -836,46 +1016,55 @@ public GraphSyncEvent buildBatchSyncEvent(
 
 ## 7. 数据库 Schema
 
+**数据库**：plm 模块 PostgreSQL (mf_plm)
+
 ### 7.1 幂等表
 
 ```sql
 CREATE TABLE sync_idempotent_log (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
-    event_id        VARCHAR(64) NOT NULL UNIQUE COMMENT '事件唯一ID',
+    id              VARCHAR(64) PRIMARY KEY COMMENT '唯一ID（UUID）',
+    event_id        VARCHAR(64) NOT NULL COMMENT '事件唯一ID',
     event_type      VARCHAR(20) NOT NULL COMMENT '事件类型：CREATE/UPDATE/DELETE',
-    node_count      INT DEFAULT 0 COMMENT '节点数量',
-    edge_count      INT DEFAULT 0 COMMENT '边数量',
+    node_count      BIGINT DEFAULT 0 COMMENT '节点数量',
+    edge_count      BIGINT DEFAULT 0 COMMENT '边数量',
     status          VARCHAR(20) NOT NULL DEFAULT 'PROCESSING' COMMENT '状态：PROCESSING/COMPLETED/FAILED',
-    retry_count     INT DEFAULT 0 COMMENT '重试次数',
+    retry_count     BIGINT DEFAULT 0 COMMENT '处理版本/轮次',
     error_message   TEXT COMMENT '错误信息',
-    create_time     DATETIME DEFAULT CURRENT_TIMESTAMP,
-    update_time     DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-    INDEX idx_event_id (event_id),
-    INDEX idx_status (status),
-    INDEX idx_create_time (create_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图同步幂等表';
+    create_time     TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    update_time     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE UNIQUE INDEX uq_sync_idempotent_log_event_id ON sync_idempotent_log(event_id);
+
+CREATE INDEX idx_sync_idempotent_log_status ON sync_idempotent_log(status);
+CREATE INDEX idx_sync_idempotent_log_create_time ON sync_idempotent_log(create_time);
+
+COMMENT ON TABLE sync_idempotent_log IS '图同步幂等表';
 ```
 
 ### 7.2 操作日志表
 
 ```sql
 CREATE TABLE sync_operation_log (
-    id              BIGINT PRIMARY KEY AUTO_INCREMENT,
+    id              BIGSERIAL PRIMARY KEY,
     event_id        VARCHAR(64) NOT NULL COMMENT '事件唯一ID',
     operation       VARCHAR(20) NOT NULL COMMENT '操作类型：PREPARE/PROCESS/COMPLETE/FAILED',
-    node_count      INT DEFAULT 0 COMMENT '节点数量',
-    edge_count      INT DEFAULT 0 COMMENT '边数量',
-    start_time      DATETIME NOT NULL COMMENT '开始时间',
-    end_time        DATETIME COMMENT '结束时间',
+    node_count      BIGINT DEFAULT 0 COMMENT '节点数量',
+    edge_count      BIGINT DEFAULT 0 COMMENT '边数量',
+    start_time      TIMESTAMP NOT NULL COMMENT '开始时间',
+    end_time        TIMESTAMP COMMENT '结束时间',
     duration_ms     BIGINT COMMENT '耗时(毫秒)',
     status          VARCHAR(20) NOT NULL COMMENT '状态：SUCCESS/FAILED',
     error_message   TEXT COMMENT '错误信息',
-    detail          JSON COMMENT '详细信息',
-    create_time     DATETIME DEFAULT CURRENT_TIMESTAMP,
-    INDEX idx_event_id (event_id),
-    INDEX idx_status (status),
-    INDEX idx_create_time (create_time)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='图同步操作日志表';
+    detail          JSONB COMMENT '详细信息',
+    create_time     TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE INDEX idx_sync_operation_log_event_id ON sync_operation_log(event_id);
+CREATE INDEX idx_sync_operation_log_status ON sync_operation_log(status);
+CREATE INDEX idx_sync_operation_log_create_time ON sync_operation_log(create_time);
+
+COMMENT ON TABLE sync_operation_log IS '图同步操作日志表';
 ```
 
 ***
@@ -931,5 +1120,5 @@ CREATE TABLE sync_operation_log (
 
 ***
 
-**文档状态**：待审查
-**最后更新**：2026-04-17
+**文档状态**：已更新（基于代码实现）
+**最后更新**：2026-04-18
