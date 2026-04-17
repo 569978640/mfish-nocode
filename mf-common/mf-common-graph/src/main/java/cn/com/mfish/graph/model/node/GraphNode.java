@@ -6,4 +6,5 @@ import java.util.Date;
 
 @Data
 public class GraphNode extends BaseEntity<String> {
+    private String type;
 }
