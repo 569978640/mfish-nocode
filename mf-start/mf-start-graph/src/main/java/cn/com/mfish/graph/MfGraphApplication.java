@@ -17,7 +17,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 @AutoCloud
 @MapperScan({
     "cn.com.mfish.oauth.mapper",
-    "wf.base.mapper"
+    "cn.com.mfish.plm.base.mapper"
 })
 public class MfGraphApplication {
     public static void main(String[] args) {
