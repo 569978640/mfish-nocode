@@ -36,7 +36,7 @@ public class ProductController {
      * 分页列表查询
      *
      * @param reqProduct 产品库请求参数
-     * @param reqPage    分页参数
+     * @param reqPage 分页参数
      * @return 返回产品库-分页列表
      */
     @Operation(summary = "产品库-分页列表查询", description = "产品库-分页列表查询")
@@ -119,7 +119,7 @@ public class ProductController {
      * 导出
      *
      * @param reqProduct 产品库请求参数
-     * @param reqPage    分页参数
+     * @param reqPage 分页参数
      * @throws IOException IO异常
      */
     @Operation(summary = "导出产品库", description = "导出产品库")
