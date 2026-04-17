@@ -20,6 +20,7 @@ import org.springframework.stereotype.Component;
 @Slf4j
 @Component
 @RocketMQMessageListener(
+    nameServer = "${rocketmq.consumer.nameServer}",
     consumerGroup = "${rocketmq.consumer.group}",
     topic = "${rocketmq.consumer.topic}"
 )
