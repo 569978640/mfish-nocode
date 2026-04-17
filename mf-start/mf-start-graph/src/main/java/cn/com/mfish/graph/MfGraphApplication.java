@@ -21,7 +21,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 @AutoCloud
 @MapperScan({
     "cn.com.mfish.oauth.mapper",
-    "cn.com.mfish.plm.base.mapper"
+    "cn.com.mfish.plm.base.bean"
 })
 @ImportAutoConfiguration(exclude = {LogAspect.class, AsyncSaveLog.class, SysLogServiceImpl.class})
 public class MfGraphApplication {
