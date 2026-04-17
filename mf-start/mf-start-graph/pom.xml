@@ -32,6 +32,11 @@
             <artifactId>mf-graph</artifactId>
             <version>${mfish.version}</version>
         </dependency>
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-common-graph</artifactId>
+            <version>${mfish.version}</version>
+        </dependency>
         <!-- 公共API模块 -->
         <dependency>
             <groupId>cn.com.mfish</groupId>
