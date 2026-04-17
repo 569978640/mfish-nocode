@@ -7,7 +7,7 @@
 | 项目名称 | mfish-nocode PLM 多数据库架构 |
 | 当前版本 | mf-2.3.1 |
 | 更新日期 | 2026-04-17 |
-| 文档状态 | 正式发布 |
+| 文档状态 | 已确认，待实施 |
 | 适用对象 | 后端开发工程师、架构师、运维工程师 |
 
 ---
@@ -236,6 +236,12 @@ spring:
           url: jdbc:postgresql://192.168.111.103:5432/mf_plm
           username: postgres
           password: postgres
+
+rocketmq:
+  producer:
+    nameServer: 192.168.111.103:9876
+    topic: plm-graph-sync
+    group: plm-producer-group
 ```
 
 ### 4.3 Graph模块配置（PostgreSQL + MySQL + NebulaGraph）
@@ -304,7 +310,7 @@ mf-common/
 ├── mf-common-ds/              # 多数据源注解
 │   ├── annotation/
 │   │   ├── Master.java       # 主库注解（写操作）
-│   │   └── Slave.java         # 从库注解（读操作）
+│   │   └── Slave.java        # 从库注解（读操作）
 │   └── config/
 │       ├── BatchSqlInjector.java
 │       └── MybatisInterceptor.java
@@ -328,296 +334,315 @@ mf-common/
 │   │       └── GraphEdge.java # 图边模型
 │   └── event/
 │       └── GraphSyncEvent.java # 图同步事件
-│
-└── mf-common-api/            # Feign接口
-    └── PLM数据查询接口
 ```
 
-### 5.2 多数据源使用规范
+### 5.2 PLM公共实体（mf-common-plm）
+
+#### 5.2.1 容器类
+
+| 实体类 | 说明 | 主键 |
+|-------|------|------|
+| Product | 产品 | id |
+| Folder | 文件夹 | id |
+
+#### 5.2.2 部件类
+
+| 实体类 | 说明 | 主键 |
+|-------|------|------|
+| Part | 部件 | id |
+| PartMaster | 部件主数据 | id |
+| PartVersionLink | 部件版本关系 | id |
+
+#### 5.2.3 文档类
+
+| 实体类 | 说明 | 主键 |
+|-------|------|------|
+| Document | 文档 | id |
+| DocumentMaster | 文档主数据 | id |
+| DocVersionLink | 文档版本关系 | id |
+
+#### 5.2.4 关系类
+
+| 实体类 | 说明 | 主键 |
+|-------|------|------|
+| ContainsLink | 包含关系 | id |
+
+### 5.3 Graph公共类（mf-common-graph）
+
+#### 5.3.1 图节点模型
 
 ```java
-// PLM业务Service示例
-public class ProductServiceImpl {
-    
-    @Autowired
-    private ProductMapper productMapper;  // 使用@Master，默认PostgreSQL
-    
-    @Autowired
-    private NebulaClient nebulaClient;    // 图数据库客户端
-    
-    /**
-     * 创建产品 - 写操作
-     * 使用@Master注解确保写操作走主库
-     */
-    @Master
-    @Transactional(rollbackFor = Exception.class)
-    public void createProduct(Product product) {
-        // 1. 写入PostgreSQL
-        productMapper.insert(product);
-        
-        // 2. 发送MQ消息到plm-graph-sync topic
-        rocketMQTemplate.convertAndSend("plm-graph-sync", buildSyncEvent(product));
-    }
-    
-    /**
-     * 查询产品列表 - 读操作
-     * 默认使用@Master，PostgreSQL读
-     */
-    public List<Product> getProducts() {
-        return productMapper.selectList(null);
-    }
+public class GraphNode {
+    private String id;           // 节点ID（对应业务ID）
+    private String type;         // 节点类型（Product/Part/Document/Folder）
+    private Map<String, Object> properties; // 精简属性
+    private Long createTime;     // 创建时间
+}
+```
+
+#### 5.3.2 图边模型
+
+```java
+public class GraphEdge {
+    private String sourceId;      // 源节点ID
+    private String targetId;      // 目标节点ID
+    private String edgeType;      // 边类型（CONTAINS/PART_OF/VERSION_OF）
+    private Map<String, Object> properties; // 边属性
+    private Long createTime;     // 创建时间
 }
 ```
 
 ---
 
-## 6. MQ消息设计
+## 6. RocketMQ 消息设计
 
-### 6.1 RocketMQ Topic配置
+### 6.1 Topic 配置
 
-| Topic | Producer | Consumer | 说明 |
-|-------|----------|----------|------|
+| Topic名称 | Producer | Consumer | 说明 |
+|----------|----------|----------|------|
 | plm-graph-sync | mf-plm | mf-graph | PLM数据变更同步到图数据库 |
 
-### 6.2 消息格式设计
+### 6.2 消息格式
 
-```java
-@Data
-@ApiModel("图数据库同步事件")
-public class GraphSyncEvent {
-    @ApiModelProperty("事件ID")
-    private String eventId;
-    
-    @ApiModelProperty("事件类型")
-    private String eventType;  // CREATE/UPDATE/DELETE/FULL_SYNC
-    
-    @ApiModelProperty("时间戳")
-    private Long timestamp;
-    
-    @ApiModelProperty("业务来源服务")
-    private String source;
-    
-    @ApiModelProperty("操作用户")
-    private String operator;
-    
-    @ApiModelProperty("节点变更列表")
-    private List<GraphNode> nodes;
-    
-    @ApiModelProperty("边变更列表")
-    private List<GraphEdge> edges;
+```json
+{
+  "eventType": "CREATE/UPDATE/DELETE",
+  "entityType": "Product/Part/Document/ContainsLink",
+  "entityId": "xxx",
+  "data": { ... },
+  "timestamp": 1713340800000
 }
 ```
 
-### 6.3 同步策略
+### 6.3 消息发送时机
 
-| 同步类型 | 触发条件 | 同步方式 | 数据范围 |
-|---------|---------|---------|---------|
-| 实时同步 | 数据变更 | RocketMQ | 单条数据 |
-| 增量同步 | 定时任务 | RocketMQ | 指定时间范围内变更 |
-| 全量同步 | 手动触发 | 直接调用 | 所有数据 |
-
----
-
-## 7. 混合查询设计
-
-### 7.1 查询流程
-
-```
-┌─────────────────────────────────────────────────────────────────┐
-│                      混合查询流程                                  │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  1. 【图数据库查询】                                              │
-│     ┌─────────────┐    ┌─────────────┐    ┌─────────────┐      │
-│     │ NebulaGraph │───▶│ 查路径     │───▶│ 返回节点ID  │      │
-│     │   查询      │    │ +边属性    │    │ +边属性     │      │
-│     └─────────────┘    └─────────────┘    └──────┬──────┘      │
-│                                                    │             │
-│  2. 【关系数据库查询】                                     │             │
-│     ┌─────────────┐    ┌─────────────┐    ┌────────▼────────┐  │
-│     │ PostgreSQL │◀───│ 根据节点ID  │◀───│ 合并节点业务属性 │  │
-│     │  查询       │    │ 批量查询    │    │                 │  │
-│     └─────────────┘    └─────────────┘    └─────────────────┘  │
-│                                                                  │
-│  3. 【结果返回】                                                  │
-│     ┌─────────────────────────────────────────────────────────┐ │
-│     │                    完整查询结果                          │ │
-│     │  路径 + 边属性 + 节点业务属性（从PG库获取）              │ │
-│     └─────────────────────────────────────────────────────────┘ │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
-```
-
-### 7.2 查询服务实现
-
-```java
-@Service
-public class GraphQueryService {
-    
-    @Autowired
-    private NebulaClient nebulaClient;
-    
-    @Autowired
-    private ProductMapper productMapper;
-    
-    @Autowired
-    private PartMapper partMapper;
-    
-    /**
-     * 查询产品的完整BOM层级
-     * 1. NebulaGraph查路径和边属性
-     * 2. PostgreSQL查节点业务属性
-     * 3. 合并返回
-     */
-    public Object queryProductBOM(String productId) {
-        // 1. 图数据库查询路径
-        List<GraphPath> paths = nebulaClient.queryPaths(productId, "CONTAINS");
-        
-        // 2. 提取路径中的节点ID
-        Set<String> nodeIds = extractNodeIds(paths);
-        
-        // 3. PostgreSQL批量查询节点业务属性
-        Map<String, Object> nodeProperties = batchQueryNodeProperties(nodeIds);
-        
-        // 4. 合并边属性和节点属性
-        return mergeResults(paths, nodeProperties);
-    }
-}
-```
+| 操作 | 发送时机 | 消息类型 |
+|------|---------|---------|
+| 创建实体 | 事务提交成功后 | CREATE |
+| 更新实体 | 事务提交成功后 | UPDATE |
+| 删除实体 | 事务提交成功后 | DELETE |
+| 创建关系 | 事务提交成功后 | CREATE |
+| 删除关系 | 事务提交成功后 | DELETE |
 
 ---
 
-## 8. NebulaGraph数据模型
+## 7. NebulaGraph Schema 设计
 
-### 8.1 图空间配置
+### 7.1 Space 配置
 
-```yaml
-nebula:
-  space:
-    name: plm_graph
-    charset: utf8
-    replica-factor: 1
-    partition-num: 100
+```sql
+CREATE SPACE IF NOT EXISTS plm_graph
+(partition_num = 100,
+replica_factor = 1,
+charset = utf8);
 ```
 
-### 8.2 节点类型定义
+### 7.2 Tag 定义
 
-| 节点类型 | 类型码 | 说明 |
-|---------|-------|------|
-| SsoOrg | SsoOrg | 组织 |
-| Product | Product | 产品库 |
-| Folder | Folder | 文件夹 |
-| PartMaster | PartMaster | 部件主数据 |
-| Part | Part | 部件小版本 |
-| DocumentMaster | DocumentMaster | 文档主数据 |
-| Document | Document | 文档小版本 |
+```sql
+-- 产品节点
+CREATE TAG IF NOT EXISTS Product(
+    id VARCHAR(64) NOT NULL,
+    name VARCHAR(255),
+    code VARCHAR(100),
+    create_time TIMESTAMP
+);
 
-### 8.3 边类型定义
+-- 部件节点
+CREATE TAG IF NOT EXISTS Part(
+    id VARCHAR(64) NOT NULL,
+    name VARCHAR(255),
+    code VARCHAR(100),
+    create_time TIMESTAMP
+);
 
-| 边类型 | 说明 | 起始节点 → 目标节点 |
-|-------|------|-------------------|
-| ContainsLink | 包含关系 | SsoOrg→Product, Product→Folder, Folder→Folder, Product→PartMaster, Product→DocumentMaster |
-| PartVersionLink | 部件版本迭代关系 | PartMaster→Part |
-| DocVersionLink | 文档版本迭代关系 | DocumentMaster→Document |
+-- 文档节点
+CREATE TAG IF NOT EXISTS Document(
+    id VARCHAR(64) NOT NULL,
+    name VARCHAR(255),
+    code VARCHAR(100),
+    create_time TIMESTAMP
+);
 
-### 8.4 节点属性定义
+-- 文件夹节点
+CREATE TAG IF NOT EXISTS Folder(
+    id VARCHAR(64) NOT NULL,
+    name VARCHAR(255),
+    create_time TIMESTAMP
+);
+```
 
-所有节点都 extends BaseEntity，包含以下公共属性：
+### 7.3 Edge Type 定义
 
-| 属性 | 类型 | 说明 |
+```sql
+-- 包含关系（容器 → 内容）
+CREATE EDGE IF NOT EXISTS CONTAINS(
+    id VARCHAR(64) NOT NULL,
+    create_time TIMESTAMP
+);
+
+-- BOM关系（父部件 → 子部件）
+CREATE EDGE IF NOT EXISTS BOM(
+    id VARCHAR(64) NOT NULL,
+    quantity INT DEFAULT 1,
+    create_time TIMESTAMP
+);
+
+-- 版本关系（主数据 → 版本）
+CREATE EDGE IF NOT EXISTS VERSION_OF(
+    id VARCHAR(64) NOT NULL,
+    version VARCHAR(50),
+    create_time TIMESTAMP
+);
+```
+
+---
+
+## 8. Feign 接口设计
+
+### 8.1 PLM 调用其他模块的接口
+
+PLM模块需要通过Feign调用其他模块获取数据，需要的接口：
+
+| 调用方 | 被调用方 | 接口说明 |
+|-------|---------|---------|
+| mf-plm | mf-oauth | 获取用户信息、部门信息 |
+| mf-plm | mf-sys | 获取字典数据 |
+
+### 8.2 接口定义位置
+
+| 接口 | 定义位置 | 使用场景 |
+|-----|---------|---------|
+| UserFeign | mf-api/mf-oauth-api | 获取用户详情 |
+| DeptFeign | mf-api/mf-oauth-api | 获取部门信息 |
+| DictFeign | mf-api/mf-sys-api | 获取字典数据 |
+
+---
+
+## 9. 改造步骤规划
+
+### 阶段一：公共基础层改造
+
+1. **mf-common-ds 模块完善**
+   - 确认 @Master/@Slave 注解实现
+   - 确认 BatchSqlInjector 配置
+   - 确认 MybatisInterceptor 实现
+
+2. **mf-common-graph 模块完善**
+   - NebulaConfig 配置类
+   - NebulaClient 客户端封装
+   - RocketMQConfig 配置
+
+3. **mf-common-plm 模块检查**
+   - 检查实体类完整性
+   - 检查 Mapper 接口
+
+### 阶段二：mf-plm 模块改造
+
+1. **pom.xml 依赖调整**
+   - 添加 PostgreSQL Driver
+   - 添加 RocketMQ Producer 依赖
+
+2. **数据源配置**
+   - 修改 mf-plm-dev.yml
+   - 配置 PostgreSQL 数据源
+   - 配置 RocketMQ Producer
+
+3. **Feign 接口集成**
+   - 引入 mf-oauth-api、mf-sys-api 依赖
+   - 配置 FeignClient 扫描路径
+
+4. **Service 层改造**
+   - 添加消息发送逻辑
+   - 支持多数据源查询
+
+### 阶段三：mf-graph 模块完善
+
+1. **pom.xml 依赖调整**
+   - 确认 NebulaGraph Client 依赖
+   - 确认 RocketMQ Consumer 依赖
+
+2. **数据源配置**
+   - 修改 mf-graph-dev.yml
+   - 配置 PostgreSQL Master
+   - 配置 MySQL Slave
+   - 配置 NebulaGraph
+   - 配置 RocketMQ Consumer
+
+3. **消费者开发**
+   - GraphSyncConsumer 实现
+   - 消息处理逻辑
+
+4. **图同步服务开发**
+   - GraphSyncService 实现
+   - NebulaGraph 写入逻辑
+
+### 阶段四：测试验证
+
+1. PLM CRUD 功能测试
+2. RocketMQ 消息发送/消费测试
+3. NebulaGraph 同步验证
+4. 混合查询功能测试
+
+---
+
+## 10. 验收标准
+
+### 10.1 功能验收
+
+| 功能点 | 验收标准 |
+|-------|---------|
+| PLM数据持久化 | Product/Part/Document 等实体成功保存到 PostgreSQL |
+| 消息发送 | 数据变更后成功发送 RocketMQ 消息 |
+| 图同步 | mf-graph 成功消费消息并写入 NebulaGraph |
+| 图查询 | NebulaGraph 查询返回正确的节点和关系 |
+| Feign调用 | PLM 成功通过 Feign 获取其他模块数据 |
+
+### 10.2 性能验收
+
+| 指标 | 目标值 |
+|-----|-------|
+| PLM写操作响应时间 | ≤ 200ms（不含网络延迟） |
+| 图同步延迟 | ≤ 5s |
+| 图查询响应时间 | ≤ 100ms（单跳查询） |
+
+---
+
+## 11. 风险与对策
+
+| 风险 | 影响 | 对策 |
 |-----|------|------|
-| id | String | 节点ID (对应关系库主键) |
-| type | String | 节点类型 |
-| createBy | String | 创建用户 |
-| createTime | DateTime | 创建时间 |
-| updateBy | String | 更新用户 |
-| updateTime | DateTime | 更新时间 |
-
-### 8.5 边属性定义
-
-所有边都 extends BaseLinkEntity，包含以下公共属性：
-
-| 属性 | 类型 | 说明 |
-|-----|------|------|
-| id | String | 边ID |
-| type | String | 边类型 |
-| fromId | String | 起始节点ID |
-| fromType | String | 起始节点类型 |
-| toId | String | 目标节点ID |
-| toType | String | 目标节点类型 |
-| createBy | String | 创建用户 |
-| createTime | DateTime | 创建时间 |
-| updateBy | String | 更新用户 |
-| updateTime | DateTime | 更新时间 |
-| properties | Map | PG库Link表的业务属性 |
+| NebulaGraph 单点故障 | 图查询不可用 | PLM 读操作降级为纯 PostgreSQL 查询 |
+| RocketMQ 消息丢失 | 图数据不一致 | 启用 DLQ，死信队列人工处理 |
+| PostgreSQL 性能瓶颈 | PLM 写入变慢 | 连接池调优，后续读写分离 |
+| Feign 调用失败 | PLM 无法获取组织数据 | 降级策略，返回默认/空数据 |
 
 ---
 
-## 9. 错误处理与容灾
+## 12. 附录
 
-### 9.1 消息队列容灾
+### 12.1 中间件连接信息
 
-| 策略 | 说明 |
-|-----|------|
-| 死信队列 | enableDLQ: true，失败消息进入DLQ |
-| 重试机制 | maxRetryTimes: 3，最多重试3次 |
-| 定时重试 | 失败消息定时重新消费 |
+| 中间件 | 地址 | 端口 | 用户名 | 密码 |
+|-------|------|------|-------|------|
+| PostgreSQL | 192.168.111.103 | 5432 | postgres | postgres |
+| RocketMQ | 192.168.111.103 | 9876 | - | - |
+| NebulaGraph | 192.168.111.103 | 9669 | root | nebula |
 
-### 9.2 图数据库容灾
+### 12.2 数据库列表
 
-| 策略 | 说明 |
-|-----|------|
-| 单节点模式 | single.enabled: true |
-| 集群模式 | cluster.enabled: true，配置多个地址 |
-| 连接池 | min-conns: 10, max-conns: 100 |
-| 超时配置 | timeout: 3000ms |
-
-### 9.3 数据一致性策略
-
-| 策略 | 说明 |
-|-----|------|
-| 最终一致 | 图库允许短暂不一致 |
-| 补偿机制 | 全量同步可手动触发 |
-| 监控告警 | 同步失败告警通知 |
+| 数据库名 | 类型 | 用途 |
+|---------|------|------|
+| mf_oauth | MySQL | 认证授权数据 |
+| mf_system | MySQL | 系统管理数据 |
+| mf_workflow | MySQL | 工作流数据 |
+| mf_storage | MySQL | 文件存储元数据 |
+| mf_scheduler | MySQL | 定时任务数据 |
+| mf_nocode | MySQL | 低代码配置数据 |
+| mf_plm | PostgreSQL | PLM业务主数据 |
+| plm_graph | NebulaGraph | 图关系数据 |
 
 ---
 
-## 10. 配置检查清单
-
-### 10.1 当前配置状态
-
-| 检查项 | 当前状态 | 期望状态 | 是否正确 |
-|-------|---------|---------|---------|
-| mf-start-graph PostgreSQL配置 | PostgreSQL | PostgreSQL | ✅ |
-| mf-start-graph MySQL配置 | MySQL OAuth (slave) | MySQL OAuth | ✅ |
-| mf-start-graph Nebula配置 | NebulaGraph | NebulaGraph | ✅ |
-| mf-start-plm PostgreSQL配置 | PostgreSQL | PostgreSQL | ✅ |
-| RocketMQ配置 | plm-graph-sync | plm-graph-sync | ✅ |
-
-### 10.2 验证步骤
-
-1. **启动其它模块服务**：验证MySQL数据库连接正常
-2. **启动PLM模块**：验证PostgreSQL数据库连接正常
-3. **启动Graph模块**：验证PostgreSQL、NebulaGraph、RocketMQ连接正常
-4. **数据写入测试**：PLM写入数据，验证MQ消息发送
-5. **图同步测试**：Graph消费MQ消息，验证图数据写入
-6. **混合查询测试**：验证图库+关系库混合查询结果
-
----
-
-## 11. 架构优势总结
-
-| 特性 | 说明 |
-|-----|------|
-| **职责分离** | 关系库存主数据，图库存关系拓扑 |
-| **性能优化** | 图数据库加速复杂关系查询 |
-| **事件驱动** | RocketMQ异步同步，保证事务性能 |
-| **最终一致** | 图库允许短暂不一致，以性能换可用性 |
-| **灵活扩展** | 支持单节点/集群Nebula配置 |
-| **模块解耦** | PLM与Graph通过MQ解耦 |
-| **跨模块协作** | 通过Feign接口调用其它模块 |
-
----
-
-**文档编写日期**：2026-04-17
-**文档版本**：v1.0
+**文档状态**：✅ 设计方案已确认，待实施
+**最后更新**：2026-04-17
