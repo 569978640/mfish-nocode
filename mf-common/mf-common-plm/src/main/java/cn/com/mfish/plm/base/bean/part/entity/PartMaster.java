@@ -1,4 +1,4 @@
-package cn.com.mfish.plm.base.bean.doc.entity;
+package cn.com.mfish.plm.base.bean.part.entity;
 
 import cn.com.mfish.common.core.entity.BaseEntity;
 import cn.idev.excel.annotation.ExcelProperty;
@@ -12,16 +12,16 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 /**
- * @description: 文档小版本
+ * @description: 部件主数据
  * @author: mfish
  * @date: 2026-04-17
  * @version: V2.3.1
  */
 @Data
-@TableName("document")
+@TableName("part_master")
 @EqualsAndHashCode(callSuper = true)
-@Schema(description = "document对象 文档小版本")
-public class Document extends BaseEntity<String> {
+@Schema(description = "part_master对象 部件主数据")
+public class PartMaster extends BaseEntity<String> {
     @ExcelProperty("唯一ID")
     @Schema(description = "唯一ID")
     @TableId(type = IdType.ASSIGN_UUID)
@@ -32,8 +32,8 @@ public class Document extends BaseEntity<String> {
 	private String type;
     @ExcelProperty("")
     @Schema(description = "")
-	private String version;
+	private String number;
     @ExcelProperty("")
     @Schema(description = "")
-	private String state;
+	private String name;
 }
