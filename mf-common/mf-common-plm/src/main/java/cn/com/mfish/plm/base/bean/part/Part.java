@@ -1,9 +1,14 @@
 package cn.com.mfish.plm.base.bean.part;
 
+import cn.com.mfish.common.core.entity.BaseEntity;
+import cn.idev.excel.annotation.ExcelProperty;
+import com.baomidou.mybatisplus.annotation.IdType;
+import com.baomidou.mybatisplus.annotation.TableId;
 import com.baomidou.mybatisplus.annotation.TableName;
+import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
-import cn.com.mfish.plm.base.bean.WFObject;
+import lombok.experimental.Accessors;
 
 /**
  * 部件实体
@@ -14,7 +19,15 @@ import cn.com.mfish.plm.base.bean.WFObject;
 @Data
 @EqualsAndHashCode(callSuper = true)
 @TableName("part")
-public class Part extends WFObject {
+public class Part extends BaseEntity<String> {
+    @ExcelProperty("唯一ID")
+    @Schema(description = "唯一ID")
+    @TableId(type = IdType.ASSIGN_UUID)
+    @Accessors(chain = true)
+    private String id;
+    @ExcelProperty("类型")
+    @Schema(description = "类型")
+    private String type;
     private String version;
     private String state;
 }

@@ -1,6 +1,6 @@
 package cn.com.mfish.plm.base.mapper.doc;
 
-import cn.com.mfish.plm.base.bean.doc.DocumentMaster;
+import cn.com.mfish.plm.base.bean.doc.entity.DocumentMaster;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
 

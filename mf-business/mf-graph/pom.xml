@@ -43,11 +43,6 @@
         </dependency>
         <dependency>
             <groupId>cn.com.mfish</groupId>
-            <artifactId>mf-common-plm</artifactId>
-            <version>${mfish.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>cn.com.mfish</groupId>
             <artifactId>mf-oauth</artifactId>
             <version>${mfish.version}</version>
         </dependency>
