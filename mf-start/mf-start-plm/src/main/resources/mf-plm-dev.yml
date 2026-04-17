@@ -45,7 +45,7 @@ spring:
           password: postgres
 
 rocketmq:
+  nameServer: 192.168.111.103:9876
   producer:
-    nameServer: 192.168.111.103:9876
     topic: plm-graph-sync
     group: plm-producer-group
