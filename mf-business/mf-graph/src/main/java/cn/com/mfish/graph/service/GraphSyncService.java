@@ -2,7 +2,7 @@ package cn.com.mfish.graph.service;
 
 import cn.com.mfish.common.oauth.api.entity.SsoOrg;
 import cn.com.mfish.plm.base.bean.container.ContainsLink;
-import cn.com.mfish.plm.base.bean.container.Product;
+import cn.com.mfish.plm.base.bean.container.entity.Product;
 import cn.com.mfish.plm.base.bean.doc.DocVersionLink;
 import cn.com.mfish.plm.base.bean.doc.Document;
 import cn.com.mfish.plm.base.bean.doc.DocumentMaster;
@@ -15,7 +15,7 @@ import cn.com.mfish.plm.base.mapper.doc.DocVersionLinkMapper;
 import cn.com.mfish.plm.base.mapper.doc.DocumentMapper;
 import cn.com.mfish.plm.base.mapper.doc.DocumentMasterMapper;
 import cn.com.mfish.plm.base.mapper.folder.FolderMapper;
-import cn.com.mfish.plm.base.mapper.container.ProductMapper;
+import cn.com.mfish.plm.base.bean.container.mapper.ProductMapper;
 import cn.com.mfish.oauth.mapper.SsoOrgMapper;
 import cn.com.mfish.common.ds.annotation.Slave;
 import cn.com.mfish.graph.client.NebulaClient;

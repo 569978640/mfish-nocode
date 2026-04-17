@@ -1,4 +1,4 @@
-package cn.com.mfish.plm.report.config.entity;
+package cn.com.mfish.plm.base.bean.container.entity;
 
 import cn.com.mfish.common.core.entity.BaseEntity;
 import cn.idev.excel.annotation.ExcelProperty;
@@ -12,28 +12,25 @@ import lombok.EqualsAndHashCode;
 import lombok.experimental.Accessors;
 
 /**
- * @description: 产品系列报表字段配置
+ * @description: 产品库
  * @author: mfish
- * @date: 2026-04-15
- * @version: V2.3.0
+ * @date: 2026-04-17
+ * @version: V2.3.1
  */
 @Data
-@TableName("PRODUCTREPORTFIELDCONFIG")
+@TableName("product")
 @EqualsAndHashCode(callSuper = true)
-@Schema(description = "PRODUCTREPORTFIELDCONFIG对象 产品系列报表字段配置")
-public class ProductReportFieldConfig extends BaseEntity<String> {
+@Schema(description = "product对象 产品库")
+public class Product extends BaseEntity<String> {
     @ExcelProperty("唯一ID")
     @Schema(description = "唯一ID")
     @TableId(type = IdType.ASSIGN_UUID)
     @Accessors(chain = true)
     private String id;
-    @ExcelProperty("编号")
-    @Schema(description = "编号")
-	private String number;
-    @ExcelProperty("字段")
-    @Schema(description = "字段")
-	private String field;
     @ExcelProperty("类型")
     @Schema(description = "类型")
-	private String type;
+    private String type;
+    @ExcelProperty("产品名称")
+    @Schema(description = "产品名称")
+    private String name;
 }

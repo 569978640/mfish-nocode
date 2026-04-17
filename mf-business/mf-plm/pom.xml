@@ -32,18 +32,6 @@
             <artifactId>mf-common-plm</artifactId>
             <version>${mfish.version}</version>
         </dependency>
-        <!-- 图数据库公共模块依赖 -->
-        <dependency>
-            <groupId>cn.com.mfish</groupId>
-            <artifactId>mf-common-graph</artifactId>
-            <version>${mfish.version}</version>
-        </dependency>
-        <!-- RocketMQ Producer 依赖 -->
-        <dependency>
-            <groupId>org.apache.rocketmq</groupId>
-            <artifactId>rocketmq-spring-boot-starter</artifactId>
-            <version>${rocketmq.version}</version>
-        </dependency>
         <!-- Feign 接口依赖 -->
         <dependency>
             <groupId>cn.com.mfish</groupId>

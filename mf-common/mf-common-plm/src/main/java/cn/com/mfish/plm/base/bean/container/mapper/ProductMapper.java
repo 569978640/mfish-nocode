@@ -1,8 +1,8 @@
-package cn.com.mfish.plm.base.mapper.container;
+package cn.com.mfish.plm.base.bean.container.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Mapper;
-import cn.com.mfish.plm.base.bean.container.Product;
+import cn.com.mfish.plm.base.bean.container.entity.Product;
 
 /**
  * 产品库Mapper
