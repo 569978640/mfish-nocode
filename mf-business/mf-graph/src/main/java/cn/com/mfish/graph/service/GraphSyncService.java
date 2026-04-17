@@ -1,7 +1,5 @@
 package cn.com.mfish.graph.service;
 
-import cn.com.mfish.common.core.entity.BaseEntity;
-import cn.com.mfish.common.core.entity.BaseLinkEntity;
 import cn.com.mfish.common.oauth.api.entity.SsoOrg;
 import wf.base.bean.container.ContainsLink;
 import wf.base.bean.container.Product;
@@ -19,10 +17,12 @@ import wf.base.mapper.doc.DocumentMasterMapper;
 import wf.base.mapper.folder.FolderMapper;
 import wf.base.mapper.container.ProductMapper;
 import cn.com.mfish.oauth.mapper.SsoOrgMapper;
+import cn.com.mfish.common.ds.annotation.Slave;
 import cn.com.mfish.graph.client.NebulaClient;
 import cn.com.mfish.graph.model.node.GraphNode;
 import cn.com.mfish.graph.model.edge.GraphEdge;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import wf.base.mapper.part.PartMapper;
@@ -102,7 +102,7 @@ public class GraphSyncService {
     public int syncAllNodes() {
         int totalCount = 0;
 
-        List<SsoOrg> orgs = ssoOrgMapper.selectList(null);
+        List<SsoOrg> orgs = querySsoOrgList();
         if (orgs != null && !orgs.isEmpty()) {
             nebulaClient.batchInsertVertices("SsoOrg", convertNodes(orgs, "SsoOrg"));
             totalCount += orgs.size();
@@ -186,48 +186,29 @@ public class GraphSyncService {
         return totalCount;
     }
 
-    /**
-     * 转换节点列表为图节点
-     */
-    private <T extends BaseEntity<String>> List<GraphNode> convertNodes(List<T> entities, String nodeType) {
+    private <T> List<GraphNode> convertNodes(List<T> entities, String nodeType) {
         List<GraphNode> nodes = new ArrayList<>();
         if (entities == null) {
             return nodes;
         }
         for (T entity : entities) {
             GraphNode node = new GraphNode();
-            node.setId(entity.getId());
+            BeanUtils.copyProperties(entity, node);
             node.setType(nodeType);
-            node.setCreateBy(entity.getCreateBy());
-            node.setCreateTime(entity.getCreateTime());
-            node.setUpdateBy(entity.getUpdateBy());
-            node.setUpdateTime(entity.getUpdateTime());
             nodes.add(node);
         }
         return nodes;
     }
 
-    /**
-     * 转换边列表为图边
-     */
-    private <T extends BaseLinkEntity<String>> List<GraphEdge> convertEdges(List<T> links, String edgeType) {
+    private <T> List<GraphEdge> convertEdges(List<T> links, String edgeType) {
         List<GraphEdge> edges = new ArrayList<>();
         if (links == null) {
             return edges;
         }
         for (T link : links) {
             GraphEdge edge = new GraphEdge();
-            edge.setId(link.getId());
+            BeanUtils.copyProperties(link, edge);
             edge.setType(edgeType);
-            edge.setCreateBy(link.getCreateBy());
-            edge.setCreateTime(link.getCreateTime());
-            edge.setUpdateBy(link.getUpdateBy());
-            edge.setUpdateTime(link.getUpdateTime());
-            edge.setFromId(link.getFromId());
-            edge.setFromType(link.getFromType());
-            edge.setToId(link.getToId());
-            edge.setToType(link.getToType());
-            edge.setProperties(link.getProperties());
             edges.add(edge);
         }
         return edges;
@@ -249,7 +230,7 @@ public class GraphSyncService {
             String nodeType = entry.getValue();
 
             Map<String, Object> attrs = switch (nodeType) {
-                case "SsoOrg" -> querySsoOrgById(nodeId);
+                case "SsoOrg" -> convertSsoOrgToMap(querySsoOrgById(nodeId));
                 case "Product" -> queryProductById(nodeId);
                 case "Folder" -> queryFolderById(nodeId);
                 case "PartMaster" -> queryPartMasterById(nodeId);
@@ -267,8 +248,17 @@ public class GraphSyncService {
         return result;
     }
 
-    private Map<String, Object> querySsoOrgById(String id) {
-        SsoOrg org = ssoOrgMapper.selectById(id);
+    @Slave
+    public List<SsoOrg> querySsoOrgList() {
+        return ssoOrgMapper.selectList(null);
+    }
+
+    @Slave
+    public SsoOrg querySsoOrgById(String id) {
+        return ssoOrgMapper.selectById(id);
+    }
+
+    private Map<String, Object> convertSsoOrgToMap(SsoOrg org) {
         if (org == null) {
             return null;
         }

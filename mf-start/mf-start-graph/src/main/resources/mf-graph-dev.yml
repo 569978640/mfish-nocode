@@ -21,7 +21,11 @@ spring:
           url: jdbc:postgresql://192.168.111.103:5432/mf_plm
           username: postgres
           password: postgres
-
+        slave:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://192.168.111.103:3306/mf_oauth?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+          username: root
+          password: "!QAZ2wsx"
 rocketmq:
   consumer:
     nameServer: 192.168.111.103:9876
