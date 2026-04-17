@@ -1,10 +1,9 @@
 swagger:
-  title: 'WindFlow系统业务中心'
-  prefix: /sys
-# mybatis配置
+  title: 'WindFlowAI中心'
+  prefix: /ai
 mybatis-plus:
   # 配置mapper的扫描，找到所有的mapper.xml映射文件
-  mapper-locations: classpath*:cn/com/mfish/sys/mapper/**/*Mapper.xml
+  mapper-locations: classpath*:cn/com/mfish/ai/mapper/**/*Mapper.xml
   global-config:
     # 关闭MP3.0自带的banner
     banner: false
@@ -52,7 +51,7 @@ spring:
         # 主库数据源
         master:
           driver-class-name: com.mysql.cj.jdbc.Driver
-          url: jdbc:mysql://192.168.111.103:3306/mf_system?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+          url: jdbc:mysql://192.168.111.103:3306/mf_demo?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
           username: root
           password: "!QAZ2wsx"
             # 从库数据源
@@ -62,25 +61,16 @@ spring:
             # url:
           # driver-class-name:
       # seata: true    # 开启seata代理，开启后默认每个数据源都代理，如果某个不需要代理可单独关闭
-code:
-  template:
-    keys:
-      - src/main/java/${packageName}/controller/${entityName}Controller.java.ftl
-      - src/main/java/${packageName}/entity/${entityName}.java.ftl
-      - src/main/java/${packageName}/mapper/${entityName}Mapper.java.ftl
-      - src/main/java/${packageName}/mapper/xml/${entityName}Mapper.xml.ftl
-      - src/main/java/${packageName}/req/Req${entityName}.java.ftl
-      - src/main/java/${packageName}/service/${entityName}Service.java.ftl
-      - src/main/java/${packageName}/service/impl/${entityName}ServiceImpl.java.ftl
-      - mfish-nocode-view/src/views/${apiPrefix}/${entityName#kebab-case}/${entityName#uncap_first}.data.ts.ftl
-      - mfish-nocode-view/src/views/${apiPrefix}/${entityName#kebab-case}/${entityName}Modal.vue.ftl
-      - mfish-nocode-view/src/views/${apiPrefix}/${entityName#kebab-case}/${entityName}ViewModal.vue.ftl
-      - mfish-nocode-view/src/views/${apiPrefix}/${entityName#kebab-case}/index.vue.ftl
-      - mfish-nocode-view/src/api/${apiPrefix}/model/${entityName}Model.ts.ftl
-      - mfish-nocode-view/src/api/${apiPrefix}/${entityName}.ts.ftl
-    path: template
-  savePath:
-    #前端地址
-    front: E:/webcode
-    #后端地址（需要指定到具体模块路径）
-    back: E:/javacode/mfish-nocode-pro/mf-business/mf-sys
+  ai:
+    openai:
+      api-key: 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
+      base-url: https://openrouter.ai/api
+      chat:
+        options:
+          model: meta-llama/llama-3.3-70b-instruct:free
+          max-tokens: 1000
+          temperature: 0.7
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        model: qwen3:8b

@@ -1,46 +1,112 @@
-spring: 
+spring:
+  ai:
+    openai:
+      api-key: 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
+      base-url: https://openrouter.ai/api
+      chat:
+        options:
+          model: meta-llama/llama-3.3-70b-instruct:free
+          max-tokens: 1000
+          temperature: 0.7
+    ollama:
+      base-url: http://localhost:11434
+      chat:
+        model: qwen3:8b
   cloud:
     gateway:
-      discovery:
-        locator:
-          lowerCaseServiceId: true
-          enabled: true
-      routes:
-        # 认证中心
-        - id: mf-oauth
-          uri: lb://mf-oauth
-          predicates:
-            - Path=/oauth2/**
-          filters:
-            - CacheFilter
-            # 验证码处理
-            - CheckCodeFilter
-            - StripPrefix=1
-        # 测试中心
-        - id: mf-test
-          uri: lb://mf-test
-          predicates:
-            - Path=/test/**
-          filters:
-            - StripPrefix=1
-        - id: mf-code
-          uri: lb://mf-code
-          predicates:
-            - Path=/code/**
-          filters:
-            - StripPrefix=1
-        - id: mf-sys
-          uri: lb://mf-sys
-          predicates:
-            - Path=/sys/**
-          filters:
-            - StripPrefix=1
-        - id: mf-storage
-          uri: lb://mf-storage
-          predicates:
-            - Path=/storage/**
-          filters:
-            - StripPrefix=1
+      server:
+        webflux:
+          globalcors:
+            cors-configurations:
+              '[/**]':
+                max-age: 3600
+                allowed-origin-patterns: "*"
+                allowed-headers: "*"
+                allow-credentials: true
+                allowed-methods:
+                  - GET
+                  - POST
+                  - DELETE
+                  - PUT
+                  - OPTION
+          discovery:
+            locator:
+              lowerCaseServiceId: true
+              enabled: true
+          routes:
+            #graph
+            - id: graph
+              uri: lb://mf-graph
+              predicates:
+                - Path=/graph/**
+              filters:
+                - StripPrefix=1
+            #PLM
+            - id: plm
+              uri: lb://mf-plm
+              predicates:
+                - Path=/plm/**
+              filters:
+                - StripPrefix=1
+            # 认证中心
+            - id: oauth2
+              uri: lb://mf-oauth
+              predicates:
+                - Path=/oauth2/**
+              filters:
+                - CacheFilter
+                # 验证码处理
+                - CheckCodeFilter
+                - StripPrefix=1
+            # 测试中心
+            - id: test
+              uri: lb://mf-test
+              predicates:
+                - Path=/test/**
+              filters:
+                - StripPrefix=1
+            - id: sys
+              uri: lb://mf-sys
+              predicates:
+                - Path=/sys/**
+              filters:
+                - StripPrefix=1
+            - id: demo
+              uri: lb://mf-demo
+              predicates:
+                - Path=/demo/**
+              filters:
+                - StripPrefix=1
+            - id: storage
+              uri: lb://mf-storage
+              predicates:
+                - Path=/storage/**
+              filters:
+                - StripPrefix=1
+            - id: scheduler
+              uri: lb://mf-scheduler
+              predicates:
+                - Path=/scheduler/**
+              filters:
+                - StripPrefix=1
+            - id: nocode
+              uri: lb://mf-nocode
+              predicates:
+                - Path=/nocode/**
+              filters:
+                - StripPrefix=1
+            - id: workflow
+              uri: lb://mf-workflow
+              predicates:
+                - Path=/workflow/**
+              filters:
+                - StripPrefix=1
+            - id: ai
+              uri: lb://mf-ai
+              predicates:
+                - Path=/ai/**
+              filters:
+                - StripPrefix=1
 # 安全配置
 security:
   # 验证码
@@ -49,8 +115,8 @@ security:
     type: math
     # 网关校验直接返回
     gatewayCheckCaptcha:
-      # - /oauth2/authorize
-      # 网关校验，自己服务返回
+    # - /oauth2/authorize
+    # 网关校验，自己服务返回
     selfCheckCaptcha:
       - /oauth2/authorize?loginType=user_password
   # 防止XSS攻击
@@ -60,13 +126,23 @@ security:
   # 不校验白名单
   ignore:
     whites:
+      - /oauth2/user/revoke
       - /oauth2/accessToken
       - /oauth2/authorize
       - /oauth2/sendMsg
       - /oauth2/qrCodeLogin/*
       - /oauth2/wx/bind/**
       - /oauth2/static/**
+      - /oauth2/gitee/token/**
+      - /oauth2/gitee/url
+      - /oauth2/github/token/**
+      - /oauth2/github/url
       - /storage/file/*.*
       - /code/**
       - /test/**
-      - /*/v2/api-docs
+      - /*/v3/api-docs
+# swagger configuration
+springdoc:
+  webjars:
+    # 设置为空，不要前缀，不配置这个就需要多加一层路径`/webjars`->`http:host:网关ip/webjars/swagger-ui/index.html`
+    prefix:

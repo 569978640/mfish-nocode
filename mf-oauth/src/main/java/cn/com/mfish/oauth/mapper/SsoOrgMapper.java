@@ -5,6 +5,7 @@ import cn.com.mfish.common.oauth.api.entity.UserInfo;
 import cn.com.mfish.common.oauth.api.entity.UserRole;
 import cn.com.mfish.common.oauth.req.ReqOrgUser;
 import cn.com.mfish.common.oauth.req.ReqSsoOrg;
+import cn.com.mfish.common.ds.annotation.Slave;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Param;
@@ -18,6 +19,7 @@ import java.util.List;
  * @date: 2022-09-20
  * @version: V2.3.1
  */
+@Slave
 public interface SsoOrgMapper extends BaseMapper<SsoOrg> {
     int insertOrg(SsoOrg ssoOrg);
 

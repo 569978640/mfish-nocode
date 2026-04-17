@@ -1,8 +1,8 @@
 swagger:
-  title: 'WindFlow PLM服务'
+  title: 'WindFlow-PLM服务'
   prefix: /plm
 mybatis-plus:
-  mapper-locations: classpath*:cn/com/mfish/plm/mapper/**/*Mapper.xml
+  mapper-locations: classpath*:cn/com/mfish/plm/base/mapper/**/*Mapper.xml
   global-config:
     banner: false
     db-config:
@@ -38,8 +38,8 @@ spring:
         filters: stat,slf4j
         connectionProperties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
       datasource:
-          master:
-            driver-class-name: com.mysql.cj.jdbc.Driver
-            url: jdbc:mysql://192.168.111.103:3306/mf_plm?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
-            username: root
-            password: "!QAZ2wsx"
+        master:
+          driver-class-name: com.mysql.cj.jdbc.Driver
+          url: jdbc:mysql://192.168.111.103:3306/mf_plm?useUnicode=true&characterEncoding=utf8&zeroDateTimeBehavior=convertToNull&useSSL=true&serverTimezone=GMT%2B8
+          username: root
+          password: "!QAZ2wsx"

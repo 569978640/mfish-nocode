@@ -1,6 +1,6 @@
 swagger:
   title: 'WindFlow监控中心'
-spring: 
+spring:
   security:
     user:
       name: admin
