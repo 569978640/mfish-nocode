@@ -22,7 +22,7 @@ import java.util.List;
  */
 @Slf4j
 @Service
-@RocketMQMessageListener(nameServer = "${rocketmq.consumer.nameServer}", topic = "${rocketmq.consumer.topic}", consumerGroup = "${rocketmq.consumer.group}")
+@RocketMQMessageListener(topic = "${rocketmq.consumer.topic}", consumerGroup = "${rocketmq.consumer.group}")
 public class JobConsumer implements RocketMQListener<JobLog> {
     @Resource
     RemoteSchedulerService remoteSchedulerService;
