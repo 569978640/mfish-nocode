@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.annotation.Resource;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * @description: 产品库
@@ -57,7 +58,7 @@ public class ProductController {
     @PostMapping
     @RequiresPermissions("plm:product:insert")
     public Result<Product> add(@RequestBody Product product) {
-        return productService.add(product);
+        return productService.insert(product);
     }
 
     /**
@@ -71,7 +72,7 @@ public class ProductController {
     @PutMapping
     @RequiresPermissions("plm:product:update")
     public Result<Product> edit(@RequestBody Product product) {
-        return productService.update(product);
+        return productService.updateByIdReturn(product);
     }
 
     /**
@@ -85,7 +86,7 @@ public class ProductController {
     @DeleteMapping("/{id}")
     @RequiresPermissions("plm:product:delete")
     public Result<Boolean> delete(@Parameter(name = "id", description = "唯一性ID") @PathVariable String id) {
-        return productService.delete(id);
+        return productService.deleteById(id);
     }
 
     /**
@@ -99,7 +100,7 @@ public class ProductController {
     @DeleteMapping("/batch/{ids}")
     @RequiresPermissions("plm:product:delete")
     public Result<Boolean> deleteBatch(@Parameter(name = "ids", description = "唯一性ID") @PathVariable String ids) {
-        return productService.deleteBatch(ids);
+        return productService.deleteByIds(List.of(ids.split(",")));
     }
 
     /**

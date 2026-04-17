@@ -300,7 +300,7 @@ public abstract class PlmBaseServiceImpl<T, M extends BaseMapper<T>> extends Ser
     @Override
     public Result<Boolean> deleteById(Serializable id) {
         T entity = getById(id);
-        if (removeById(id)) {
+        if (super.removeById(id)) {
             if (entity != null) {
                 plmGraphSyncClient.sendGraphSyncEvent(entity, getNodeType(), "DELETE");
                 log.info("{}删除成功并发送图同步事件: id={}", getNodeType(), id);
@@ -313,7 +313,7 @@ public abstract class PlmBaseServiceImpl<T, M extends BaseMapper<T>> extends Ser
     @Override
     public Result<T> deleteByIdAndReturn(Serializable id) {
         T entity = getById(id);
-        if (removeById(id)) {
+        if (super.removeById(id)) {
             if (entity != null) {
                 plmGraphSyncClient.sendGraphSyncEvent(entity, getNodeType(), "DELETE");
                 log.info("{}删除成功并发送图同步事件: id={}", getNodeType(), id);
@@ -326,7 +326,7 @@ public abstract class PlmBaseServiceImpl<T, M extends BaseMapper<T>> extends Ser
     @Override
     public Result<Boolean> deleteByIds(Collection<? extends Serializable> idList) {
         List<T> entities = listByIds(idList);
-        if (removeByIds(idList)) {
+        if (super.removeByIds(idList)) {
             if (entities != null && !entities.isEmpty()) {
                 plmGraphSyncClient.sendGraphSyncEventBatch(new ArrayList<>(entities), getNodeType(), "DELETE");
                 log.info("{}批量删除成功并发送图同步事件: count={}", getNodeType(), entities.size());
@@ -339,7 +339,7 @@ public abstract class PlmBaseServiceImpl<T, M extends BaseMapper<T>> extends Ser
     @Override
     public Result<List<T>> deleteByIdsAndReturn(Collection<? extends Serializable> idList) {
         List<T> entities = listByIds(idList);
-        if (removeByIds(idList)) {
+        if (super.removeByIds(idList)) {
             if (entities != null && !entities.isEmpty()) {
                 plmGraphSyncClient.sendGraphSyncEventBatch(entities, getNodeType(), "DELETE");
                 log.info("{}批量删除成功并发送图同步事件: count={}", getNodeType(), entities.size());
@@ -351,7 +351,7 @@ public abstract class PlmBaseServiceImpl<T, M extends BaseMapper<T>> extends Ser
 
     @Override
     public Result<Boolean> deleteByMap(Map<String, Object> columnMap) {
-        if (removeByMap(columnMap)) {
+        if (super.removeByMap(columnMap)) {
             log.info("{}根据map删除成功", getNodeType());
             return Result.ok(true, "删除成功!");
         }
@@ -361,7 +361,7 @@ public abstract class PlmBaseServiceImpl<T, M extends BaseMapper<T>> extends Ser
 
     @Override
     public Result<Boolean> delete(LambdaQueryWrapper<T> queryWrapper) {
-        if (remove(queryWrapper)) {
+        if (super.remove(queryWrapper)) {
             log.info("{}条件删除成功", getNodeType());
             return Result.ok(true, "删除成功!");
         }
@@ -370,7 +370,7 @@ public abstract class PlmBaseServiceImpl<T, M extends BaseMapper<T>> extends Ser
 
     @Override
     public Result<Boolean> delete(QueryWrapper<T> queryWrapper) {
-        if (remove(queryWrapper)) {
+        if (super.remove(queryWrapper)) {
             log.info("{}条件删除成功", getNodeType());
             return Result.ok(true, "删除成功!");
         }
