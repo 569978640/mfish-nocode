@@ -4,6 +4,7 @@ import cn.com.mfish.graph.config.NebulaGraphProperties;
 import cn.com.mfish.graph.config.NebulaSessionPoolConfig;
 import cn.com.mfish.graph.exception.ConnectionException;
 import cn.com.mfish.graph.pool.*;
+import com.vesoft.nebula.client.graph.NebulaPoolConfig;
 import com.vesoft.nebula.client.graph.data.HostAddress;
 import com.vesoft.nebula.client.graph.data.ResultSet;
 import com.vesoft.nebula.client.graph.net.NebulaPool;
@@ -15,6 +16,7 @@ import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.stream.Collectors;
 
 /**
  * NebulaGraph 多地址会话池实现类
@@ -34,6 +36,8 @@ public class MultiAddressSessionPool implements NebulaSessionPool {
     private final Semaphore borrowSemaphore;
     private final AtomicInteger activeCount;
     private volatile boolean destroyed = false;
+    private NebulaPool sharedPool;
+    private String spaceName;
 
     public MultiAddressSessionPool(NebulaGraphProperties properties,
                                    NebulaSessionPoolConfig poolConfig,
@@ -94,7 +98,7 @@ public class MultiAddressSessionPool implements NebulaSessionPool {
 
         long createStartTime = System.currentTimeMillis();
         try {
-            Session session = createSession(address);
+            Session session = createSession();
             wrapper = SessionWrapper.createIdle(session, address);
             wrapper.markActive();
 
@@ -107,7 +111,7 @@ public class MultiAddressSessionPool implements NebulaSessionPool {
             addressManager.recordFailure(address);
             monitor.recordConnectionCreateFailure();
             borrowSemaphore.release();
-            throw new ConnectionException("创建 Session 失败: " + address, e);
+            throw new ConnectionException("创建 Session 失败", e);
         }
     }
 
@@ -167,24 +171,31 @@ public class MultiAddressSessionPool implements NebulaSessionPool {
         while ((wrapper = idleSessions.poll()) != null) {
             destroySession(wrapper);
         }
+        if (sharedPool != null) {
+            try {
+                sharedPool.close();
+                log.info("NebulaPool 已关闭");
+            } catch (Exception e) {
+                log.warn("关闭 NebulaPool 异常: {}", e.getMessage());
+            }
+        }
     }
 
-    private Session createSession(String address) {
-        String[] parts = address.split(":");
-        String host = parts[0];
-        int port = parts.length > 1 ? Integer.parseInt(parts[1]) : 9669;
-
-        NebulaPool pool = new NebulaPool();
-        List<HostAddress> addresses = List.of(new HostAddress(host, port));
-
-        com.vesoft.nebula.client.graph.pool.NebulaPoolConfig nebulaPoolConfig = new com.vesoft.nebula.client.graph.pool.NebulaPoolConfig();
-        nebulaPoolConfig.setMaxConnSize(1);
-
+    private Session createSession() {
         try {
-            pool.init(addresses, nebulaPoolConfig);
-            return pool.getSession(properties.getUsername(), properties.getPassword(), false);
+            Session session = sharedPool.getSession(properties.getUsername(), properties.getPassword(), false);
+            if (spaceName != null && !spaceName.isEmpty()) {
+                ResultSet rs = session.execute("USE " + spaceName);
+                if (!rs.isSucceeded()) {
+                    throw new ConnectionException("切换图空间失败: " + spaceName + ", " + rs.getErrorMessage());
+                }
+                log.debug("成功切换到图空间: {}", spaceName);
+            }
+            return session;
+        } catch (ConnectionException e) {
+            throw e;
         } catch (Exception e) {
-            throw new ConnectionException("创建 Session 失败: " + address, e);
+            throw new ConnectionException("创建 Session 失败", e);
         }
     }
 
@@ -214,8 +225,31 @@ public class MultiAddressSessionPool implements NebulaSessionPool {
     }
 
     public void init() {
+        this.spaceName = properties.getSpace() != null ? properties.getSpace().getName() : null;
+
+        List<HostAddress> addresses = properties.getAddresses().stream()
+                .map(addr -> {
+                    String[] parts = addr.split(":");
+                    String host = parts[0];
+                    int port = parts.length > 1 ? Integer.parseInt(parts[1]) : 9669;
+                    return new HostAddress(host, port);
+                })
+                .collect(Collectors.toList());
+
+        NebulaPoolConfig nebulaPoolConfig = new NebulaPoolConfig();
+        nebulaPoolConfig.setMaxConnSize(poolConfig.getMaxPoolSize());
+
+        sharedPool = new NebulaPool();
+        try {
+            sharedPool.init(addresses, nebulaPoolConfig);
+            log.info("NebulaPool 初始化成功，地址: {}, 连接数: {}", properties.getAddresses(), poolConfig.getMaxPoolSize());
+        } catch (Exception e) {
+            throw new ConnectionException("初始化 NebulaPool 失败", e);
+        }
+
         if (poolConfig.getInitStrategy() == NebulaSessionPoolConfig.InitStrategy.EAGER) {
             int initSize = poolConfig.getMinIdle();
+            log.info("开始预热连接池，预热数量: {}", initSize);
             for (int i = 0; i < initSize; i++) {
                 try {
                     SessionWrapper wrapper = borrowSession();
@@ -225,6 +259,7 @@ public class MultiAddressSessionPool implements NebulaSessionPool {
                     monitor.recordWarmupFailure();
                 }
             }
+            log.info("连接池预热完成");
         }
     }
 }

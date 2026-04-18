@@ -66,13 +66,9 @@ public class PathQuery {
     }
 
     /**
-     * 查询两点间的所有路径
-     *
-     * @param fromVid 起始点 VID
-     * @param toVid 目标点 VID
-     * @return 路径列表
+     * 构建 FIND PATH nGQL 语句
      */
-    public List<String> findPaths(String fromVid, String toVid) {
+    private String buildFindPathNgql(String fromVid, String toVid) {
         StringBuilder ngql = new StringBuilder();
         ngql.append("FIND ALL PATH FROM ");
         ngql.append(SchemaUtils.quote(fromVid));
@@ -86,43 +82,21 @@ public class PathQuery {
         }
         ngql.append(" UP TO ").append(maxHop).append(" STEPS");
         ngql.append(" YIELD path AS p");
-
-        try {
-            ResultSet result = sessionPool.executeQuery(ngql.toString());
-            List<String> paths = new ArrayList<>();
-            if (result.isSucceeded()) {
-                for (int i = 0; i < result.rowsSize(); i++) {
-                    paths.add(result.rowValues(i).get(0).asPath());
-                }
-            }
-            return paths;
-        } catch (Exception e) {
-            log.error("查询路径失败: {} -> {}", fromVid, toVid, e);
-            throw new RuntimeException("查询路径失败", e);
-        }
+        return ngql.toString();
     }
 
     /**
-     * 分页查询路径
-     *
-     * @param fromVid 起始点 VID
-     * @param toVid 目标点 VID
-     * @param pageNum 页码
-     * @param pageSize 每页大小
-     * @return 路径查询结果
+     * 统计两点间的路径总数
      */
-    public QueryResult<String> findPathsWithPagination(String fromVid, String toVid, int pageNum, int pageSize) {
-        List<String> allPaths = findPaths(fromVid, toVid);
-        int total = allPaths.size();
-        int start = (pageNum - 1) * pageSize;
-        int end = Math.min(start + pageSize, total);
-
-        if (start >= total) {
-            return QueryResult.of(new ArrayList<>(), total, pageNum, pageSize);
+    private int countTotalPaths(String fromVid, String toVid) {
+        String ngql = buildFindPathNgql(fromVid, toVid);
+        try {
+            ResultSet result = sessionPool.executeQuery(ngql);
+            return result.isSucceeded() ? result.rowsSize() : 0;
+        } catch (Exception e) {
+            log.error("统计路径总数失败: {} -> {}", fromVid, toVid, e);
+            return 0;
         }
-
-        List<String> pageData = allPaths.subList(start, end);
-        return QueryResult.of(pageData, total, pageNum, pageSize);
     }
 
     /**

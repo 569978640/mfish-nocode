@@ -84,6 +84,7 @@ public class NebulaSessionPoolConfig {
             this.minIdle = poolConfig.getMinConns();
             this.maxPoolSize = poolConfig.getMaxConns();
             this.idleTimeout = poolConfig.getIdleTimeout();
+            this.borrowTimeout = poolConfig.getTimeout();
         }
     }
 
