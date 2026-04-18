@@ -1,7 +1,7 @@
 package cn.com.mfish.graph.model.event;
 
-import cn.com.mfish.graph.model.edge.GraphEdge;
-import cn.com.mfish.graph.model.node.GraphNode;
+import cn.com.mfish.graph.model.GraphEdge;
+import cn.com.mfish.graph.model.GraphNode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 

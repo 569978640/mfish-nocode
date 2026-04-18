@@ -1,12 +1,6 @@
 package cn.com.mfish.graph.model;
 
-import cn.com.mfish.common.core.entity.BaseEntity;
-import cn.idev.excel.annotation.ExcelProperty;
-import com.baomidou.mybatisplus.annotation.IdType;
-import com.baomidou.mybatisplus.annotation.TableId;
-import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
-import lombok.experimental.Accessors;
 
 import java.util.Date;
 
@@ -18,11 +12,10 @@ import java.util.Date;
  * @date 2026-04-18
  */
 @Data
-public class GraphBaseEntity extends BaseEntity<String> {
-    @ExcelProperty("唯一ID")
-    @Schema(description = "唯一ID")
-    @TableId(type = IdType.ASSIGN_UUID)
-    @Accessors(chain = true)
+public class GraphBaseEntity {
+    /**
+     * 节点唯一标识（VID）
+     */
     private String id;
 
     /**

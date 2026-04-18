@@ -1,8 +1,8 @@
 package cn.com.mfish.plm.base.service.impl;
 
 import cn.com.mfish.graph.model.event.GraphSyncEvent;
-import cn.com.mfish.graph.model.edge.GraphEdge;
-import cn.com.mfish.graph.model.node.GraphNode;
+import cn.com.mfish.graph.model.GraphEdge;
+import cn.com.mfish.graph.model.GraphNode;
 import cn.com.mfish.plm.base.service.PlmGraphSyncClient;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.client.producer.SendCallback;
@@ -131,7 +131,7 @@ public class PlmGraphSyncClientImpl implements PlmGraphSyncClient {
     private <T> GraphNode convertToGraphNode(T entity, String nodeType) {
         GraphNode node = new GraphNode();
         BeanUtils.copyProperties(entity, node);
-        node.setType(nodeType);
+        node.setNodeType(nodeType);
         return node;
     }
 }

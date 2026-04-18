@@ -125,8 +125,32 @@ public class NebulaCircuitBreaker {
         private int halfOpenRequests = 10;
         private ProbeRule probeRule = new ProbeRule();
 
+        public double getFailureRateThreshold() {
+            return failureRateThreshold;
+        }
+
+        public int getMinRequestCount() {
+            return minRequestCount;
+        }
+
+        public int getRecoveryTimeout() {
+            return recoveryTimeout;
+        }
+
+        public int getHalfOpenRequests() {
+            return halfOpenRequests;
+        }
+
+        public ProbeRule getProbeRule() {
+            return probeRule;
+        }
+
         public static class ProbeRule {
             private double successThreshold = 0.9;
+
+            public double getSuccessThreshold() {
+                return successThreshold;
+            }
         }
     }
 }

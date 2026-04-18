@@ -1,7 +1,7 @@
 package cn.com.mfish.plm.base.service;
 
-import cn.com.mfish.graph.model.edge.GraphEdge;
-import cn.com.mfish.graph.model.node.GraphNode;
+import cn.com.mfish.graph.model.GraphEdge;
+import cn.com.mfish.graph.model.GraphNode;
 
 import java.util.List;
 

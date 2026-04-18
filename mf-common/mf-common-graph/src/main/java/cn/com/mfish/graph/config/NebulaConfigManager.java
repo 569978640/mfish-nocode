@@ -1,5 +1,7 @@
 package cn.com.mfish.graph.config;
 
+import lombok.Getter;
+
 /**
  * NebulaGraph 配置管理器
  * 统一管理所有配置，支持动态更新
@@ -7,6 +9,7 @@ package cn.com.mfish.graph.config;
  * @author mfish
  * @date 2026-04-18
  */
+@Getter
 public class NebulaConfigManager {
     private NebulaGraphProperties graphProperties;
     private NebulaSessionPoolConfig poolConfig;
@@ -38,34 +41,6 @@ public class NebulaConfigManager {
         this.loadBalanceConfig = loadBalanceConfig;
         this.quotaConfig = quotaConfig;
         this.haConfig = haConfig;
-    }
-
-    public NebulaGraphProperties getGraphProperties() {
-        return graphProperties;
-    }
-
-    public NebulaSessionPoolConfig getPoolConfig() {
-        return poolConfig;
-    }
-
-    public RetryConfig getRetryConfig() {
-        return retryConfig;
-    }
-
-    public CircuitBreakerConfig getCircuitBreakerConfig() {
-        return circuitBreakerConfig;
-    }
-
-    public LoadBalanceConfig getLoadBalanceConfig() {
-        return loadBalanceConfig;
-    }
-
-    public NebulaQuotaConfig getQuotaConfig() {
-        return quotaConfig;
-    }
-
-    public NebulaHAConfig getHaConfig() {
-        return haConfig;
     }
 
     public void updateGraphProperties(NebulaGraphProperties graphProperties) {

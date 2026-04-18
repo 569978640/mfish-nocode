@@ -7,6 +7,7 @@ import cn.com.mfish.graph.pool.*;
 import cn.com.mfish.graph.pool.impl.AddressManagerImpl;
 import cn.com.mfish.graph.pool.impl.MultiAddressSessionPool;
 import lombok.Getter;
+import lombok.Setter;
 
 /**
  * NebulaGraph 主客户端门面

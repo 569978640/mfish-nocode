@@ -88,8 +88,8 @@
 ```java
 package cn.com.mfish.plm.event;
 
-import cn.com.mfish.graph.model.node.GraphNode;
-import cn.com.mfish.graph.model.edge.GraphEdge;
+import cn.com.mfish.graph.model.GraphNode;
+import cn.com.mfish.graph.model.GraphEdge;
 import lombok.Data;
 import java.util.List;
 
@@ -242,8 +242,8 @@ rocketmq:
 ```java
 package cn.com.mfish.plm.utils;
 
-import cn.com.mfish.graph.model.node.GraphNode;
-import cn.com.mfish.graph.model.edge.GraphEdge;
+import cn.com.mfish.graph.model.GraphNode;
+import cn.com.mfish.graph.model.GraphEdge;
 import cn.com.mfish.plm.base.bean.container.entity.Product;
 import cn.com.mfish.plm.base.bean.link.entity.ContainsLink;
 import cn.com.mfish.plm.base.bean.folder.entity.Folder;

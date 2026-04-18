@@ -314,8 +314,8 @@ public class NebulaConfig {
 package cn.com.mfish.graph.client;
 
 import cn.com.mfish.graph.config.NebulaConfig;
-import cn.com.mfish.graph.model.node.GraphNode;
-import cn.com.mfish.graph.model.edge.GraphEdge;
+import cn.com.mfish.graph.model.GraphNode;
+import cn.com.mfish.graph.model.GraphEdge;
 import com.vesoft.nebula.client.graph.NebulaPoolConfig;
 import com.vesoft.nebula.client.graph.data.HostAddress;
 import com.vesoft.nebula.client.graph.data.ResultSet;
@@ -519,8 +519,8 @@ package cn.com.mfish.graph.consumer;
 
 import client.cn.com.mfish.graph.NebulaClient;
 import cn.com.mfish.graph.model.event.GraphSyncEvent;
-import cn.com.mfish.graph.model.node.GraphNode;
-import cn.com.mfish.graph.model.edge.GraphEdge;
+import cn.com.mfish.graph.model.GraphNode;
+import cn.com.mfish.graph.model.GraphEdge;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
@@ -613,8 +613,8 @@ git commit -m "feat(graph): 添加RocketMQ消费配置和消费者"
 package cn.com.mfish.graph.service;
 
 import client.cn.com.mfish.graph.NebulaClient;
-import cn.com.mfish.graph.model.node.GraphNode;
-import cn.com.mfish.graph.model.edge.GraphEdge;
+import cn.com.mfish.graph.model.GraphNode;
+import cn.com.mfish.graph.model.GraphEdge;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
