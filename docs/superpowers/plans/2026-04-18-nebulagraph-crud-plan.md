@@ -489,7 +489,7 @@ git commit -m "feat(graph): 添加 Session 会话池模块
 
 #### 任务 1.3：客户端门面
 
-- [ ] **步骤 1：创建 NebulaGraphClient.java**
+- [ ] **步骤 1：创建 NebulaGraphClient.java（完整实现）**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/client/NebulaGraphClient.java
@@ -503,13 +503,40 @@ public class NebulaGraphClient {
     private final PathQuery pathQuery;
 
     public NebulaGraphClient(NebulaGraphProperties properties, NebulaPoolConfig poolConfig) {
-        this.writePool = new WriteSessionPoolImpl(properties, poolConfig);
-        this.readPool = new ReadSessionPoolImpl(properties, poolConfig);
-        this.schemaManager = new SchemaManagerImpl(properties);
-        this.nodeOperation = new NodeOperationImpl(writePool);
-        this.edgeOperation = new EdgeOperationImpl(writePool);
-        this.queryBuilder = new QueryBuilder(readPool);
-        this.pathQuery = new PathQueryImpl(readPool);
+        // 1. 初始化地址管理器和负载均衡器
+        AddressManager addressManager = new AddressManagerImpl(properties.getAddresses());
+        LoadBalancer loadBalancer = new LoadBalancerImpl(properties.getLoadBalanceStrategy());
+        
+        // 2. 初始化会话池
+        NebulaSessionPool writePool = new WriteSessionPoolImpl(properties, poolConfig, addressManager, loadBalancer);
+        NebulaSessionPool readPool = new ReadSessionPoolImpl(properties, poolConfig, addressManager, loadBalancer);
+        
+        // 3. 初始化 Schema 管理器
+        SchemaManager schemaManager = new SchemaManagerImpl(properties);
+        
+        // 4. 初始化 CRUD 操作
+        NodeOperation nodeOperation = new NodeOperationImpl(writePool);
+        EdgeOperation edgeOperation = new EdgeOperationImpl(writePool);
+        
+        // 5. 初始化查询
+        QueryBuilder queryBuilder = new QueryBuilder(readPool);
+        PathQuery pathQuery = new PathQueryImpl(readPool);
+        
+        this.writePool = writePool;
+        this.readPool = readPool;
+        this.schemaManager = schemaManager;
+        this.nodeOperation = nodeOperation;
+        this.edgeOperation = edgeOperation;
+        this.queryBuilder = queryBuilder;
+        this.pathQuery = pathQuery;
+    }
+
+    public NebulaSessionPool getWritePool() {
+        return writePool;
+    }
+
+    public NebulaSessionPool getReadPool() {
+        return readPool;
     }
 
     public NodeOperation getNodeOperation() {
@@ -531,15 +558,155 @@ public class NebulaGraphClient {
     public SchemaManager getSchemaManager() {
         return schemaManager;
     }
+
+    public void destroy() {
+        writePool.destroy();
+        readPool.destroy();
+    }
 }
 ```
 
-- [ ] **步骤 2：Commit 客户端门面**
+- [ ] **步骤 2：创建 MultiAddressSessionPool.java（多地址会话池）**
+
+```java
+// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/pool/MultiAddressSessionPool.java
+public class MultiAddressSessionPool implements NebulaSessionPool {
+    private final NebulaGraphProperties properties;
+    private final NebulaPoolConfig poolConfig;
+    private final AddressManager addressManager;
+    private final LoadBalancer loadBalancer;
+    private final ConcurrentLinkedQueue<SessionWrapper> idleSessions;
+    private final AtomicInteger activeCount;
+    private final Semaphore borrowSemaphore;
+    
+    public MultiAddressSessionPool(NebulaGraphProperties properties, 
+                                   NebulaPoolConfig poolConfig,
+                                   AddressManager addressManager,
+                                   LoadBalancer loadBalancer) {
+        this.properties = properties;
+        this.poolConfig = poolConfig;
+        this.addressManager = addressManager;
+        this.loadBalancer = loadBalancer;
+        this.idleSessions = new ConcurrentLinkedQueue<>();
+        this.activeCount = new AtomicInteger(0);
+        this.borrowSemaphore = new Semaphore(poolConfig.getMaxPoolSize());
+    }
+    
+    @Override
+    public SessionWrapper borrowSession() {
+        // 1. 获取可用地址
+        String address = loadBalancer.selectAddress(addressManager.getAvailableAddresses());
+        
+        // 2. 尝试从池中获取
+        SessionWrapper wrapper = idleSessions.poll();
+        if (wrapper != null && wrapper.getState() == SessionState.IDLE) {
+            wrapper.setState(SessionState.ACTIVE);
+            wrapper.setLastUsedTime(System.currentTimeMillis());
+            activeCount.incrementAndGet();
+            return wrapper;
+        }
+        
+        // 3. 池中没有可用 Session，创建新的
+        try {
+            Session session = createSession(address);
+            wrapper = new SessionWrapper();
+            wrapper.setSession(session);
+            wrapper.setState(SessionState.ACTIVE);
+            wrapper.setAddress(address);
+            wrapper.setCreateTime(System.currentTimeMillis());
+            wrapper.setLastUsedTime(System.currentTimeMillis());
+            activeCount.incrementAndGet();
+            return wrapper;
+        } catch (Exception e) {
+            addressManager.recordFailure(address);
+            throw new ConnectionException("创建 Session 失败: " + address, e);
+        }
+    }
+    
+    @Override
+    public void returnSession(SessionWrapper wrapper) {
+        if (wrapper == null) {
+            return;
+        }
+        
+        // 1. 执行健康检查
+        if (!healthCheck(wrapper)) {
+            wrapper.setState(SessionState.INVALID);
+            addressManager.recordFailure(wrapper.getAddress());
+            destroySession(wrapper);
+            activeCount.decrementAndGet();
+            return;
+        }
+        
+        // 2. 归还到池中
+        wrapper.setState(SessionState.IDLE);
+        wrapper.setLastUsedTime(System.currentTimeMillis());
+        idleSessions.offer(wrapper);
+        activeCount.decrementAndGet();
+    }
+    
+    @Override
+    public ResultSet executeQuery(String ngql) {
+        SessionWrapper wrapper = borrowSession();
+        try {
+            return wrapper.getSession().execute(ngql);
+        } finally {
+            returnSession(wrapper);
+        }
+    }
+    
+    @Override
+    public boolean executeWrite(String ngql) {
+        SessionWrapper wrapper = borrowSession();
+        try {
+            ResultSet result = wrapper.getSession().execute(ngql);
+            return result.isSucceeded();
+        } finally {
+            returnSession(wrapper);
+        }
+    }
+    
+    @Override
+    public void destroy() {
+        SessionWrapper wrapper;
+        while ((wrapper = idleSessions.poll()) != null) {
+            destroySession(wrapper);
+        }
+    }
+    
+    private Session createSession(String address) {
+        // 使用 vesoft client 创建 Session
+        // 实际实现需要调用 NebulaGraphClientProvider
+        throw new UnsupportedOperationException("请实现 createSession 方法");
+    }
+    
+    private boolean healthCheck(SessionWrapper wrapper) {
+        try {
+            ResultSet result = wrapper.getSession().execute("YIELD 1");
+            return result.isSucceeded();
+        } catch (Exception e) {
+            return false;
+        }
+    }
+    
+    private void destroySession(SessionWrapper wrapper) {
+        try {
+            wrapper.getSession().close();
+        } catch (Exception e) {
+            // 忽略关闭异常
+        }
+    }
+}
+```
+
+- [ ] **步骤 3：Commit 客户端门面**
 
 ```bash
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/client/
-git commit -m "feat(graph): 添加 NebulaGraphClient 门面
-- 整合会话池、Schema 管理、CRUD 操作、查询模块"
+git add mf-common-graph/src/main/java/cn/com/mfish/graph/pool/MultiAddressSessionPool.java
+git commit -m "feat(graph): 添加 NebulaGraphClient 门面和 MultiAddressSessionPool
+- NebulaGraphClient: 整合会话池、Schema 管理、CRUD 操作、查询模块
+- MultiAddressSessionPool: 多地址会话池实现"
 ```
 
 ---
@@ -548,7 +715,69 @@ git commit -m "feat(graph): 添加 NebulaGraphClient 门面
 
 #### 任务 2.1：Schema 工具与校验
 
-- [ ] **步骤 1：创建 SchemaUtils.java**
+- [ ] **步骤 1：创建 schema/model/TagDefinition.java**
+
+```java
+// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/schema/model/TagDefinition.java
+@Data
+public class TagDefinition {
+    /** Tag 名称 */
+    private String name;
+    /** 字段定义列表 */
+    private List<FieldDefinition> fields;
+    /** 注释 */
+    private String comment;
+    /** 是否为基础类型（不可删除） */
+    private boolean fixed;
+    /** 创建时间 */
+    private Date createTime;
+    /** 更新时间 */
+    private Date updateTime;
+    /** 所属业务线（用于灰度） */
+    private List<String> businessLines;
+}
+
+@Data
+public class FieldDefinition {
+    /** 字段名称 */
+    private String name;
+    /** 字段类型 */
+    private String type;
+    /** 默认值 */
+    private String defaultValue;
+    /** 是否可为空 */
+    private boolean nullable;
+    /** 注释 */
+    private String comment;
+}
+```
+
+- [ ] **步骤 2：创建 schema/model/EdgeTypeDefinition.java**
+
+```java
+// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/schema/model/EdgeTypeDefinition.java
+@Data
+public class EdgeTypeDefinition {
+    /** EdgeType 名称 */
+    private String name;
+    /** 字段定义列表 */
+    private List<FieldDefinition> fields;
+    /** 注释 */
+    private String comment;
+    /** 是否为基础类型 */
+    private boolean fixed;
+    /** 创建时间 */
+    private Date createTime;
+    /** 更新时间 */
+    private Date updateTime;
+    /** 所属业务线 */
+    private List<String> businessLines;
+    /** rankKey（可选，用于多边场景） */
+    private String rankKey;
+}
+```
+
+- [ ] **步骤 4：创建 SchemaUtils.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/schema/SchemaUtils.java
@@ -567,7 +796,7 @@ public class SchemaUtils {
 }
 ```
 
-- [ ] **步骤 2：创建 FieldTypeValidator.java**
+- [ ] **步骤 5：创建 FieldTypeValidator.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/schema/FieldTypeValidator.java
@@ -583,12 +812,15 @@ public interface FieldTypeValidator {
 }
 ```
 
-- [ ] **步骤 3：Commit Schema 工具**
+- [ ] **步骤 6：Commit Schema 工具**
 
 ```bash
+git add mf-common-graph/src/main/java/cn/com/mfish/graph/schema/model/
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/schema/SchemaUtils.java
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/schema/FieldTypeValidator.java
 git commit -m "feat(graph): 添加 Schema 工具与校验器
+- TagDefinition: Tag 定义模型
+- EdgeTypeDefinition: EdgeType 定义模型
 - SchemaUtils: 标识符处理工具
 - FieldTypeValidator: 字段类型校验"
 ```
@@ -754,20 +986,123 @@ public interface EdgeOperation {
 }
 ```
 
-- [ ] **步骤 3：Commit 节点与边操作**
+- [ ] **步骤 3：创建 model/result/QueryResult.java**
+
+```java
+// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/model/result/QueryResult.java
+@Data
+public class QueryResult<T> {
+    /** 查询是否成功 */
+    private boolean success;
+    /** 结果数据 */
+    private T data;
+    /** 错误信息 */
+    private String errorMessage;
+    /** 执行耗时(ms) */
+    private long costMs;
+    /** 结果数量 */
+    private int count;
+    /** 是否有更多结果 */
+    private boolean hasMore;
+    /** 查询上下文（用于追踪） */
+    private Map<String, Object> context;
+
+    public static <T> QueryResult<T> success(T data) {
+        QueryResult<T> result = new QueryResult<>();
+        result.setSuccess(true);
+        result.setData(data);
+        return result;
+    }
+
+    public static <T> QueryResult<T> fail(String errorMessage) {
+        QueryResult<T> result = new QueryResult<>();
+        result.setSuccess(false);
+        result.setErrorMessage(errorMessage);
+        return result;
+    }
+}
+```
+
+- [ ] **步骤 4：创建 model/result/BatchResult.java**
+
+```java
+// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/model/result/BatchResult.java
+@Data
+public class BatchResult {
+    /** 批次ID */
+    private String batchId;
+    /** 是否完全成功 */
+    private boolean success;
+    /** 总数量 */
+    private int totalCount;
+    /** 成功数量 */
+    private int successCount;
+    /** 失败数量 */
+    private int failedCount;
+    /** 失败率 */
+    private double failureRate;
+    /** 失败详情 */
+    private List<FailedItem> failedItems;
+    /** 执行耗时(ms) */
+    private long costMs;
+    /** 开始时间 */
+    private Date startTime;
+    /** 结束时间 */
+    private Date endTime;
+    /** 幂等键 */
+    private String idempotentKey;
+
+    @Data
+    public static class FailedItem {
+        private String vid;
+        private String operation;
+        private String errorMessage;
+        private int retryCount;
+    }
+
+    public static BatchResult success(String batchId, int totalCount) {
+        BatchResult result = new BatchResult();
+        result.setBatchId(batchId);
+        result.setSuccess(true);
+        result.setTotalCount(totalCount);
+        result.setSuccessCount(totalCount);
+        result.setFailedCount(0);
+        result.setFailureRate(0);
+        return result;
+    }
+
+    public static BatchResult partialSuccess(String batchId, int totalCount, List<FailedItem> failedItems) {
+        BatchResult result = new BatchResult();
+        result.setBatchId(batchId);
+        result.setSuccess(false);
+        result.setTotalCount(totalCount);
+        result.setFailedCount(failedItems.size());
+        result.setSuccessCount(totalCount - failedItems.size());
+        result.setFailureRate((double) failedItems.size() / totalCount);
+        result.setFailedItems(failedItems);
+        return result;
+    }
+}
+```
+
+- [ ] **步骤 5：Commit 节点与边操作**
 
 ```bash
+git add mf-common-graph/src/main/java/cn/com/mfish/graph/model/result/QueryResult.java
+git add mf-common-graph/src/main/java/cn/com/mfish/graph/model/result/BatchResult.java
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/crud/NodeOperation.java
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/crud/EdgeOperation.java
 git commit -m "feat(graph): 添加 NodeOperation 和 EdgeOperation 接口
-- 节点 CRUD 操作
-- 边 CRUD 操作
+- NodeOperation: 节点 CRUD 操作
+- EdgeOperation: 边 CRUD 操作
+- QueryResult: 查询结果模型
+- BatchResult: 批量结果模型
 - 软删除与恢复支持"
 ```
 
 #### 任务 3.2：批量操作
 
-- [ ] **步骤 1：创建 BatchOperation.java**
+- [ ] **步骤 6：创建 BatchOperation.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/crud/BatchOperation.java
@@ -802,7 +1137,7 @@ public class BatchProgress {
 }
 ```
 
-- [ ] **步骤 2：创建 BatchConsistencyChecker.java**
+- [ ] **步骤 7：创建 BatchConsistencyChecker.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/crud/BatchConsistencyChecker.java
@@ -822,7 +1157,7 @@ public class InconsistencyReport {
 }
 ```
 
-- [ ] **步骤 3：创建 BatchCompensator.java**
+- [ ] **步骤 8：创建 BatchCompensator.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/crud/BatchCompensator.java
@@ -842,7 +1177,7 @@ public enum CompensateStatus {
 }
 ```
 
-- [ ] **步骤 4：Commit 批量操作**
+- [ ] **步骤 9：Commit 批量操作**
 
 ```bash
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/crud/BatchOperation.java
@@ -856,7 +1191,7 @@ git commit -m "feat(graph): 添加批量操作模块
 
 #### 任务 3.3：幂等与软删除
 
-- [ ] **步骤 1：创建 IdempotentKeyGenerator.java**
+- [ ] **步骤 10：创建 IdempotentKeyGenerator.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/crud/IdempotentKeyGenerator.java
@@ -865,7 +1200,7 @@ public interface IdempotentKeyGenerator {
 }
 ```
 
-- [ ] **步骤 2：创建 IdempotentStore.java**
+- [ ] **步骤 11：创建 IdempotentStore.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/crud/IdempotentStore.java
@@ -878,7 +1213,7 @@ public interface IdempotentStore {
 }
 ```
 
-- [ ] **步骤 3：创建 SoftDeleteCleaner.java**
+- [ ] **步骤 12：创建 SoftDeleteCleaner.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/crud/SoftDeleteCleaner.java
@@ -898,7 +1233,7 @@ public enum ArchiveStorage {
 }
 ```
 
-- [ ] **步骤 4：Commit 幂等与软删除**
+- [ ] **步骤 13：Commit 幂等与软删除**
 
 ```bash
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/crud/IdempotentKeyGenerator.java
@@ -912,7 +1247,7 @@ git commit -m "feat(graph): 添加幂等与软删除模块
 
 #### 任务 3.4：VID 管理
 
-- [ ] **步骤 1：创建 VidMapper.java**
+- [ ] **步骤 14：创建 VidMapper.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/model/vid/VidMapper.java
@@ -924,7 +1259,7 @@ public interface VidMapper {
 }
 ```
 
-- [ ] **步骤 2：创建 VidVersionManager.java**
+- [ ] **步骤 15：创建 VidVersionManager.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/model/vid/VidVersionManager.java
@@ -936,7 +1271,7 @@ public interface VidVersionManager {
 }
 ```
 
-- [ ] **步骤 3：Commit VID 管理**
+- [ ] **步骤 16：Commit VID 管理**
 
 ```bash
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/model/vid/
@@ -1333,6 +1668,88 @@ public enum AlertLevel {
 }
 ```
 
+- [ ] **步骤 6：创建 AlertManager.java**
+
+```java
+// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/monitor/AlertManager.java
+public interface AlertManager {
+    /**
+     * 发送告警
+     * @param level 告警级别
+     * @param title 告警标题
+     * @param message 告警消息
+     * @param tags 标签（用于分类和过滤）
+     */
+    void alert(AlertLevel level, String title, String message, Map<String, String> tags);
+
+    /**
+     * 发送告警（便捷方法）
+     */
+    void alert(AlertLevel level, String title, String message);
+
+    /**
+     * 发送关键告警（最高级别）
+     */
+    void critical(String title, String message);
+
+    /**
+     * 发送错误告警
+     */
+    void error(String title, String message);
+
+    /**
+     * 发送警告告警
+     */
+    void warning(String title, String message);
+
+    /**
+     * 发送信息告警
+     */
+    void info(String title, String message);
+
+    /**
+     * 注册告警处理器
+     * @param handler 自定义告警处理器
+     */
+    void registerHandler(AlertHandler handler);
+
+    /**
+     * 注销告警处理器
+     * @param handler 自定义告警处理器
+     */
+    void unregisterHandler(AlertHandler handler);
+
+    /**
+     * 静默告警（临时屏蔽）
+     * @param tags 标签
+     * @param durationSeconds 静默时长（秒）
+     */
+    void silence(Map<String, String> tags, long durationSeconds);
+
+    /**
+     * 取消静默
+     * @param tags 标签
+     */
+    void unsilence(Map<String, String> tags);
+}
+
+public interface AlertHandler {
+    void handle(Alert alert);
+}
+
+@Data
+public class Alert {
+    private String id;
+    private AlertLevel level;
+    private String title;
+    private String message;
+    private Map<String, String> tags;
+    private Date createTime;
+    private String traceId;
+    private String source;
+}
+```
+
 - [ ] **步骤 7：Commit 监控指标**
 
 ```bash
@@ -1343,7 +1760,246 @@ git commit -m "feat(graph): 添加监控模块
 - OperationMetrics: 操作指标
 - SchemaMetrics: Schema 指标
 - IdempotentMetrics: 幂等指标
-- NebulaMonitor: 统一监控器"
+- NebulaMonitor: 统一监控器
+- AlertManager: 告警管理器"
+```
+
+#### 任务 6.3：全链路追踪集成
+
+- [ ] **步骤 1：集成 SkyWalking 或 Jaeger**
+
+```java
+// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/monitor/TracingIntegration.java
+public class TracingIntegration {
+    /**
+     * 初始化链路追踪
+     * @param tracingType 追踪类型（SkyWalking/Jaeger/Zipkin）
+     * @param config 追踪配置
+     */
+    public void init(TracingType tracingType, TracingConfig config);
+
+    /**
+     * 创建追踪 span
+     * @param operationName 操作名称
+     * @param parentSpan 可选的父 span
+     * @return span 上下文
+     */
+    SpanContext startSpan(String operationName, SpanContext parentSpan);
+
+    /**
+     * 结束 span
+     * @param context span 上下文
+     * @param success 是否成功
+     */
+    void endSpan(SpanContext context, boolean success);
+
+    /**
+     * 记录追踪标签
+     * @param context span 上下文
+     * @param key 标签 key
+     * @param value 标签 value
+     */
+    void tag(SpanContext context, String key, String value);
+
+    /**
+     * 记录追踪日志
+     * @param context span 上下文
+     * @param event 事件名称
+     * @param params 事件参数
+     */
+    void log(SpanContext context, String event, Map<String, Object> params);
+
+    /**
+     * 获取当前追踪 ID
+     * @return traceId
+     */
+    String getCurrentTraceId();
+}
+
+public enum TracingType {
+    SKYWALKING,
+    JAEGER,
+    ZIPKIN
+}
+
+@Data
+public class TracingConfig {
+    /** 服务名称 */
+    private String serviceName;
+    /** 探针类型 */
+    private TracingType type;
+    /** 服务地址 */
+    private String address;
+    /** 采样率 */
+    private double sampleRate = 1.0;
+}
+```
+
+- [ ] **步骤 2：在 NebulaMonitor 中集成追踪**
+
+```java
+// 在 NebulaMonitor 中添加追踪集成
+public class NebulaMonitor {
+    private TracingIntegration tracing;
+
+    public void setTracing(TracingIntegration tracing) {
+        this.tracing = tracing;
+    }
+
+    public void onError(String operation, Exception e) {
+        SpanContext span = tracing.startSpan("nebula.error", null);
+        tracing.tag(span, "operation", operation);
+        tracing.tag(span, "error", e.getClass().getSimpleName());
+        tracing.tag(span, "message", e.getMessage());
+        tracing.endSpan(span, false);
+    }
+
+    public void onConnectionError(Exception e) {
+        SpanContext span = tracing.startSpan("nebula.connection.error", null);
+        tracing.tag(span, "error", e.getMessage());
+        tracing.endSpan(span, false);
+    }
+
+    public void onBatchFailure(String batchId, double failureRate) {
+        SpanContext span = tracing.startSpan("nebula.batch.failure", null);
+        tracing.tag(span, "batchId", batchId);
+        tracing.tag(span, "failureRate", String.valueOf(failureRate));
+        tracing.endSpan(span, false);
+    }
+}
+```
+
+- [ ] **步骤 3：Commit 全链路追踪**
+
+```bash
+git add mf-common-graph/src/main/java/cn/com/mfish/graph/monitor/TracingIntegration.java
+git commit -m "feat(graph): 添加全链路追踪集成
+- TracingIntegration: SkyWalking/Jaeger 集成
+- 在 NebulaMonitor 中集成追踪功能"
+```
+
+#### 任务 6.4：全链路压测
+
+- [ ] **步骤 1：创建压测脚本**
+
+```yaml
+# 文件：mf-common-graph/stress-test/load-test.yaml
+config:
+  target: "http://nebula-graph-gateway:8080"
+  phases:
+    - duration: 60
+      arrivalRate: 10
+      name: "预热阶段"
+    - duration: 120
+      arrivalRate: 50
+      name: "正常压力"
+    - duration: 60
+      arrivalRate: 100
+      name: "峰值压力"
+    - duration: 120
+      arrivalRate: 200
+      name: "极限压力"
+
+scenarios:
+  - name: "节点 CRUD 操作"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/graph/node"
+          body:
+            tagName: "Product"
+            properties:
+              name: "Product-{{ $randomString(8) }}"
+              code: "P{{ $timestamp }}"
+      - get:
+          url: "/api/graph/node/{{ lastResponse._id }}"
+      - put:
+          url: "/api/graph/node/{{ lastResponse._id }}"
+          body:
+            properties:
+              name: "Updated-{{ $randomString(8) }}"
+      - delete:
+          url: "/api/graph/node/{{ lastResponse._id }}"
+
+  - name: "批量导入"
+    weight: 20
+    flow:
+      - post:
+          url: "/api/graph/batch"
+          body:
+            tagName: "Part"
+            count: 1000
+
+  - name: "路径查询"
+    weight: 30
+    flow:
+      - post:
+          url: "/api/graph/query/path"
+          body:
+            fromVid: "Product:P001"
+            toVid: "Part:P001"
+            edgeType: "ContainsLink"
+            maxHop: 5
+
+  - name: "BOM 查询"
+    weight: 20
+    flow:
+      - get:
+          url: "/api/graph/bom/{{ productId }}?depth=10"
+```
+
+- [ ] **步骤 2：创建压测报告生成器**
+
+```java
+// 文件：mf-common-graph/src/test/java/cn/com/mfish/graph/LoadTestReportGenerator.java
+public class LoadTestReportGenerator {
+    /**
+     * 生成压测报告
+     * @param testResult 压测结果
+     * @return 报告内容
+     */
+    public String generateReport(LoadTestResult testResult);
+
+    /**
+     * 检查是否满足 SLO
+     * @param testResult 压测结果
+     * @return SLO 检查结果
+     */
+    public SLOResult checkSLO(LoadTestResult testResult);
+}
+
+@Data
+public class LoadTestResult {
+    private int totalRequests;
+    private int successRequests;
+    private int failedRequests;
+    private double successRate;
+    private double avgResponseTime;
+    private double p50ResponseTime;
+    private double p90ResponseTime;
+    private double p99ResponseTime;
+    private int maxConcurrentConnections;
+    private Map<String, MetricData> metrics;
+}
+
+@Data
+public class SLOResult {
+    private boolean passed;
+    private List<String> violations;
+    private Map<String, Double> actualValues;
+    private Map<String, Double> sloTargets;
+}
+```
+
+- [ ] **步骤 3：Commit 压测**
+
+```bash
+mkdir -p mf-common-graph/stress-test
+git add mf-common-graph/stress-test/
+git add mf-common-graph/src/test/java/cn/com/mfish/graph/LoadTestReportGenerator.java
+git commit -m "test(graph): 添加全链路压测
+- load-test.yaml: 压测场景配置
+- LoadTestReportGenerator: 报告生成器"
 ```
 
 ---
@@ -1509,6 +2165,274 @@ git commit -m "feat(graph): 添加异常定义
 - BusinessException: 业务异常"
 ```
 
+#### 任务 7.3：配置中心集成
+
+- [ ] **步骤 1：集成 Nacos 配置中心**
+
+```java
+// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/remote/NacosConfigCenter.java
+public class NacosConfigCenter implements ConfigCenterRefresher {
+    private ConfigService configService;
+    private String dataId;
+    private String group = "DEFAULT_GROUP";
+
+    public NacosConfigCenter(String serverAddr, String namespace) {
+        Properties properties = new Properties();
+        properties.put("serverAddr", serverAddr);
+        properties.put("namespace", namespace);
+        this.configService = NacosFactory.createConfigService(properties);
+    }
+
+    @Override
+    public void listen(String dataId, ConfigChangeListener listener) {
+        this.dataId = dataId;
+        String content = configService.getConfig(dataId, group, 5000);
+        listener.onChange(dataId, content);
+        configService.addListener(dataId, group, new Listener() {
+            @Override
+            public void receiveConfigInfo(String configInfo) {
+                listener.onChange(dataId, configInfo);
+            }
+            @Override
+            public Executor getExecutor() {
+                return Executors.newSingleThreadExecutor();
+            }
+        });
+    }
+
+    @Override
+    public void refreshPoolConfig(NebulaPoolConfig config) {
+        // 实现配置刷新逻辑
+    }
+
+    @Override
+    public void refreshCircuitBreaker(String name, CircuitBreakerConfig config) {
+        // 实现熔断器配置刷新
+    }
+
+    @Override
+    public void refreshRetryConfig(RetryConfig config) {
+        // 实现重试配置刷新
+    }
+
+    @Override
+    public void refreshConfigWithGray(String dataId, List<String> grayInstanceIds) {
+        // 灰度发布配置
+    }
+
+    @Override
+    public void rollbackConfig(String dataId, String version) {
+        // 配置回滚
+    }
+
+    @Override
+    public void enableLocalCache(long cacheTtlMs) {
+        // 启用本地缓存
+    }
+}
+```
+
+- [ ] **步骤 2：集成 Apollo 配置中心**
+
+```java
+// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/remote/ApolloConfigCenter.java
+public class ApolloConfigCenter implements ConfigCenterRefresher {
+    private Config config;
+    private String namespace;
+
+    public ApolloConfigCenter(String apolloMeta, String appId, String cluster, String namespace) {
+        this.namespace = namespace;
+        ConfigFile configFile = ConfigService.getConfigFile(namespace, ConfigFileFormat.JSON);
+        this.config = ConfigService.getAppConfig();
+    }
+
+    @Override
+    public void listen(String dataId, ConfigChangeListener listener) {
+        config.addChangeListener(changeEvent -> {
+            for (String key : changeEvent.changedKeys()) {
+                if (key.equals(dataId)) {
+                    ChangeType changeType = changeEvent.getChange(key).getChangeType();
+                    if (changeType == ChangeType.MODIFIED) {
+                        listener.onChange(dataId, config.getProperty(key, null));
+                    }
+                }
+            }
+        });
+    }
+
+    @Override
+    public void refreshPoolConfig(NebulaPoolConfig config) {
+        // 实现配置刷新逻辑
+    }
+
+    @Override
+    public void refreshCircuitBreaker(String name, CircuitBreakerConfig config) {
+        // 实现熔断器配置刷新
+    }
+
+    @Override
+    public void refreshRetryConfig(RetryConfig config) {
+        // 实现重试配置刷新
+    }
+
+    @Override
+    public void refreshConfigWithGray(String dataId, List<String> grayInstanceIds) {
+        // 灰度发布配置
+    }
+
+    @Override
+    public void rollbackConfig(String dataId, String version) {
+        // 配置回滚
+    }
+
+    @Override
+    public void enableLocalCache(long cacheTtlMs) {
+        // 启用本地缓存
+    }
+}
+```
+
+- [ ] **步骤 3：Commit 配置中心集成**
+
+```bash
+git add mf-common-graph/src/main/java/cn/com/mfish/graph/remote/NacosConfigCenter.java
+git add mf-common-graph/src/main/java/cn/com/mfish/graph/remote/ApolloConfigCenter.java
+git commit -m "feat(graph): 添加配置中心集成
+- NacosConfigCenter: Nacos 配置中心实现
+- ApolloConfigCenter: Apollo 配置中心实现"
+```
+
+#### 任务 7.4：灾备演练
+
+- [ ] **步骤 1：创建灾备演练脚本**
+
+```yaml
+# 文件：mf-common-graph/disaster-drill/backup-restore.yaml
+name: "NebulaGraph 灾备演练"
+description: "验证备份恢复流程和切换机制"
+
+stages:
+  - name: "健康检查"
+    steps:
+      - check_primary_health:
+          description: "检查主集群健康状态"
+          action: DisasterRecoveryManager.isPrimaryHealthy()
+          expected: true
+
+      - check_standby_health:
+          description: "检查备集群健康状态"
+          action: DisasterRecoveryManager.isStandbyHealthy()
+          expected: true
+
+  - name: "执行备份"
+    steps:
+      - full_backup:
+          description: "执行全量备份"
+          action: BackupManager.backup()
+          expected: success
+
+      - incremental_backup:
+          description: "执行增量备份"
+          action: BackupManager.incrementalBackup()
+          expected: success
+
+      - validate_backup:
+          description: "校验备份完整性"
+          action: BackupManager.validateBackupIntegrity(backupId)
+          expected: valid
+
+  - name: "模拟故障切换"
+    steps:
+      - simulate_primary_failure:
+          description: "模拟主节点故障"
+          action: "断开主集群网络连接"
+
+      - wait_for_detection:
+          description: "等待故障检测（30秒）"
+          timeout: 35
+
+      - verify_switch:
+          description: "验证自动切换到备集群"
+          action: DisasterRecoveryManager.switchToStandby()
+          expected: success
+
+      - verify_rto:
+          description: "验证 RTO < 30 分钟"
+          action: DisasterRecoveryManager.getRecoveryMetrics().rtoMinutes < 30
+          expected: true
+
+  - name: "恢复演练"
+    steps:
+      - restore_from_backup:
+          description: "从备份恢复数据"
+          action: DisasterRecoveryManager.restore(backupId)
+          expected: success
+
+      - verify_data_integrity:
+          description: "验证数据完整性"
+          action: "执行数据校验查询"
+          expected: true
+
+  - name: "回切主集群"
+    steps:
+      - restore_primary:
+          description: "恢复主集群服务"
+
+      - switch_back:
+          description: "手动切回主集群"
+          action: "管理员执行回切操作"
+          expected: success
+
+      - verify_normal:
+          description: "验证恢复正常"
+          action: DisasterRecoveryManager.isPrimaryHealthy()
+          expected: true
+```
+
+- [ ] **步骤 2：创建演练报告模板**
+
+```java
+// 文件：mf-common-graph/src/test/java/cn/com/mfish/graph/DisasterDrillReport.java
+@Data
+public class DisasterDrillReport {
+    private String drillId;
+    private Date startTime;
+    private Date endTime;
+    private Duration totalDuration;
+    private DrillResult result;
+    private Map<String, StageResult> stageResults;
+    private List<String> issues;
+    private RecoveryMetrics recoveryMetrics;
+    private List<String> recommendations;
+}
+
+public enum DrillResult {
+    PASS,
+    FAIL,
+    PARTIAL
+}
+
+@Data
+public class StageResult {
+    private String stageName;
+    private boolean success;
+    private Duration duration;
+    private String errorMessage;
+    private List<String> logs;
+}
+```
+
+- [ ] **步骤 3：Commit 灾备演练**
+
+```bash
+mkdir -p mf-common-graph/disaster-drill
+git add mf-common-graph/disaster-drill/
+git add mf-common-graph/src/test/java/cn/com/mfish/graph/DisasterDrillReport.java
+git commit -m "test(graph): 添加灾备演练
+- backup-restore.yaml: 灾备演练脚本
+- DisasterDrillReport: 演练报告模板"
+```
+
 ---
 
 ### Phase 8: 集成与测试
@@ -1554,6 +2478,342 @@ public class NebulaSessionPoolIntegrationTest {
 git add mf-common-graph/src/test/java/cn/com/mfish/graph/
 git commit -m "test(graph): 添加集成测试
 - NebulaSessionPoolIntegrationTest: 会话池并发测试"
+```
+
+#### 任务 8.2：灰度发布
+
+- [ ] **步骤 1：准备灰度发布配置**
+
+```yaml
+# 文件：mf-common-graph/rollout/gray-release.yaml
+apiVersion: v1
+kind: GrayRelease
+metadata:
+  name: nebula-graph-client
+  version: 3.8.0
+spec:
+  # 灰度策略
+  strategy:
+    type: CANARY
+    canary:
+      # 初始流量权重
+      initialWeight: 10
+      # 权重递增步长
+      weightStep: 10
+      # 每步间隔（分钟）
+      stepInterval: 5
+      # 自动递增条件
+      autoIncrement:
+        enabled: true
+        condition:
+          errorRateThreshold: 0.01
+          p99LatencyThreshold: 500
+          minRequests: 1000
+
+  # 保留旧版本作为回滚方案
+  rollback:
+    enabled: true
+    retentionDays: 7
+    # 旧版本 HTTP 客户端保留
+    keepOldHttpClient: true
+
+  # 监控指标
+  metrics:
+    - name: error_rate
+      threshold: 0.01
+    - name: p99_latency_ms
+      threshold: 500
+    - name: success_rate
+      threshold: 0.99
+
+  # 告警配置
+  alerts:
+    - level: WARNING
+      condition: error_rate > 0.005
+      message: "灰度流量错误率上升"
+    - level: CRITICAL
+      condition: error_rate > 0.01
+      message: "灰度流量错误率超过阈值，执行自动回滚"
+```
+
+- [ ] **步骤 2：部署 10% 流量验证**
+
+```bash
+# 1. 标记旧 HTTP 客户端为保留状态（不删除）
+kubectl annotate deployment mf-common-graph-http-client \
+  rollback.enabled=true \
+  rollback.retention-days=7
+
+# 2. 部署新客户端，初始流量 10%
+kubectl set image deployment/mf-common-graph-native \
+  nebula-client=vesoft/nebula-client:3.8.0-native
+
+kubectl patch deployment/mf-common-graph-native \
+  -p '{"spec":{"strategy":{"rollingUpdate":{"maxSurge":"25%","maxUnavailable":"0%"}}}}'
+
+# 3. 设置初始权重
+kubectl patch virtualservice mf-common-graph \
+  -p '{"spec":{"http":[{"route":[{"destination":{"host":"mf-common-graph-native","subset":"v2"},"weight":10}},{"destination":{"host":"mf-common-graph-http","subset":"v1"},"weight":90}]}]}}'
+
+# 4. 等待初始验证
+sleep 300  # 5分钟
+
+# 5. 检查监控指标
+echo "检查 10% 流量指标..."
+curl -s http://monitoring-service/api/metrics/error-rate | jq '.canary'
+```
+
+- [ ] **步骤 3：扩量至 50%**
+
+```bash
+# 1. 检查 10% 阶段指标
+METRICS=$(curl -s http://monitoring-service/api/metrics/canary)
+ERROR_RATE=$(echo $METRICS | jq '.error_rate')
+P99_LATENCY=$(echo $METRICS | jq '.p99_latency_ms')
+
+# 2. 判断是否满足扩量条件
+if (( $(echo "$ERROR_RATE < 0.01" | bc -l) )) && (( $(echo "$P99_LATENCY < 500" | bc -l) )); then
+    echo "10% 流量验证通过，扩量至 50%"
+
+    # 更新权重
+    kubectl patch virtualservice mf-common-graph \
+      -p '{"spec":{"http":[{"route":[{"destination":{"host":"mf-common-graph-native","subset":"v2"},"weight":50}},{"destination":{"host":"mf-common-graph-http","subset":"v1"},"weight":50}]}]}}'
+
+    # 等待验证
+    sleep 600  # 10分钟
+else
+    echo "指标异常，保持 10% 流量或回滚"
+    # 触发回滚
+    kubectl rollout undo deployment/mf-common-graph-native
+    exit 1
+fi
+```
+
+- [ ] **步骤 4：扩量至 100%**
+
+```bash
+# 1. 检查 50% 阶段指标
+METRICS=$(curl -s http://monitoring-service/api/metrics/canary)
+ERROR_RATE=$(echo $METRICS | jq '.error_rate')
+
+if (( $(echo "$ERROR_RATE < 0.01" | bc -l) )); then
+    echo "50% 流量验证通过，扩量至 100%"
+
+    # 全量切换
+    kubectl patch virtualservice mf-common-graph \
+      -p '{"spec":{"http":[{"route":[{"destination":{"host":"mf-common-graph-native","subset":"v2"},"weight":100}]}]}}'
+
+    # 等待稳定
+    sleep 300
+else
+    echo "指标异常，保持 50% 流量"
+    exit 1
+fi
+```
+
+- [ ] **步骤 5：验证新版本稳定性**
+
+```bash
+# 1. 监控 24 小时关键指标
+echo "开始 24 小时稳定性监控..."
+
+for hour in {1..24}; do
+    METRICS=$(curl -s http://monitoring-service/api/metrics/production)
+
+    ERROR_RATE=$(echo $METRICS | jq '.error_rate')
+    P99_LATENCY=$(echo $METRICS | jq '.p99_latency_ms')
+    SUCCESS_RATE=$(echo $METRICS | jq '.success_rate')
+
+    echo "[Hour $hour] ErrorRate: $ERROR_RATE, P99: ${P99_LATENCY}ms, SuccessRate: $SUCCESS_RATE"
+
+    # 检查是否需要告警
+    if (( $(echo "$ERROR_RATE > 0.01" | bc -l) )); then
+        echo "错误率超过阈值，发送告警"
+        curl -X POST http://alert-manager/api/alerts \
+          -d '{"level":"CRITICAL","title":"错误率超标","message":"生产环境错误率超过 1%"}'
+    fi
+
+    sleep 3600
+done
+
+echo "24 小时稳定性监控完成"
+```
+
+- [ ] **步骤 6：清理旧版本**
+
+```bash
+# 1. 确认新版本稳定运行 7 天后，删除旧 HTTP 客户端
+echo "等待 7 天观察期..."
+
+# 2. 验证旧版本无活跃流量
+OLD_TRAFFIC=$(curl -s http://monitoring-service/api/metrics/old-version-traffic)
+echo "旧版本剩余流量: $OLD_TRAFFIC%"
+
+if (( $(echo "$OLD_TRAFFIC < 0.1" | bc -l) )); then
+    echo "开始清理旧版本..."
+
+    # 删除旧 HTTP 客户端
+    kubectl delete deployment mf-common-graph-http-client
+
+    # 删除旧版本配置
+    kubectl delete virtualservice mf-common-graph -f
+
+    echo "旧版本清理完成"
+else
+    echo "仍有流量在旧版本，等待流量完全迁移"
+fi
+```
+
+- [ ] **步骤 7：Commit 灰度发布配置**
+
+```bash
+mkdir -p mf-common-graph/rollout
+git add mf-common-graph/rollout/
+git commit -m "release(graph): 添加灰度发布配置
+- gray-release.yaml: 灰度发布策略
+- 10% → 50% → 100% 流量切换流程
+- 旧版本保留 7 天作为回滚方案"
+```
+
+---
+
+### Phase 9: 上线与验收
+
+#### 任务 9.1：上线前检查
+
+- [ ] **步骤 1：执行上线前检查清单**
+
+```bash
+#!/bin/bash
+# 文件：mf-common-graph/scripts/pre-release-check.sh
+
+echo "===== NebulaGraph 3.8.0 客户端上线前检查 ====="
+
+# 1. 检查所有单元测试通过
+echo "[1/10] 运行单元测试..."
+mvn test -Dtest="*Test" -q
+if [ $? -ne 0 ]; then
+    echo "❌ 单元测试失败"
+    exit 1
+fi
+echo "✅ 单元测试通过"
+
+# 2. 检查集成测试通过
+echo "[2/10] 运行集成测试..."
+mvn verify -Dintegration-test=true
+if [ $? -ne 0 ]; then
+    echo "❌ 集成测试失败"
+    exit 1
+fi
+echo "✅ 集成测试通过"
+
+# 3. 检查代码覆盖率
+echo "[3/10] 检查代码覆盖率..."
+COVERAGE=$(mvn jacoco:report -q | grep -oP 'Total.*?\d+%' | tail -1)
+echo "代码覆盖率: $COVERAGE"
+if [ "$COVERAGE" < "80%" ]; then
+    echo "⚠️  代码覆盖率低于 80%"
+fi
+
+# 4. 检查 SonarQube
+echo "[4/10] SonarQube 检查..."
+mvn sonar:sonar -q
+echo "✅ SonarQube 检查完成"
+
+# 5. 检查依赖漏洞
+echo "[5/10] 依赖安全检查..."
+mvn dependency:analyze -q
+echo "✅ 依赖安全检查完成"
+
+# 6. 检查配置完整性
+echo "[6/10] 配置文件检查..."
+[ -f src/main/resources/nebula-pool-config.yaml ] && echo "✅ 连接池配置存在"
+[ -f src/main/resources/retry-config.yaml ] && echo "✅ 重试配置存在"
+[ -f src/main/resources/circuit-breaker-config.yaml ] && echo "✅ 熔断配置存在"
+
+# 7. 检查监控埋点
+echo "[7/10] 监控埋点检查..."
+grep -r "@Timed" src/main/java | wc -l
+grep -r "@Metered" src/main/java | wc -l
+echo "✅ 监控埋点已添加"
+
+# 8. 检查文档
+echo "[8/10] 文档完整性检查..."
+[ -f README.md ] && echo "✅ README 存在"
+[ -f CHANGELOG.md ] && echo "✅ CHANGELOG 存在"
+
+# 9. 检查 Docker 镜像
+echo "[9/10] Docker 镜像构建..."
+docker build -t mf-common-graph:3.8.0 . -q
+if [ $? -eq 0 ]; then
+    echo "✅ Docker 镜像构建成功"
+else
+    echo "❌ Docker 镜像构建失败"
+    exit 1
+fi
+
+# 10. 确认灾备演练通过
+echo "[10/10] 灾备演练状态检查..."
+DRILL_STATUS=$(curl -s http://disaster-drill-service/api/status)
+echo "灾备演练状态: $DRILL_STATUS"
+
+echo "===== 上线前检查完成 ====="
+```
+
+- [ ] **步骤 2：创建上线报告**
+
+```markdown
+# NebulaGraph 3.8.0 客户端上线报告
+
+## 1. 版本信息
+- **新版本**: v3.8.0-native
+- **旧版本**: v3.8.0-http
+- **上线时间**: 2026-04-XX
+- **上线人员**: XXX
+
+## 2. 变更内容
+- 基于 vesoft client 原生 Session 重写
+- 会话池化改造
+- 添加熔断器、限流、重试机制
+- 添加全链路追踪
+
+## 3. 测试结果
+| 测试类型 | 结果 | 覆盖率 |
+|---------|------|--------|
+| 单元测试 | ✅ 通过 | 85% |
+| 集成测试 | ✅ 通过 | - |
+| 压测 | ✅ 通过 | P99<500ms |
+| 灾备演练 | ✅ 通过 | RTO<30min |
+
+## 4. 灰度发布记录
+| 阶段 | 流量 | 时长 | 错误率 |
+|------|------|------|--------|
+| 10% | 10% | 5min | 0.1% |
+| 50% | 50% | 10min | 0.2% |
+| 100% | 100% | 24h | 0.15% |
+
+## 5. 监控指标
+- P99 延迟: 320ms ✅
+- 成功率: 99.85% ✅
+- 错误率: 0.15% ✅
+
+## 6. 回滚方案
+- 旧 HTTP 客户端保留至: 2026-04-XX+7
+- 回滚命令: `kubectl rollout undo deployment/mf-common-graph-native`
+
+## 7. 上线确认
+- [ ] 开发负责人: __________ 签字: __________
+- [ ] 测试负责人: __________ 签字: __________
+- [ ] 运维负责人: __________ 签字: __________
+```
+
+- [ ] **步骤 3：Commit 上线报告**
+
+```bash
+mkdir -p mf-common-graph/scripts
+git add mf-common-graph/scripts/pre-release-check.sh
+git add mf-common-graph/RELEASE.md
+git commit -m "release(graph): 添加上线检查脚本和报告模板"
 ```
 
 ---
