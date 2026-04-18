@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Date;
+import java.util.UUID;
 
 /**
  * 幂等服务实现
@@ -29,9 +30,10 @@ public class IdempotentServiceImpl implements IdempotentService {
     private SyncIdempotentLogMapper idempotentLogMapper;
 
     @Override
+    @Transactional(rollbackFor = Exception.class)
     public SyncIdempotentLog checkAndCreate(GraphSyncEvent event) {
         String eventId = event.getEventId();
-        SyncIdempotentLog existing = getByEventId(eventId);
+        SyncIdempotentLog existing = idempotentLogMapper.selectForUpdate(eventId);
 
         if (existing != null) {
             if ("COMPLETED".equals(existing.getStatus())) {
@@ -46,12 +48,10 @@ public class IdempotentServiceImpl implements IdempotentService {
                 }
                 log.warn("事件处理超时，允许重试: eventId={}", eventId);
             }
-            if ("FAILED".equals(existing.getStatus())) {
-                log.info("事件处理失败，允许重试: eventId={}", eventId);
-            }
         }
 
         SyncIdempotentLog syncLog = new SyncIdempotentLog();
+        syncLog.setId(existing == null ? UUID.randomUUID().toString().replace("-", "") : existing.getId());
         syncLog.setEventId(eventId);
         syncLog.setEventType(event.getEventType());
         syncLog.setNodeCount(event.getNodes() == null ? 0L : (long) event.getNodes().size());
@@ -60,14 +60,20 @@ public class IdempotentServiceImpl implements IdempotentService {
         syncLog.setRetryCount(existing == null ? 0L : existing.getRetryCount() + 1);
         syncLog.setUpdateTime(new Date());
 
-        if (existing == null) {
-            idempotentLogMapper.insert(syncLog);
-        } else {
-            syncLog.setId(existing.getId());
-            idempotentLogMapper.updateById(syncLog);
-        }
+        idempotentLogMapper.insertOrUpdateIdempotent(
+            syncLog.getId(),
+            syncLog.getEventId(),
+            syncLog.getEventType(),
+            syncLog.getNodeCount(),
+            syncLog.getEdgeCount(),
+            syncLog.getStatus(),
+            syncLog.getRetryCount(),
+            syncLog.getUpdateTime(),
+            syncLog.getCreateBy(),
+            syncLog.getUpdateBy()
+        );
 
-        return syncLog;
+        return idempotentLogMapper.selectForUpdate(eventId);
     }
 
     @Override

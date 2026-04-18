@@ -171,29 +171,29 @@ public class NebulaWriteService {
     }
 
     /**
-     * 删除边
+     * 删除边（幂等删除，不存在也返回成功）
      */
     private void deleteEdge(String edgeName, String fromId, String toId) {
-        String ngql = String.format("DELETE EDGE %s %s->%s",
+        String ngql = String.format("DELETE EDGE IF EXISTS %s %s->%s",
             SchemaUtils.quote(edgeName),
             SchemaUtils.quote(fromId),
             SchemaUtils.quote(toId));
 
         boolean success = nebulaGraphClient.getWritePool().executeWrite(ngql);
         if (!success) {
-            throw new RuntimeException("删除边失败: " + edgeName);
+            log.warn("删除边失败（幂等跳过）: edgeName={}, fromId={}, toId={}", edgeName, fromId, toId);
         }
     }
 
     /**
-     * 删除节点
+     * 删除节点（幂等删除，不存在也返回成功）
      */
     private void deleteVertex(String tagName, String vertexId) {
-        String ngql = String.format("DELETE VERTEX %s WITH EDGES", SchemaUtils.quote(vertexId));
+        String ngql = String.format("DELETE VERTEX IF EXISTS %s WITH EDGES", SchemaUtils.quote(vertexId));
 
         boolean success = nebulaGraphClient.getWritePool().executeWrite(ngql);
         if (!success) {
-            throw new RuntimeException("删除节点失败: " + tagName);
+            log.warn("删除节点失败（幂等跳过）: tagName={}, vertexId={}", tagName, vertexId);
         }
     }
 }

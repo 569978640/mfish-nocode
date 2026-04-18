@@ -2,4 +2,24 @@
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
 <mapper namespace="cn.com.mfish.graph.sync.mapper.SyncIdempotentLogMapper">
 
+    <insert id="insertOrUpdateIdempotent">
+        INSERT INTO sync_idempotent_log (id, event_id, event_type, node_count, edge_count, status, retry_count, update_time, create_time, create_by, update_by)
+        VALUES (#{id}, #{eventId}, #{eventType}, #{nodeCount}, #{edgeCount}, #{status}, #{retryCount}, #{updateTime}, NOW(), #{createBy}, #{updateBy})
+        ON CONFLICT (id) DO UPDATE SET
+            event_type = EXCLUDED.event_type,
+            node_count = EXCLUDED.node_count,
+            edge_count = EXCLUDED.edge_count,
+            status = CASE
+                WHEN sync_idempotent_log.status = 'COMPLETED' THEN sync_idempotent_log.status
+                WHEN sync_idempotent_log.status = 'PROCESSING' AND EXCLUDED.status = 'PROCESSING' THEN sync_idempotent_log.status
+                ELSE EXCLUDED.status
+            END,
+            retry_count = EXCLUDED.retry_count,
+            update_time = EXCLUDED.update_time
+    </insert>
+
+    <select id="selectForUpdate" resultType="cn.com.mfish.graph.sync.entity.SyncIdempotentLog">
+        SELECT * FROM sync_idempotent_log WHERE event_id = #{eventId} FOR UPDATE
+    </select>
+
 </mapper>

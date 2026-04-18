@@ -62,8 +62,7 @@ public class GraphSyncConsumer implements RocketMQListener<GraphSyncEvent> {
 
         try {
             switch (event.getEventType()) {
-                case "CREATE":
-                case "UPDATE":
+                case "CREATE", "UPDATE":
                     nebulaWriteService.upsertNodesAndEdges(event);
                     break;
                 case "DELETE":
