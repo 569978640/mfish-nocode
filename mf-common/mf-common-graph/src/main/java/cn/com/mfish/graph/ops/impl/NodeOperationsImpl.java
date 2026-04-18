@@ -126,7 +126,7 @@ public class NodeOperationsImpl implements NodeOperations {
 
     @Override
     public boolean deleteNode(String vid) {
-        String ngql = "DELETE VERTEX " + SchemaUtils.quote(vid);
+        String ngql = "DELETE VERTEX " + SchemaUtils.quote(vid) + " WITH EDGES";
         try {
             return sessionPool.executeWrite(ngql);
         } catch (Exception e) {

@@ -49,7 +49,7 @@ public class NebulaSessionPoolConfig {
     /**
      * 初始化策略：EAGER-预热 / LAZY-懒加载
      */
-    private InitStrategy initStrategy = InitStrategy.EAGER;
+    private InitStrategy initStrategy = InitStrategy.LAZY;
 
     /**
      * 扩缩容检测间隔(s)

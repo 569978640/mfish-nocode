@@ -44,8 +44,8 @@ nebula:
   username: root
   password: nebula
   pool:
-    min-conns: 10
-    max-conns: 100
+    min-conns: 5
+    max-conns: 20
     timeout: 3000
     idle-timeout: 60
   space:

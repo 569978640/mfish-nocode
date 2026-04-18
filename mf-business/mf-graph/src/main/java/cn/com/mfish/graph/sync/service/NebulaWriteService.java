@@ -189,7 +189,7 @@ public class NebulaWriteService {
      * 删除节点
      */
     private void deleteVertex(String tagName, String vertexId) {
-        String ngql = String.format("DELETE VERTEX %s", SchemaUtils.quote(vertexId));
+        String ngql = String.format("DELETE VERTEX %s WITH EDGES", SchemaUtils.quote(vertexId));
 
         boolean success = nebulaGraphClient.getWritePool().executeWrite(ngql);
         if (!success) {
