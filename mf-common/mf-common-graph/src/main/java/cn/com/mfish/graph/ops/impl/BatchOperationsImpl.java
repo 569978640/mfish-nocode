@@ -85,8 +85,8 @@ public class BatchOperationsImpl implements BatchOperations {
                         } else {
                             try {
                                 Thread.sleep(retryConfig.getNextInterval(retryCount));
-                            } catch (InterruptedException e) {
-                                log.error("批量插入节点分片 {} 失败，已重试 {} 次，线程被中断", i, retryCount, e);
+                            } catch (InterruptedException e1) {
+                                log.error("批量插入节点分片 {} 失败，已重试 {} 次，线程被中断", i, retryCount, e1);
                             }
                         }
                     }
@@ -164,7 +164,11 @@ public class BatchOperationsImpl implements BatchOperations {
                             }
                             log.error("批量插入边分片 {} 失败，已重试 {} 次", i, retryCount, e);
                         } else {
-                            Thread.sleep(retryConfig.getNextInterval(retryCount));
+                            try {
+                                Thread.sleep(retryConfig.getNextInterval(retryCount));
+                            } catch (InterruptedException e1) {
+                                log.error("批量插入边分片 {} 失败，已重试 {} 次，线程被中断", i, retryCount, e1);
+                            }
                         }
                     }
                 }
