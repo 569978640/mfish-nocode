@@ -74,7 +74,7 @@ public class PathQuery {
      */
     public List<String> findPaths(String fromVid, String toVid) {
         StringBuilder ngql = new StringBuilder();
-        ngql.append("FIND ALL PATHS FROM ");
+        ngql.append("FIND ALL PATH FROM ");
         ngql.append(SchemaUtils.quote(fromVid));
         ngql.append(" TO ");
         ngql.append(SchemaUtils.quote(toVid));
@@ -85,6 +85,7 @@ public class PathQuery {
             ngql.append("*");
         }
         ngql.append(" UP TO ").append(maxHop).append(" STEPS");
+        ngql.append(" YIELD path AS p");
 
         try {
             ResultSet result = sessionPool.executeQuery(ngql.toString());

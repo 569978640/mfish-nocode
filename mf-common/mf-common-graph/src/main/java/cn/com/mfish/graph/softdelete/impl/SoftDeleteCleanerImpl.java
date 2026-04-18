@@ -43,8 +43,7 @@ public class SoftDeleteCleanerImpl implements SoftDeleteCleaner {
     public boolean restoreData(String vid) {
         String ngql = "UPDATE VERTEX " + vid + " SET `deleted` = false";
         try {
-            var result = sessionPool.executeWrite(ngql);
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql);
         } catch (Exception e) {
             log.error("恢复软删除数据失败: vid={}", vid, e);
             return false;

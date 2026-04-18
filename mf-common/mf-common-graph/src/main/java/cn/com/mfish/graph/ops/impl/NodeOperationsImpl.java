@@ -30,12 +30,12 @@ public class NodeOperationsImpl implements NodeOperations {
     @Override
     public boolean insertNode(GraphNode node) {
         if (node.getId() == null) {
-            node.setId(vidGenerator.generate(node.getType(), node.getBizCode()));
+            node.setId(vidGenerator.generate(node.getNodeType(), node.getBizCode()));
         }
 
         StringBuilder ngql = new StringBuilder();
         ngql.append("INSERT VERTEX ");
-        ngql.append(SchemaUtils.quote(node.getType()));
+        ngql.append(SchemaUtils.quote(node.getNodeType()));
         ngql.append("(");
 
         List<String> fields = getNodeFields(node);
@@ -49,8 +49,7 @@ public class NodeOperationsImpl implements NodeOperations {
         ngql.append(")");
 
         try {
-            ResultSet result = sessionPool.executeWrite(ngql.toString());
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql.toString());
         } catch (Exception e) {
             log.error("插入节点失败: {}", node.getId(), e);
             throw new BusinessException("插入节点失败", e);
@@ -60,14 +59,14 @@ public class NodeOperationsImpl implements NodeOperations {
     @Override
     public boolean upsertNode(GraphNode node) {
         if (node.getId() == null) {
-            node.setId(vidGenerator.generate(node.getType(), node.getBizCode()));
+            node.setId(vidGenerator.generate(node.getNodeType(), node.getBizCode()));
         }
 
         StringBuilder ngql = new StringBuilder();
         ngql.append("UPSERT VERTEX ");
         ngql.append(SchemaUtils.quote(node.getId()));
         ngql.append(" ON ");
-        ngql.append(SchemaUtils.quote(node.getType()));
+        ngql.append(SchemaUtils.quote(node.getNodeType()));
         ngql.append(" ");
 
         List<String> fields = getNodeFields(node);
@@ -76,13 +75,12 @@ public class NodeOperationsImpl implements NodeOperations {
         ngql.append("SET ");
         List<String> setClauses = new ArrayList<>();
         for (int i = 0; i < fields.size(); i++) {
-            setClauses.append(fields.get(i) + " = " + values.get(i));
+            setClauses.add(fields.get(i) + " = " + values.get(i));
         }
         ngql.append(String.join(", ", setClauses));
 
         try {
-            ResultSet result = sessionPool.executeWrite(ngql.toString());
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql.toString());
         } catch (Exception e) {
             log.error("Upsert 节点失败: {}", node.getId(), e);
             throw new BusinessException("Upsert 节点失败", e);
@@ -99,7 +97,7 @@ public class NodeOperationsImpl implements NodeOperations {
         ngql.append("UPDATE VERTEX ");
         ngql.append(SchemaUtils.quote(node.getId()));
         ngql.append(" ON ");
-        ngql.append(SchemaUtils.quote(node.getType()));
+        ngql.append(SchemaUtils.quote(node.getNodeType()));
         ngql.append(" SET ");
 
         List<String> setClauses = new ArrayList<>();
@@ -119,8 +117,7 @@ public class NodeOperationsImpl implements NodeOperations {
         ngql.append(String.join(", ", setClauses));
 
         try {
-            ResultSet result = sessionPool.executeWrite(ngql.toString());
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql.toString());
         } catch (Exception e) {
             log.error("更新节点失败: {}", node.getId(), e);
             throw new BusinessException("更新节点失败", e);
@@ -131,8 +128,7 @@ public class NodeOperationsImpl implements NodeOperations {
     public boolean deleteNode(String vid) {
         String ngql = "DELETE VERTEX " + SchemaUtils.quote(vid);
         try {
-            ResultSet result = sessionPool.executeWrite(ngql);
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql);
         } catch (Exception e) {
             log.error("删除节点失败: {}", vid, e);
             throw new BusinessException("删除节点失败", e);
@@ -143,8 +139,7 @@ public class NodeOperationsImpl implements NodeOperations {
     public boolean softDeleteNode(String vid, String deleteBy) {
         String ngql = "UPDATE VERTEX " + SchemaUtils.quote(vid) + " SET `deleted` = true, `update_by` = \"" + escapeValue(deleteBy) + "\"";
         try {
-            ResultSet result = sessionPool.executeWrite(ngql);
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql);
         } catch (Exception e) {
             log.error("软删除节点失败: {}", vid, e);
             throw new BusinessException("软删除节点失败", e);

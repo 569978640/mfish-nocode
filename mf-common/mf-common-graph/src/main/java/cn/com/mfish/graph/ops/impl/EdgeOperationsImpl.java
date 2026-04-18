@@ -32,7 +32,7 @@ public class EdgeOperationsImpl implements EdgeOperations {
     public boolean insertEdge(GraphEdge edge) {
         StringBuilder ngql = new StringBuilder();
         ngql.append("INSERT EDGE ");
-        ngql.append(SchemaUtils.quote(edge.getType()));
+        ngql.append(SchemaUtils.quote(edge.getEdgeType()));
         ngql.append("(");
 
         List<String> fields = getEdgeFields(edge);
@@ -53,8 +53,7 @@ public class EdgeOperationsImpl implements EdgeOperations {
         ngql.append(")");
 
         try {
-            ResultSet result = sessionPool.executeWrite(ngql.toString());
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql.toString());
         } catch (Exception e) {
             log.error("插入边失败: {} -> {}", edge.getFromId(), edge.getToId(), e);
             throw new BusinessException("插入边失败", e);
@@ -74,7 +73,7 @@ public class EdgeOperationsImpl implements EdgeOperations {
         }
 
         ngql.append(" ON ");
-        ngql.append(SchemaUtils.quote(edge.getType()));
+        ngql.append(SchemaUtils.quote(edge.getEdgeType()));
         ngql.append(" ");
 
         List<String> setClauses = new ArrayList<>();
@@ -92,8 +91,7 @@ public class EdgeOperationsImpl implements EdgeOperations {
         ngql.append(String.join(", ", setClauses));
 
         try {
-            ResultSet result = sessionPool.executeWrite(ngql.toString());
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql.toString());
         } catch (Exception e) {
             log.error("Upsert 边失败: {} -> {}", edge.getFromId(), edge.getToId(), e);
             throw new BusinessException("Upsert 边失败", e);
@@ -108,7 +106,7 @@ public class EdgeOperationsImpl implements EdgeOperations {
         ngql.append(" -> ");
         ngql.append(SchemaUtils.quote(edge.getToId()));
         ngql.append(" ON ");
-        ngql.append(SchemaUtils.quote(edge.getType()));
+        ngql.append(SchemaUtils.quote(edge.getEdgeType()));
         ngql.append(" SET ");
 
         List<String> setClauses = new ArrayList<>();
@@ -125,8 +123,7 @@ public class EdgeOperationsImpl implements EdgeOperations {
         ngql.append(String.join(", ", setClauses));
 
         try {
-            ResultSet result = sessionPool.executeWrite(ngql.toString());
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql.toString());
         } catch (Exception e) {
             log.error("更新边失败: {} -> {}", edge.getFromId(), edge.getToId(), e);
             throw new BusinessException("更新边失败", e);
@@ -138,8 +135,7 @@ public class EdgeOperationsImpl implements EdgeOperations {
         String ngql = "DELETE EDGE " + SchemaUtils.quote(edgeType) + " " +
                       SchemaUtils.quote(fromId) + " -> " + SchemaUtils.quote(toId);
         try {
-            ResultSet result = sessionPool.executeWrite(ngql);
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql);
         } catch (Exception e) {
             log.error("删除边失败: {} -> {}", fromId, toId, e);
             throw new BusinessException("删除边失败", e);
@@ -152,8 +148,7 @@ public class EdgeOperationsImpl implements EdgeOperations {
                       " ON " + SchemaUtils.quote(edgeType) +
                       " SET `deleted` = true, `update_by` = \"" + escapeValue(deleteBy) + "\"";
         try {
-            ResultSet result = sessionPool.executeWrite(ngql);
-            return result.isSucceeded();
+            return sessionPool.executeWrite(ngql);
         } catch (Exception e) {
             log.error("软删除边失败: {} -> {}", fromId, toId, e);
             throw new BusinessException("软删除边失败", e);

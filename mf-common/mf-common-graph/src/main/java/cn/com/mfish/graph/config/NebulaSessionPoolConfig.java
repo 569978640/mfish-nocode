@@ -77,6 +77,17 @@ public class NebulaSessionPoolConfig {
     private int activeSessionTimeout = 30;
 
     /**
+     * 从 NebulaGraphProperties 的 pool 配置更新
+     */
+    public void updateFromProperties(NebulaGraphProperties.PoolConfig poolConfig) {
+        if (poolConfig != null) {
+            this.minIdle = poolConfig.getMinConns();
+            this.maxPoolSize = poolConfig.getMaxConns();
+            this.idleTimeout = poolConfig.getIdleTimeout();
+        }
+    }
+
+    /**
      * 拒绝策略枚举
      */
     public enum RejectPolicy {
