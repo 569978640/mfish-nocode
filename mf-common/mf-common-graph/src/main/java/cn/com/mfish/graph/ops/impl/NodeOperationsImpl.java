@@ -253,18 +253,18 @@ public class NodeOperationsImpl implements NodeOperations {
 
     private List<String> getNodeValues(GraphNode node) {
         List<String> values = new ArrayList<>();
-        values.add("\"" + escapeValue(node.getBizCode()) + "\"");
-        values.add("\"" + escapeValue(node.getName()) + "\"");
+        values.add("'" + escapeValue(node.getBizCode()) + "'");
+        values.add("'" + escapeValue(node.getName()) + "'");
         if (node.getDescription() != null) {
-            values.add("\"" + escapeValue(node.getDescription()) + "\"");
+            values.add("'" + escapeValue(node.getDescription()) + "'");
         }
         if (node.getExtData() != null) {
-            values.add("\"" + escapeValue(node.getExtData()) + "\"");
+            values.add("'" + escapeValue(node.getExtData()) + "'");
         }
-        values.add("\"" + escapeValue(node.getCreateBy()) + "\"");
+        values.add("'" + escapeValue(node.getCreateBy()) + "'");
         values.add(String.valueOf(System.currentTimeMillis()));
         if (node.getUpdateBy() != null) {
-            values.add("\"" + escapeValue(node.getUpdateBy()) + "\"");
+            values.add("'" + escapeValue(node.getUpdateBy()) + "'");
         }
         return values;
     }
