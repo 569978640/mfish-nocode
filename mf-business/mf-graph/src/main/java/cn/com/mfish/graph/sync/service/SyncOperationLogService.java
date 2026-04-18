@@ -3,6 +3,7 @@ package cn.com.mfish.graph.sync.service;
 import cn.com.mfish.common.core.web.PageResult;
 import cn.com.mfish.common.core.web.ReqPage;
 import cn.com.mfish.common.core.web.Result;
+import cn.com.mfish.graph.model.event.GraphSyncEvent;
 import cn.com.mfish.graph.sync.entity.SyncOperationLog;
 import cn.com.mfish.graph.sync.req.ReqSyncOperationLog;
 import com.baomidou.mybatisplus.extension.service.IService;
@@ -73,4 +74,43 @@ public interface SyncOperationLogService extends IService<SyncOperationLog> {
      * @throws IOException IO异常
      */
     void export(ReqSyncOperationLog reqSyncOperationLog, ReqPage reqPage) throws IOException;
+
+    /**
+     * 记录接收日志
+     *
+     * @param event 图同步事件
+     */
+    void logReceive(GraphSyncEvent event);
+
+    /**
+     * 记录跳过日志（幂等检查跳过）
+     *
+     * @param event 图同步事件
+     * @param reason 跳过原因
+     */
+    void logSkip(GraphSyncEvent event, String reason);
+
+    /**
+     * 记录处理开始日志
+     *
+     * @param event 图同步事件
+     */
+    void logStart(GraphSyncEvent event);
+
+    /**
+     * 记录处理成功日志
+     *
+     * @param event 图同步事件
+     * @param durationMs 处理耗时
+     */
+    void logSuccess(GraphSyncEvent event, long durationMs);
+
+    /**
+     * 记录处理失败日志
+     *
+     * @param event 图同步事件
+     * @param durationMs 处理耗时
+     * @param errorMessage 错误信息
+     */
+    void logFailed(GraphSyncEvent event, long durationMs, String errorMessage);
 }

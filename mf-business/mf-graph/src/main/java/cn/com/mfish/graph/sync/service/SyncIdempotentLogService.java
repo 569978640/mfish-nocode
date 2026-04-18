@@ -3,11 +3,13 @@ package cn.com.mfish.graph.sync.service;
 import cn.com.mfish.common.core.web.PageResult;
 import cn.com.mfish.common.core.web.ReqPage;
 import cn.com.mfish.common.core.web.Result;
+import cn.com.mfish.graph.model.event.GraphSyncEvent;
 import cn.com.mfish.graph.sync.entity.SyncIdempotentLog;
 import cn.com.mfish.graph.sync.req.ReqSyncIdempotentLog;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.io.IOException;
+import java.util.Date;
 
 /**
  * @description: 幂等表
@@ -53,7 +55,7 @@ public interface SyncIdempotentLogService extends IService<SyncIdempotentLog> {
      * 批量删除
      *
      * @param ids 批量ID
-     * @return 返回幂等表-删除结果
+     * @return 返回幂等表-批量删除结果
      */
     Result<Boolean> deleteBatch(String ids);
 
@@ -73,4 +75,46 @@ public interface SyncIdempotentLogService extends IService<SyncIdempotentLog> {
      * @throws IOException IO异常
      */
     void export(ReqSyncIdempotentLog reqSyncIdempotentLog, ReqPage reqPage) throws IOException;
+
+    /**
+     * 幂等检查并创建处理记录
+     * 基于 eventId 进行幂等检查，防止重复消费
+     *
+     * @param event 图同步事件
+     * @return null表示已处理过需要跳过，非null表示需要处理
+     */
+    SyncIdempotentLog checkAndCreate(GraphSyncEvent event);
+
+    /**
+     * 根据 eventId 查询幂等记录
+     *
+     * @param eventId 事件ID
+     * @return 幂等记录
+     */
+    SyncIdempotentLog getByEventId(String eventId);
+
+    /**
+     * 标记处理成功
+     *
+     * @param eventId 事件ID
+     */
+    void markCompleted(String eventId);
+
+    /**
+     * 标记处理失败
+     *
+     * @param eventId 事件ID
+     * @param errorMessage 错误信息
+     * @param retryCount 重试次数
+     */
+    void markFailed(String eventId, String errorMessage, int retryCount);
+
+    /**
+     * 更新状态
+     *
+     * @param eventId 事件ID
+     * @param status 状态
+     * @param errorMessage 错误信息
+     */
+    void updateStatus(String eventId, String status, String errorMessage);
 }

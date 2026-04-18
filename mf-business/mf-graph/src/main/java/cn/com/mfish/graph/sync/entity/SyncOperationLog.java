@@ -59,5 +59,5 @@ public class SyncOperationLog extends BaseEntity<Long> {
 	private String errorMessage;
     @ExcelProperty("详细信息")
     @Schema(description = "详细信息")
-	private unknown detail;
+	private String detail;
 }

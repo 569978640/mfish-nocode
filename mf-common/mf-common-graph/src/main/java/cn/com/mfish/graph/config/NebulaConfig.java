@@ -2,7 +2,7 @@ package cn.com.mfish.graph.config;
 
 import lombok.Data;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.context.annotation.Configuration;
+import org.springframework.stereotype.Component;
 
 /**
  * NebulaGraph配置类
@@ -12,7 +12,7 @@ import org.springframework.context.annotation.Configuration;
  * @date 2026-04-16
  */
 @Data
-@Configuration
+@Component
 @ConfigurationProperties(prefix = "nebula")
 public class NebulaConfig {
     /**

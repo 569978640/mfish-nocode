@@ -1,6 +1,7 @@
 package cn.com.mfish.plm.base.service.impl;
 
 import cn.com.mfish.graph.model.event.GraphSyncEvent;
+import cn.com.mfish.graph.model.edge.GraphEdge;
 import cn.com.mfish.graph.model.node.GraphNode;
 import cn.com.mfish.plm.base.service.PlmGraphSyncClient;
 import lombok.extern.slf4j.Slf4j;
@@ -39,10 +40,10 @@ public class PlmGraphSyncClientImpl implements PlmGraphSyncClient {
             return;
         }
         GraphNode node = convertToGraphNode(entity, nodeType);
-        GraphSyncEvent event = new GraphSyncEvent();
-        event.setEventType(eventType);
-        event.setNodes(List.of(node));
-        sendEvent(event);
+        GraphSyncEvent graphEvent = new GraphSyncEvent();
+        graphEvent.setEventType(eventType);
+        graphEvent.setNodes(List.of(node));
+        sendEvent(graphEvent);
     }
 
     @Override
@@ -54,37 +55,76 @@ public class PlmGraphSyncClientImpl implements PlmGraphSyncClient {
         for (T entity : entities) {
             nodes.add(convertToGraphNode(entity, nodeType));
         }
-        GraphSyncEvent event = new GraphSyncEvent();
-        event.setEventType(eventType);
-        event.setNodes(nodes);
-        sendEvent(event);
+        GraphSyncEvent graphEvent = new GraphSyncEvent();
+        graphEvent.setEventType(eventType);
+        graphEvent.setNodes(nodes);
+        sendEvent(graphEvent);
         log.info("批量发送图同步事件: nodeType={}, eventType={}, count={}", nodeType, eventType, nodes.size());
     }
 
-    private void sendEvent(GraphSyncEvent event) {
-        if (event.getEventId() == null) {
-            event.setEventId(UUID.randomUUID().toString());
+    @Override
+    public void sendGraphSyncEventWithEdges(List<GraphNode> nodes, List<GraphEdge> edges, String eventType) {
+        if ((nodes == null || nodes.isEmpty()) && (edges == null || edges.isEmpty())) {
+            return;
         }
-        if (event.getTimestamp() == null) {
-            event.setTimestamp(System.currentTimeMillis());
+        GraphSyncEvent graphEvent = new GraphSyncEvent();
+        graphEvent.setEventType(eventType);
+        graphEvent.setNodes(nodes);
+        graphEvent.setEdges(edges);
+        sendEvent(graphEvent);
+        log.info("发送包含边的图同步事件: eventType={}, nodes={}, edges={}",
+                eventType,
+                nodes != null ? nodes.size() : 0,
+                edges != null ? edges.size() : 0);
+    }
+
+    @Override
+    public void sendGraphSyncEdgeEvent(GraphEdge edge, String eventType) {
+        if (edge == null) {
+            return;
         }
-        if (event.getSource() == null) {
-            event.setSource("mf-plm");
+        GraphSyncEvent graphEvent = new GraphSyncEvent();
+        graphEvent.setEventType(eventType);
+        graphEvent.setEdges(List.of(edge));
+        sendEvent(graphEvent);
+    }
+
+    @Override
+    public void sendGraphSyncEdgeEventBatch(List<GraphEdge> edges, String eventType) {
+        if (edges == null || edges.isEmpty()) {
+            return;
+        }
+        GraphSyncEvent graphEvent = new GraphSyncEvent();
+        graphEvent.setEventType(eventType);
+        graphEvent.setEdges(edges);
+        sendEvent(graphEvent);
+        log.info("批量发送边图同步事件: eventType={}, count={}", eventType, edges.size());
+    }
+
+    private void sendEvent(GraphSyncEvent graphEvent) {
+        if (graphEvent.getEventId() == null) {
+            graphEvent.setEventId(UUID.randomUUID().toString());
+        }
+        if (graphEvent.getTimestamp() == null) {
+            graphEvent.setTimestamp(System.currentTimeMillis());
+        }
+        if (graphEvent.getSource() == null) {
+            graphEvent.setSource("mf-plm");
         }
         try {
-            rocketMQTemplate.asyncSend(topic, event, new SendCallback() {
+            rocketMQTemplate.asyncSend(topic, graphEvent, new SendCallback() {
                 @Override
                 public void onSuccess(SendResult sendResult) {
-                    log.info("图同步事件发送成功, eventId={}, result={}", event.getEventId(), sendResult.getMsgId());
+                    log.info("图同步事件发送成功, eventId={}, result={}", graphEvent.getEventId(), sendResult.getMsgId());
                 }
 
                 @Override
                 public void onException(Throwable e) {
-                    log.error("图同步事件发送失败, eventId={}", event.getEventId(), e);
+                    log.error("图同步事件发送失败, eventId={}", graphEvent.getEventId(), e);
                 }
             });
         } catch (Exception e) {
-            log.error("发送图同步事件异常, eventId={}", event.getEventId(), e);
+            log.error("发送图同步事件异常, eventId={}", graphEvent.getEventId(), e);
         }
     }
 

@@ -4,20 +4,21 @@ import cn.com.mfish.common.core.utils.excel.ExcelUtils;
 import cn.com.mfish.common.core.web.PageResult;
 import cn.com.mfish.common.core.web.ReqPage;
 import cn.com.mfish.common.core.web.Result;
+import cn.com.mfish.graph.model.event.GraphSyncEvent;
 import cn.com.mfish.graph.sync.entity.SyncOperationLog;
 import cn.com.mfish.graph.sync.req.ReqSyncOperationLog;
 import cn.com.mfish.graph.sync.mapper.SyncOperationLogMapper;
 import cn.com.mfish.graph.sync.service.SyncOperationLogService;
+import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.pagehelper.PageHelper;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
-import java.util.Arrays;
 import java.io.IOException;
-import java.util.List;
 import java.text.SimpleDateFormat;
+import java.util.Arrays;
 import java.util.Date;
-
-import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
+import java.util.List;
 
 /**
 * @description: 图同步操作日志
@@ -25,6 +26,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 * @date: 2026-04-18
 * @version: V2.3.1
 */
+@Slf4j
 @Service
 public class SyncOperationLogServiceImpl extends ServiceImpl<SyncOperationLogMapper, SyncOperationLog> implements SyncOperationLogService {
     /**
@@ -128,7 +130,73 @@ public class SyncOperationLogServiceImpl extends ServiceImpl<SyncOperationLogMap
      */
     @Override
     public void export(ReqSyncOperationLog reqSyncOperationLog, ReqPage reqPage) throws IOException {
-        //swagger调用会用问题，使用postman测试
         ExcelUtils.write("图同步操作日志_" + new SimpleDateFormat("yyyy-MM-dd").format(new Date()), queryList(reqSyncOperationLog, reqPage));
+    }
+
+    @Override
+    public void logReceive(GraphSyncEvent event) {
+        log.info("[MQ接收] eventId={}, eventType={}, nodes={}, edges={}",
+            event.getEventId(), event.getEventType(),
+            event.getNodes() == null ? 0 : event.getNodes().size(),
+            event.getEdges() == null ? 0 : event.getEdges().size());
+    }
+
+    @Override
+    public void logSkip(GraphSyncEvent event, String reason) {
+        log.info("[MQ跳过] eventId={}, reason={}", event.getEventId(), reason);
+
+        SyncOperationLog opLog = new SyncOperationLog();
+        opLog.setEventId(event.getEventId());
+        opLog.setOperation("SKIP");
+        opLog.setNodeCount(event.getNodes() == null ? 0L : (long) event.getNodes().size());
+        opLog.setEdgeCount(event.getEdges() == null ? 0L : (long) event.getEdges().size());
+        opLog.setStartTime(new Date());
+        opLog.setEndTime(new Date());
+        opLog.setStatus("SKIPPED");
+        opLog.setErrorMessage(reason);
+        save(opLog);
+    }
+
+    @Override
+    public void logStart(GraphSyncEvent event) {
+        SyncOperationLog opLog = new SyncOperationLog();
+        opLog.setEventId(event.getEventId());
+        opLog.setOperation("PROCESS");
+        opLog.setNodeCount(event.getNodes() == null ? 0L : (long) event.getNodes().size());
+        opLog.setEdgeCount(event.getEdges() == null ? 0L : (long) event.getEdges().size());
+        opLog.setStartTime(new Date());
+        opLog.setStatus("PROCESSING");
+        save(opLog);
+        log.debug("[处理开始] eventId={}", event.getEventId());
+    }
+
+    @Override
+    public void logSuccess(GraphSyncEvent event, long durationMs) {
+        SyncOperationLog opLog = new SyncOperationLog();
+        opLog.setEventId(event.getEventId());
+        opLog.setOperation("COMPLETE");
+        opLog.setStartTime(new Date(System.currentTimeMillis() - durationMs));
+        opLog.setEndTime(new Date());
+        opLog.setDurationMs(durationMs);
+        opLog.setStatus("SUCCESS");
+        save(opLog);
+
+        log.info("[处理成功] eventId={}, duration={}ms", event.getEventId(), durationMs);
+    }
+
+    @Override
+    public void logFailed(GraphSyncEvent event, long durationMs, String errorMessage) {
+        SyncOperationLog opLog = new SyncOperationLog();
+        opLog.setEventId(event.getEventId());
+        opLog.setOperation("FAILED");
+        opLog.setStartTime(new Date(System.currentTimeMillis() - durationMs));
+        opLog.setEndTime(new Date());
+        opLog.setDurationMs(durationMs);
+        opLog.setStatus("FAILED");
+        opLog.setErrorMessage(errorMessage);
+        save(opLog);
+
+        log.error("[处理失败] eventId={}, duration={}ms, error={}",
+            event.getEventId(), durationMs, errorMessage);
     }
 }
