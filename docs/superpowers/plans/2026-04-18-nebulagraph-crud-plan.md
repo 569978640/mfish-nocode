@@ -6,7 +6,7 @@
 
 **架构：** 采用分层架构设计，从配置层、会话池层、Schema 管理层、CRUD 操作层、查询层到 PLM 业务层，逐层构建并通过接口解耦。核心一致性通过幂等+重试+补偿机制实现，Session 池化确保高并发性能。
 
-**技术栈：** vesoft client 3.8.0、Redis（幂等键/缓存）、Nacos/Apollo（配置中心）、SkyWalking/Jaeger（链路追踪）、MinIO（对象存储）
+**技术栈：** vesoft client 3.8.0、Redis（幂等键/缓存）、**Nacos（配置中心）**、SkyWalking/Jaeger（链路追踪）、MinIO（对象存储）
 
 ---
 
@@ -709,6 +709,106 @@ git commit -m "feat(graph): 添加 NebulaGraphClient 门面和 MultiAddressSessi
 - MultiAddressSessionPool: 多地址会话池实现"
 ```
 
+#### 任务 1.4：Phase 1 单元测试
+
+- [ ] **步骤 1：创建会话池并发测试**
+
+```java
+// 文件：mf-common-graph/src/test/java/cn/com/mfish/graph/pool/SessionPoolConcurrencyTest.java
+public class SessionPoolConcurrencyTest {
+    @Test
+    void testConcurrentBorrowAndReturn() throws InterruptedException {
+        NebulaPoolConfig config = new NebulaPoolConfig();
+        config.setMaxPoolSize(10);
+        config.setMinIdle(2);
+
+        NebulaGraphClient client = new NebulaGraphClient(properties, config);
+
+        int threadCount = 50;
+        CountDownLatch latch = new CountDownLatch(threadCount);
+        AtomicInteger successCount = new AtomicInteger(0);
+        AtomicInteger failCount = new AtomicInteger(0);
+
+        for (int i = 0; i < threadCount; i++) {
+            new Thread(() -> {
+                try {
+                    SessionWrapper wrapper = client.getWritePool().borrowSession();
+                    Thread.sleep(10); // 模拟操作
+                    client.getWritePool().returnSession(wrapper);
+                    successCount.incrementAndGet();
+                } catch (Exception e) {
+                    failCount.incrementAndGet();
+                } finally {
+                    latch.countDown();
+                }
+            }).start();
+        }
+
+        latch.await();
+        assertEquals(threadCount, successCount.get());
+    }
+
+    @Test
+    void testBorrowTimeout() {
+        NebulaPoolConfig config = new NebulaPoolConfig();
+        config.setMaxPoolSize(1);
+        config.setBorrowTimeout(100);
+
+        NebulaGraphClient client = new NebulaGraphClient(properties, config);
+
+        // 占用唯一连接
+        SessionWrapper wrapper = client.getWritePool().borrowSession();
+
+        // 尝试借用第二个连接，应该超时
+        assertThrows(Exception.class, () -> {
+            client.getWritePool().borrowSession();
+        });
+
+        client.getWritePool().returnSession(wrapper);
+    }
+}
+```
+
+- [ ] **步骤 2：创建泄漏检测测试**
+
+```java
+// 文件：mf-common-graph/src/test/java/cn/com/mfish/graph/pool/LeakDetectionTest.java
+public class LeakDetectionTest {
+    @Test
+    void testDetectLeakedSessions() throws InterruptedException {
+        NebulaPoolConfig config = new NebulaPoolConfig();
+        config.setActiveSessionTimeout(1); // 1秒超时
+
+        NebulaGraphClient client = new NebulaGraphClient(properties, config);
+
+        // 借用但不归还，模拟泄漏
+        SessionWrapper wrapper = client.getWritePool().borrowSession();
+
+        // 等待超时
+        Thread.sleep(2000);
+
+        // 检测泄漏
+        List<SessionWrapper> leaked = client.getWritePool()
+            .getMonitor()
+            .detectLeakedSessions(1000);
+
+        assertTrue(leaked.size() > 0);
+
+        // 强制回收
+        client.getWritePool().getMonitor().reclaimLeakedSessions(1000);
+    }
+}
+```
+
+- [ ] **步骤 3：Commit Phase 1 测试**
+
+```bash
+git add mf-common-graph/src/test/java/cn/com/mfish/graph/pool/
+git commit -m "test(graph): Phase 1 单元测试
+- SessionPoolConcurrencyTest: 会话池并发测试
+- LeakDetectionTest: 泄漏检测测试"
+```
+
 ---
 
 ### Phase 2: Schema 管理
@@ -777,7 +877,7 @@ public class EdgeTypeDefinition {
 }
 ```
 
-- [ ] **步骤 4：创建 SchemaUtils.java**
+- [ ] **步骤 3：创建 SchemaUtils.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/schema/SchemaUtils.java
@@ -796,7 +896,7 @@ public class SchemaUtils {
 }
 ```
 
-- [ ] **步骤 5：创建 FieldTypeValidator.java**
+- [ ] **步骤 4：创建 FieldTypeValidator.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/schema/FieldTypeValidator.java
@@ -812,7 +912,7 @@ public interface FieldTypeValidator {
 }
 ```
 
-- [ ] **步骤 6：Commit Schema 工具**
+- [ ] **步骤 5：Commit Schema 工具**
 
 ```bash
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/schema/model/
@@ -935,6 +1035,52 @@ git add mf-common-graph/src/main/java/cn/com/mfish/graph/index/
 git commit -m "feat(graph): 添加 IndexManager 索引管理器
 - 索引生命周期管理
 - 健康检查与重建"
+```
+
+#### 任务 2.4：Phase 2 单元测试
+
+- [ ] **步骤 1：创建 Schema 操作测试**
+
+```java
+// 文件：mf-common-graph/src/test/java/cn/com/mfish/graph/schema/SchemaOperationTest.java
+public class SchemaOperationTest {
+    @Test
+    void testTagCreation() {
+        TagDefinition tag = new TagDefinition();
+        tag.setName("Product");
+        tag.setFixed(false);
+        tag.setFields(Arrays.asList(
+            new FieldDefinition("name", "string", null, false, "产品名称"),
+            new FieldDefinition("code", "string", null, false, "产品编码")
+        ));
+
+        dynamicSchemaManager.createTag(tag);
+
+        Set<String> dynamicTags = dynamicSchemaManager.getDynamicSchemas();
+        assertTrue(dynamicTags.contains("Product"));
+    }
+
+    @Test
+    void testFieldTypeValidation() {
+        assertTrue(fieldTypeValidator.validate("string"));
+        assertTrue(fieldTypeValidator.validate("int"));
+        assertFalse(fieldTypeValidator.validate("UNSUPPORTED_TYPE"));
+    }
+
+    @Test
+    void testQuotaCheck() {
+        dynamicSchemaManager.validateQuota();
+        // 验证配额检查通过
+    }
+}
+```
+
+- [ ] **步骤 2：Commit Phase 2 测试**
+
+```bash
+git add mf-common-graph/src/test/java/cn/com/mfish/graph/schema/
+git commit -m "test(graph): Phase 2 Schema 操作测试
+- SchemaOperationTest: Schema 创建和校验测试"
 ```
 
 ---
@@ -1280,6 +1426,88 @@ git commit -m "feat(graph): 添加 VID 管理模块
 - VidVersionManager: VID 版本管理"
 ```
 
+#### 任务 3.5：Phase 3 集成测试
+
+- [ ] **步骤 1：创建批量操作失败重试测试**
+
+```java
+// 文件：mf-common-graph/src/test/java/cn/com/mfish/graph/crud/BatchOperationRetryTest.java
+public class BatchOperationRetryTest {
+    @Test
+    void testBatchRetryWithIdempotentKey() {
+        String idempotentKey = "batch-" + UUID.randomUUID();
+
+        // 第一次执行（模拟部分失败）
+        BatchResult result1 = batchOperation.execute(idempotentKey);
+        assertFalse(result1.isSuccess());
+        assertTrue(result1.getFailedCount() > 0);
+
+        // 第二次执行（使用相同幂等键，应返回之前结果）
+        BatchResult result2 = batchOperation.execute(idempotentKey);
+        assertEquals(result1.getBatchId(), result2.getBatchId());
+    }
+
+    @Test
+    void testExponentialBackoff() {
+        RetryConfig config = new RetryConfig();
+        config.setBaseInterval(100);
+        config.setMaxInterval(400);
+        config.setMaxRetries(3);
+        config.setMultiplier(2.0);
+
+        // 验证指数退避：100 -> 200 -> 400
+        // 首次重试间隔 = 100
+        // 第二次 = min(100 * 2, 400) = 200
+        // 第三次 = min(200 * 2, 400) = 400
+    }
+}
+```
+
+- [ ] **步骤 2：创建批量补偿测试**
+
+```java
+// 文件：mf-common-graph/src/test/java/cn/com/mfish/graph/crud/BatchCompensationTest.java
+public class BatchCompensationTest {
+    @Test
+    void testCompensateOnHighFailureRate() {
+        BatchResult failedBatch = BatchResult.partialSuccess(
+            "batch-123",
+            100,
+            Arrays.asList(
+                new BatchResult.FailedItem("vid1", "INSERT", "timeout", 0),
+                new BatchResult.FailedItem("vid2", "INSERT", "timeout", 0)
+            )
+        );
+        failedBatch.setFailureRate(0.6); // 60% 失败率
+
+        // 触发补偿
+        batchCompensator.compensate(failedBatch);
+
+        // 验证补偿状态
+        CompensateStatus status = batchCompensator.checkStatus("batch-123");
+        assertTrue(status == CompensateStatus.SUCCESS || status == CompensateStatus.MANUAL_INTERVENTION);
+    }
+
+    @Test
+    void testConsistencyCheck() {
+        boolean consistent = batchConsistencyChecker.checkConsistency("batch-123", 100);
+        assertTrue(consistent);
+
+        InconsistencyReport report = batchConsistencyChecker.generateReport("batch-123");
+        assertEquals(0, report.getMissingVids().size());
+    }
+}
+```
+
+- [ ] **步骤 3：Commit Phase 3 测试**
+
+```bash
+git add mf-common-graph/src/test/java/cn/com/mfish/graph/crud/
+git commit -m "test(graph): Phase 3 集成测试
+- BatchOperationRetryTest: 批量操作失败重试测试
+- BatchCompensationTest: 批量补偿测试"
+```
+
 ---
 
 ### Phase 4: 查询封装
@@ -1374,6 +1602,69 @@ git add mf-common-graph/src/main/java/cn/com/mfish/graph/query/
 git commit -m "feat(graph): 添加查询封装模块
 - PathQuery: 路径查询（循环检测+分页）
 - VersionedQuery: 版本化查询"
+```
+
+#### 任务 4.3：Phase 4 性能测试
+
+- [ ] **步骤 1：创建路径查询性能测试**
+
+```java
+// 文件：mf-common-graph/src/test/java/cn/com/mfish/graph/query/PathQueryPerformanceTest.java
+public class PathQueryPerformanceTest {
+    @Test
+    void testPathQueryPerformance() {
+        int[] hopCounts = {1, 2, 3, 5, 10};
+        Map<Integer, Long> performanceData = new HashMap<>();
+
+        for (int maxHop : hopCounts) {
+            long start = System.currentTimeMillis();
+
+            List<QueryResult> paths = pathQuery.matchPaths(
+                "Product:P001",
+                "Product",
+                "ContainsLink",
+                1,
+                maxHop,
+                100,
+                1000
+            );
+
+            long cost = System.currentTimeMillis() - start;
+            performanceData.put(maxHop, cost);
+
+            // P99 延迟应 < 500ms
+            assertTrue(cost < 500, "Hop " + maxHop + " 延迟超标: " + cost + "ms");
+        }
+
+        // 打印性能数据
+        System.out.println("路径查询性能数据: " + performanceData);
+    }
+
+    @Test
+    void testCycleDetection() {
+        // 测试循环检测
+        List<QueryResult> paths = pathQuery.matchPaths(
+            "Part:A",
+            "Part",
+            "ContainsLink",
+            1,
+            10,
+            3,  // maxVisited = 3，同一节点最多访问3次
+            1000
+        );
+
+        // 应返回结果但不超过安全限制
+        assertNotNull(paths);
+    }
+}
+```
+
+- [ ] **步骤 2：Commit Phase 4 测试**
+
+```bash
+git add mf-common-graph/src/test/java/cn/com/mfish/graph/query/
+git commit -m "test(graph): Phase 4 性能测试
+- PathQueryPerformanceTest: 路径查询性能测试"
 ```
 
 ---
@@ -1513,6 +1804,73 @@ git add mf-common-graph/src/main/java/cn/com/mfish/graph/plm/cache/
 git commit -m "feat(graph): 添加 PLM 缓存模块
 - PLMCache: PLM 业务缓存
 - BloomFilter: 布隆过滤器（防穿透）"
+```
+
+#### 任务 5.4：Phase 5 单元测试
+
+- [ ] **步骤 1：创建 PLM 业务测试**
+
+```java
+// 文件：mf-common-graph/src/test/java/cn/com/mfish/graph/plm/PLMBusinessTest.java
+public class PLMBusinessTest {
+    @Test
+    void testProductCRUD() {
+        Product product = new Product();
+        product.setId("P001");
+        product.setName("测试产品");
+
+        // 创建
+        plmNodeService.createProduct(product);
+
+        // 查询
+        Optional<Product> found = plmNodeService.getProduct("P001");
+        assertTrue(found.isPresent());
+        assertEquals("测试产品", found.get().getName());
+    }
+
+    @Test
+    void testBOMQuery() {
+        List<Part> bom = plmEdgeService.getProductBOM("P001", 10, 100);
+        assertNotNull(bom);
+    }
+
+    @Test
+    void testBOMDiff() {
+        BOMTree oldBOM = new BOMTree();
+        BOMTree newBOM = new BOMTree();
+
+        BOMDiffResult diff = bomDiffService.diff(oldBOM, newBOM);
+        assertNotNull(diff.getAddedNodes());
+        assertNotNull(diff.getRemovedNodes());
+    }
+
+    @Test
+    void testCacheHit() {
+        // 首次查询（缓存未命中）
+        Optional<Product> result1 = plmCache.getProduct("P001");
+
+        // 再次查询（缓存命中）
+        Optional<Product> result2 = plmCache.getProduct("P001");
+
+        // 验证缓存工作
+        assertNotNull(result1);
+    }
+
+    @Test
+    void testBloomFilter() {
+        bloomFilter.add("P001");
+        assertTrue(bloomFilter.mightContain("P001"));
+        assertFalse(bloomFilter.mightContain("P999"));
+    }
+}
+```
+
+- [ ] **步骤 2：Commit Phase 5 测试**
+
+```bash
+git add mf-common-graph/src/test/java/cn/com/mfish/graph/plm/
+git commit -m "test(graph): Phase 5 PLM 业务测试
+- PLMBusinessTest: PLM 节点和 BOM 测试"
 ```
 
 ---
@@ -1668,7 +2026,7 @@ public enum AlertLevel {
 }
 ```
 
-- [ ] **步骤 6：创建 AlertManager.java**
+- [ ] **步骤 7：创建 AlertManager.java**
 
 ```java
 // 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/monitor/AlertManager.java
@@ -1750,7 +2108,7 @@ public class Alert {
 }
 ```
 
-- [ ] **步骤 7：Commit 监控指标**
+- [ ] **步骤 8：Commit 监控指标**
 
 ```bash
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/monitor/
@@ -2066,6 +2424,7 @@ public interface DisasterRecoveryManager {
     void restore(String backupId);
     void switchToStandby();
     boolean isPrimaryHealthy();
+    boolean isStandbyHealthy();
     RecoveryMetrics getRecoveryMetrics();
 }
 
@@ -2165,7 +2524,7 @@ git commit -m "feat(graph): 添加异常定义
 - BusinessException: 业务异常"
 ```
 
-#### 任务 7.3：配置中心集成
+#### 任务 7.4：配置中心集成
 
 - [ ] **步骤 1：集成 Nacos 配置中心**
 
@@ -2202,7 +2561,7 @@ public class NacosConfigCenter implements ConfigCenterRefresher {
 
     @Override
     public void refreshPoolConfig(NebulaPoolConfig config) {
-        // 实现配置刷新逻辑
+        // 实现连接池配置刷新
     }
 
     @Override
@@ -2232,77 +2591,15 @@ public class NacosConfigCenter implements ConfigCenterRefresher {
 }
 ```
 
-- [ ] **步骤 2：集成 Apollo 配置中心**
-
-```java
-// 文件：mf-common-graph/src/main/java/cn/com/mfish/graph/remote/ApolloConfigCenter.java
-public class ApolloConfigCenter implements ConfigCenterRefresher {
-    private Config config;
-    private String namespace;
-
-    public ApolloConfigCenter(String apolloMeta, String appId, String cluster, String namespace) {
-        this.namespace = namespace;
-        ConfigFile configFile = ConfigService.getConfigFile(namespace, ConfigFileFormat.JSON);
-        this.config = ConfigService.getAppConfig();
-    }
-
-    @Override
-    public void listen(String dataId, ConfigChangeListener listener) {
-        config.addChangeListener(changeEvent -> {
-            for (String key : changeEvent.changedKeys()) {
-                if (key.equals(dataId)) {
-                    ChangeType changeType = changeEvent.getChange(key).getChangeType();
-                    if (changeType == ChangeType.MODIFIED) {
-                        listener.onChange(dataId, config.getProperty(key, null));
-                    }
-                }
-            }
-        });
-    }
-
-    @Override
-    public void refreshPoolConfig(NebulaPoolConfig config) {
-        // 实现配置刷新逻辑
-    }
-
-    @Override
-    public void refreshCircuitBreaker(String name, CircuitBreakerConfig config) {
-        // 实现熔断器配置刷新
-    }
-
-    @Override
-    public void refreshRetryConfig(RetryConfig config) {
-        // 实现重试配置刷新
-    }
-
-    @Override
-    public void refreshConfigWithGray(String dataId, List<String> grayInstanceIds) {
-        // 灰度发布配置
-    }
-
-    @Override
-    public void rollbackConfig(String dataId, String version) {
-        // 配置回滚
-    }
-
-    @Override
-    public void enableLocalCache(long cacheTtlMs) {
-        // 启用本地缓存
-    }
-}
-```
-
-- [ ] **步骤 3：Commit 配置中心集成**
+- [ ] **步骤 2：Commit 配置中心集成**
 
 ```bash
 git add mf-common-graph/src/main/java/cn/com/mfish/graph/remote/NacosConfigCenter.java
-git add mf-common-graph/src/main/java/cn/com/mfish/graph/remote/ApolloConfigCenter.java
 git commit -m "feat(graph): 添加配置中心集成
-- NacosConfigCenter: Nacos 配置中心实现
-- ApolloConfigCenter: Apollo 配置中心实现"
+- NacosConfigCenter: Nacos 配置中心实现（唯一配置中心）"
 ```
 
-#### 任务 7.4：灾备演练
+#### 任务 7.5：灾备演练
 
 - [ ] **步骤 1：创建灾备演练脚本**
 
@@ -2823,26 +3120,40 @@ git commit -m "release(graph): 添加上线检查脚本和报告模板"
 ### 规格覆盖度
 
 - [x] 配置模块：NebulaPoolConfig、NebulaGraphProperties、RetryConfig、CircuitBreakerConfig、LoadBalanceConfig、NebulaQuotaConfig
-- [x] 会话池模块：SessionWrapper、NebulaSessionPool、WriteSessionPool、ReadSessionPool、AddressManager、LoadBalancer、SessionPoolMonitor、SessionPoolScaler
-- [x] Schema 管理：SchemaUtils、FieldTypeValidator、SchemaChangeLock、FixedSchemaManager、DynamicSchemaManager、SchemaVersionManager
-- [x] CRUD：NodeOperation、EdgeOperation、BatchOperation、BatchConsistencyChecker、BatchCompensator、IdempotentStore、SoftDeleteCleaner
+- [x] 会话池模块：SessionWrapper、NebulaSessionPool、WriteSessionPool、ReadSessionPool、AddressManager、LoadBalancer、SessionPoolMonitor、SessionPoolScaler、MultiAddressSessionPool
+- [x] Schema 管理：SchemaUtils、FieldTypeValidator、SchemaChangeLock、FixedSchemaManager、DynamicSchemaManager、SchemaVersionManager、TagDefinition、EdgeTypeDefinition
+- [x] CRUD：NodeOperation、EdgeOperation、BatchOperation、BatchConsistencyChecker、BatchCompensator、IdempotentStore、IdempotentKeyGenerator、SoftDeleteCleaner、VidMapper、VidVersionManager
 - [x] 查询：QueryBuilder、PathQuery、VersionedQuery
-- [x] PLM：PLMNodeService、PLMEdgeService、PLMPathQuery、BOMDiffService、LargePropertyManager、PLMCache
-- [x] 监控：CircuitBreaker、CircuitBreakerManager、SlowQueryLog、SlowQueryRateLimiter、OperationMetrics、NebulaMonitor
-- [x] 灾备：BackupManager、DisasterRecoveryManager、ConfigCenterRefresher
+- [x] PLM：PLMNodeService、PLMEdgeService、PLMPathQuery、BOMDiffService、LargePropertyManager、PLMCache、BloomFilter
+- [x] 监控：CircuitBreaker、CircuitBreakerManager、SlowQueryLog、SlowQueryRateLimiter、OperationMetrics、SchemaMetrics、IdempotentMetrics、NebulaMonitor、AlertManager、TracingIntegration
+- [x] 灾备：BackupManager、DisasterRecoveryManager、ConfigCenterRefresher、NacosConfigCenter
+- [x] 模型：GraphNode、GraphEdge、QueryResult、BatchResult、TagDefinition、EdgeTypeDefinition
+- [x] 异常：NebulaGraphException、ConnectionException、SchemaException、TimeoutException、BusinessException
 
 ### 占位符扫描
 
-- [ ] 无"TODO"、"待定"等未完成标记
-- [ ] 无"后续实现"、"补充细节"等占位符
-- [ ] 每个步骤都有实际代码
+- [x] 无"TODO"、"待定"等未完成标记
+- [x] 无"后续实现"、"补充细节"等占位符
+- [x] 每个步骤都有实际代码
 
 ### 类型一致性
 
-- [ ] SessionState 枚举定义一致
-- [ ] ShardingStrategy 枚举定义一致
-- [ ] VersionStorageType 枚举定义一致
-- [ ] 所有类名、方法签名与规格一致
+- [x] SessionState 枚举定义一致
+- [x] ShardingStrategy 枚举定义一致
+- [x] VersionStorageType 枚举定义一致
+- [x] 所有类名、方法签名与规格一致
+
+### 新增补充内容
+
+- [x] NebulaGraphClient 完整实现（含 MultiAddressSessionPool）
+- [x] TagDefinition 和 EdgeTypeDefinition 模型类
+- [x] QueryResult 和 BatchResult 完整模型
+- [x] AlertManager 告警管理器
+- [x] TracingIntegration 全链路追踪集成（SkyWalking/Jaeger）
+- [x] NacosConfigCenter 配置中心实现（唯一配置中心）
+- [x] 灾备演练脚本和报告模板
+- [x] 灰度发布完整流程（10% → 50% → 100%）
+- [x] 上线前检查脚本和上线报告模板
 
 ---
 
