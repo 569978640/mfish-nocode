@@ -35,7 +35,6 @@
         <module>mf-common-workflow</module>
         <module>mf-common-nocode</module>
         <module>mf-common-prometheus</module>
-        <module>mf-common-graph</module>
         <module>mf-common-plm</module>
     </modules>
 
