@@ -1,0 +1,26 @@
+mfish:
+  version: 2.3.1
+# Tomcat服务配置
+server:
+  port: 9232
+
+# Spring应用配置
+spring:
+  application:
+    # 应用名称
+    name: mf-graph
+  profiles:
+    # 环境配置
+    active: dev
+  cloud:
+    nacos:
+      username: @nacos.username@
+      password: @nacos.password@
+      server-addr: @nacos.server-addr@
+      config:
+        # 配置文件格式
+        file-extension: yml
+  config:
+    import:
+      - nacos:application-${spring.profiles.active}.${spring.cloud.nacos.config.file-extension}?refreshEnabled=true
+      - nacos:${spring.application.name}-${spring.profiles.active}.${spring.cloud.nacos.config.file-extension}?refreshEnabled=true

@@ -480,6 +480,11 @@
                 <artifactId>mf-workflow-api</artifactId>
                 <version>${mfish.version}</version>
             </dependency>
+            <dependency>
+                <groupId>com.vesoft</groupId>
+                <artifactId>client</artifactId>
+                <version>${vesoft.client.version}</version>
+            </dependency>
         </dependencies>
     </dependencyManagement>
     <!-- 私有库暂时停用，代码注销-->
