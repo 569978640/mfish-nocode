@@ -32,6 +32,11 @@
             <artifactId>mf-common-plm</artifactId>
             <version>${mfish.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+            <version>${rocketmq.version}</version>
+        </dependency>
         <!-- Feign 接口依赖 -->
         <dependency>
             <groupId>cn.com.mfish</groupId>

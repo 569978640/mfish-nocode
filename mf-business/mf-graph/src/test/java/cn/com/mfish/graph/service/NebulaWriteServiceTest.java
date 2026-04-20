@@ -1,4 +1,4 @@
-package cn.com.mfish.graph.sync.service;
+package cn.com.mfish.graph.service;
 
 import cn.com.mfish.graph.client.NebulaGraphClient;
 import cn.com.mfish.graph.model.GraphEdge;

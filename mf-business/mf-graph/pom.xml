@@ -46,16 +46,6 @@
             <artifactId>mf-oauth</artifactId>
             <version>${mfish.version}</version>
         </dependency>
-        <dependency>
-            <groupId>org.apache.rocketmq</groupId>
-            <artifactId>rocketmq-spring-boot-starter</artifactId>
-            <version>${rocketmq.version}</version>
-        </dependency>
-        <dependency>
-            <groupId>com.vesoft</groupId>
-            <artifactId>client</artifactId>
-            <version>3.8.4</version>
-        </dependency>
         <!-- 测试依赖 -->
         <dependency>
             <groupId>junit</groupId>
