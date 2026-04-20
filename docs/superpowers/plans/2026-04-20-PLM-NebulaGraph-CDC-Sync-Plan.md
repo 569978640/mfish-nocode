@@ -23,9 +23,10 @@
 | `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/service/impl/SyncServiceImpl.java` | 同步服务实现 |
 | `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/service/full/FullSyncRunner.java` | 全量同步执行器 |
 | `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/service/incremental/IncrementalSyncHandler.java` | 增量同步处理器 |
-| `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/GraphOperationService.java` | 图数据库操作接口 |
-| `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/impl/GraphOperationServiceImpl.java` | 图数据库操作实现（NgBatis） |
-| `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/NebulaSessionProvider.java` | NebulaGraph Session 提供器 |
+| `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/GraphOperationDao.java` | NgBatis DAO 接口 |
+| `mf-business/mf-graph/src/main/resources/mapper/GraphOperationDao.xml` | NgBatis Mapper XML |
+| `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/GraphOperationService.java` | 图数据库操作服务接口 |
+| `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/impl/GraphOperationServiceImpl.java` | 图数据库操作服务实现 |
 | `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/model/CdcEvent.java` | CDC 事件模型 |
 | `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/model/VertexInfo.java` | 点信息模型 |
 | `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/model/EdgeInfo.java` | 边信息模型 |
@@ -35,7 +36,7 @@
 | `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/fail/impl/FailedRecordServiceImpl.java` | 失败记录服务实现 |
 | `mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/model/SyncTable.java` | 同步表配置模型 |
 | `mf-business/mf-graph/src/main/resources/mapper/SyncFailedRecordMapper.xml` | 失败记录 Mapper XML |
-| `mf-business/mf-graph/src/main/resources/mapper/GraphOperationMapper.xml` | NgBatis 图操作 Mapper XML |
+| `mf-business/mf-graph/src/main/resources/mapper/GraphOperationDao.xml` | NgBatis Mapper XML |
 
 ### 需要修改的文件
 
@@ -478,15 +479,122 @@ public class FailedRecordServiceImpl implements FailedRecordService {
 
 ---
 
-### 任务 6：创建图数据库操作服务
+### 任务 6：创建图数据库操作服务（NgBatis 风格）
 
 **文件：**
+- 创建：`mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/GraphOperationDao.java`
+- 创建：`mf-business/mf-graph/src/main/resources/mapper/GraphOperationDao.xml`
 - 创建：`mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/GraphOperationService.java`
 - 创建：`mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/impl/GraphOperationServiceImpl.java`
-- 创建：`mf-business/mf-graph/src/main/java/cn/com/mfish/graph/sync/graph/NebulaSessionProvider.java`
-- 创建：`mf-business/mf-graph/src/main/resources/mapper/GraphOperationMapper.xml`
 
-- [ ] **步骤 1：创建 GraphOperationService.java**
+- [ ] **步骤 1：创建 GraphOperationDao.java（NgBatis DAO 接口）**
+
+```java
+package cn.com.mfish.graph.sync.graph;
+
+import org.apache.ibatis.annotations.Param;
+import org.nebula.contrib.ngbatis.annotations.Node;
+import org.nebula.contrib.ngbatis.annotations.Edge;
+import java.util.Map;
+
+/**
+ * 图数据库操作 DAO（NgBatis 风格）
+ */
+public interface GraphOperationDao {
+
+    /**
+     * UPSERT 顶点
+     * @param tagName Tag名称
+     * @param id 顶点ID
+     * @param props 属性JSON字符串
+     */
+    void upsertVertex(@Param("tagName") String tagName, @Param("id") String id, @Param("props") String props);
+
+    /**
+     * UPSERT 边
+     * @param edgeName 边名称
+     * @param fromId 起始点ID
+     * @param toId 目标点ID
+     * @param props 属性JSON字符串
+     */
+    void upsertEdge(@Param("edgeName") String edgeName, @Param("fromId") String fromId,
+                    @Param("toId") String toId, @Param("props") String props);
+
+    /**
+     * 删除顶点
+     * @param tagName Tag名称
+     * @param id 顶点ID
+     */
+    void deleteVertex(@Param("tagName") String tagName, @Param("id") String id);
+
+    /**
+     * 删除边
+     * @param edgeName 边名称
+     * @param fromId 起始点ID
+     * @param toId 目标点ID
+     */
+    void deleteEdge(@Param("edgeName") String edgeName, @Param("fromId") String fromId, @Param("toId") String toId);
+
+    /**
+     * 检查顶点是否存在
+     * @param tagName Tag名称
+     * @param id 顶点ID
+     * @return 是否存在
+     */
+    Integer vertexExists(@Param("tagName") String tagName, @Param("id") String id);
+
+    /**
+     * 检查边是否存在
+     * @param edgeName 边名称
+     * @param fromId 起始点ID
+     * @param toId 目标点ID
+     * @return 是否存在
+     */
+    Integer edgeExists(@Param("edgeName") String edgeName, @Param("fromId") String fromId, @Param("toId") String toId);
+}
+```
+
+- [ ] **步骤 2：创建 GraphOperationDao.xml（NgBatis Mapper XML）**
+
+```xml
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.mfish.graph.sync.graph.GraphOperationDao">
+
+    <!-- UPSERT 顶点 -->
+    <update id="upsertVertex">
+        UPSERT VERTEX ON ${tagName} "${id}" SET ${props}
+    </update>
+
+    <!-- UPSERT 边 -->
+    <update id="upsertEdge">
+        UPSERT EDGE ON ${edgeName} "${fromId}" -> "${toId}"@0 SET ${props}
+    </update>
+
+    <!-- 删除顶点 -->
+    <update id="deleteVertex">
+        DELETE VERTEX ON ${tagName} "${id}"
+    </update>
+
+    <!-- 删除边 -->
+    <update id="deleteEdge">
+        DELETE EDGE ON ${edgeName} "${fromId}" -> "${toId}"@0
+    </update>
+
+    <!-- 检查顶点是否存在 -->
+    <select id="vertexExists" resultType="java.lang.Integer">
+        FETCH PROP ON ${tagName} "${id}" YIELD vertex AS v | YIELD COUNT(*) AS cnt
+    </select>
+
+    <!-- 检查边是否存在 -->
+    <select id="edgeExists" resultType="java.lang.Integer">
+        FETCH PROP ON ${edgeName} "${fromId}" -> "${toId}"@0 YIELD edge AS e | YIELD COUNT(*) AS cnt
+    </select>
+
+</mapper>
+```
+
+- [ ] **步骤 3：创建 GraphOperationService.java**
 
 ```java
 package cn.com.mfish.graph.sync.graph;
@@ -495,7 +603,7 @@ import cn.com.mfish.graph.sync.model.*;
 import java.util.List;
 
 /**
- * 图数据库操作接口
+ * 图数据库操作服务接口
  */
 public interface GraphOperationService {
     /**
@@ -516,7 +624,7 @@ public interface GraphOperationService {
     /**
      * 删除边
      */
-    void deleteEdge(String edgeName, String fromId, String fromType, String toId, String toType);
+    void deleteEdge(String edgeName, String fromId, String toId);
 
     /**
      * 批量 UPSERT 顶点
@@ -536,112 +644,79 @@ public interface GraphOperationService {
     /**
      * 检查边是否存在
      */
-    boolean edgeExists(String edgeName, String fromId, String fromType, String toId, String toType);
+    boolean edgeExists(String edgeName, String fromId, String toId);
 }
 ```
 
-- [ ] **步骤 2：创建 NebulaSessionProvider.java**
-
-```java
-package cn.com.mfish.graph.sync.graph;
-
-import lombok.Data;
-import org.nebula.graph.client.*;
-import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.stereotype.Component;
-
-/**
- * NebulaGraph Session 提供器
- */
-@Data
-@Component
-@ConfigurationProperties(prefix = "nebula")
-public class NebulaSessionProvider {
-    private String addresses;
-    private String username;
-    private String password;
-    private String space;
-
-    private transient ConnectionPool pool;
-    private transient Session session;
-
-    public synchronized Session getSession() {
-        if (session == null || !session.isConnected()) {
-            initPool();
-            session = pool.getSession(username, password, false);
-            session.execute("USE " + space);
-        }
-        return session;
-    }
-
-    private void initPool() {
-        ConnectionPoolConfig config = new ConnectionPoolConfig();
-        config.setMaxConns(20);
-        pool = new ConnectionPool(addresses, config);
-    }
-
-    public void close() {
-        if (session != null) {
-            session.close();
-        }
-        if (pool != null) {
-            pool.close();
-        }
-    }
-}
-```
-
-- [ ] **步骤 3：创建 GraphOperationServiceImpl.java**
+- [ ] **步骤 4：创建 GraphOperationServiceImpl.java**
 
 ```java
 package cn.com.mfish.graph.sync.graph.impl;
 
 import cn.com.mfish.graph.sync.graph.*;
 import cn.com.mfish.graph.sync.model.*;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.nebula.graph.client.Session;
-import org.nebula.graph.client.result.ResultSet;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 /**
- * 图数据库操作实现（使用 NebulaGraph Java Client 原生操作）
+ * 图数据库操作服务实现（NgBatis 风格）
  */
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class GraphOperationServiceImpl implements GraphOperationService {
-    private final NebulaSessionProvider sessionProvider;
+    private final GraphOperationDao graphOperationDao;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
     public void upsertVertex(VertexInfo vertex) {
-        String ngql = buildUpsertVertexNQL(vertex);
-        executeNgql(ngql);
-        log.debug("UPSERT vertex: tag={}, id={}", vertex.getTagName(), vertex.getId());
+        try {
+            String props = buildPropsNQL(vertex.getProperties());
+            graphOperationDao.upsertVertex(vertex.getTagName(), vertex.getId(), props);
+            log.debug("UPSERT vertex: tag={}, id={}", vertex.getTagName(), vertex.getId());
+        } catch (Exception e) {
+            log.error("UPSERT vertex failed: tag={}, id={}", vertex.getTagName(), vertex.getId(), e);
+            throw new RuntimeException("UPSERT vertex failed", e);
+        }
     }
 
     @Override
     public void upsertEdge(EdgeInfo edge) {
-        String ngql = buildUpsertEdgeNQL(edge);
-        executeNgql(ngql);
-        log.debug("UPSERT edge: edge={}, from={}->to={}", edge.getEdgeName(), edge.getFromId(), edge.getToId());
+        try {
+            String props = buildPropsNQL(edge.getProperties());
+            graphOperationDao.upsertEdge(edge.getEdgeName(), edge.getFromId(), edge.getToId(), props);
+            log.debug("UPSERT edge: edge={}, from={}->to={}", edge.getEdgeName(), edge.getFromId(), edge.getToId());
+        } catch (Exception e) {
+            log.error("UPSERT edge failed: edge={}, from={}->to={}", edge.getEdgeName(), edge.getFromId(), edge.getToId(), e);
+            throw new RuntimeException("UPSERT edge failed", e);
+        }
     }
 
     @Override
     public void deleteVertex(String tagName, String id) {
-        String ngql = String.format("DELETE VERTEX ON %s \"%s\"", tagName, id);
-        executeNgql(ngql);
-        log.debug("DELETE vertex: tag={}, id={}", tagName, id);
+        try {
+            graphOperationDao.deleteVertex(tagName, id);
+            log.debug("DELETE vertex: tag={}, id={}", tagName, id);
+        } catch (Exception e) {
+            log.error("DELETE vertex failed: tag={}, id={}", tagName, id, e);
+            throw new RuntimeException("DELETE vertex failed", e);
+        }
     }
 
     @Override
-    public void deleteEdge(String edgeName, String fromId, String fromType, String toId, String toType) {
-        String ngql = String.format("DELETE EDGE ON %s \"%s\" -> \"%s\"@0",
-            edgeName, fromId, toId);
-        executeNgql(ngql);
-        log.debug("DELETE edge: edge={}, from={}->to={}", edgeName, fromId, toId);
+    public void deleteEdge(String edgeName, String fromId, String toId) {
+        try {
+            graphOperationDao.deleteEdge(edgeName, fromId, toId);
+            log.debug("DELETE edge: edge={}, from={}->to={}", edgeName, fromId, toId);
+        } catch (Exception e) {
+            log.error("DELETE edge failed: edge={}, from={}->to={}", edgeName, fromId, toId, e);
+            throw new RuntimeException("DELETE edge failed", e);
+        }
     }
 
     @Override
@@ -668,77 +743,58 @@ public class GraphOperationServiceImpl implements GraphOperationService {
 
     @Override
     public boolean vertexExists(String tagName, String id) {
-        String ngql = String.format("FETCH PROP ON %s \"%s\" YIELD vertex AS v", tagName, id);
-        ResultSet rs = executeNgql(ngql);
-        return rs != null && rs.hasNext();
+        try {
+            Integer count = graphOperationDao.vertexExists(tagName, id);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            log.error("vertexExists failed: tag={}, id={}", tagName, id, e);
+            return false;
+        }
     }
 
     @Override
-    public boolean edgeExists(String edgeName, String fromId, String fromType, String toId, String toType) {
-        String ngql = String.format("FETCH PROP ON %s \"%s\" -> \"%s\"@0 YIELD edge AS e",
-            edgeName, fromId, toId);
-        ResultSet rs = executeNgql(ngql);
-        return rs != null && rs.hasNext();
-    }
-
-    private String buildUpsertVertexNQL(VertexInfo vertex) {
-        StringBuilder props = new StringBuilder();
-        Map<String, Object> properties = vertex.getProperties();
-        if (properties != null && !properties.isEmpty()) {
-            for (Map.Entry<String, Object> entry : properties.entrySet()) {
-                if (props.length() > 0) props.append(", ");
-                props.append(entry.getKey()).append(": ");
-                props.append(formatValue(entry.getValue()));
-            }
+    public boolean edgeExists(String edgeName, String fromId, String toId) {
+        try {
+            Integer count = graphOperationDao.edgeExists(edgeName, fromId, toId);
+            return count != null && count > 0;
+        } catch (Exception e) {
+            log.error("edgeExists failed: edge={}, from={}->to={}", edgeName, fromId, toId, e);
+            return false;
         }
-        return String.format("UPSERT VERTEX ON %s \"%s\" SET %s",
-            vertex.getTagName(), vertex.getId(), props.toString());
     }
 
-    private String buildUpsertEdgeNQL(EdgeInfo edge) {
-        StringBuilder props = new StringBuilder();
-        Map<String, Object> properties = edge.getProperties();
-        if (properties != null && !properties.isEmpty()) {
-            for (Map.Entry<String, Object> entry : properties.entrySet()) {
-                if (props.length() > 0) props.append(", ");
-                props.append(entry.getKey()).append(": ");
-                props.append(formatValue(entry.getValue()));
-            }
+    /**
+     * 构建 nGQL 属性字符串
+     */
+    private String buildPropsNQL(Map<String, Object> properties) {
+        if (properties == null || properties.isEmpty()) {
+            return "";
         }
-        return String.format("UPSERT EDGE ON %s \"%s\" -> \"%s\"@0 SET %s",
-            edge.getEdgeName(), edge.getFromId(), edge.getToId(), props.toString());
+        return properties.entrySet().stream()
+            .map(entry -> {
+                String key = entry.getKey();
+                Object value = entry.getValue();
+                return key + " = " + formatValue(value);
+            })
+            .collect(Collectors.joining(", "));
     }
 
+    /**
+     * 格式化属性值为 nGQL 格式
+     */
     private String formatValue(Object value) {
-        if (value == null) return "NULL";
-        if (value instanceof String) return String.format("\"%s\"", value);
+        if (value == null) {
+            return "NULL";
+        }
+        if (value instanceof String) {
+            return "\"" + value + "\"";
+        }
         if (value instanceof java.util.Date) {
-            return String.format("TIMESTAMP(\"%s\")", value);
+            return "TIMESTAMP(\"" + value + "\")";
         }
         return value.toString();
     }
-
-    private ResultSet executeNgql(String ngql) {
-        Session session = sessionProvider.getSession();
-        try {
-            return session.execute(ngql);
-        } catch (Exception e) {
-            log.error("Execute NGQL failed: {}, error: {}", ngql, e.getMessage());
-            throw new RuntimeException("NGQL execution failed", e);
-        }
-    }
 }
-```
-
-- [ ] **步骤 4：创建 GraphOperationMapper.xml**
-
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="cn.com.mfish.graph.sync.graph.GraphOperationMapper">
-    <!-- NgBatis 保留接口，后续可用于复杂查询 -->
-</mapper>
-```
 
 ---
 
@@ -898,7 +954,7 @@ public class SyncServiceImpl implements SyncService {
         String toType = getStringValue(data, "to_type", "toType");
         String type = String.valueOf(data.getOrDefault("type", getTypeFromTableName(tableName)));
 
-        graphService.deleteEdge(type, fromId, fromType, toId, toType);
+        graphService.deleteEdge(type, fromId, toId);
         log.debug("边DELETE完成: edge={}, from={}->to={}", type, fromId, toId);
     }
 
@@ -1363,15 +1419,24 @@ public class MfGraphApplication {
 **文件：**
 - 修改：`mf-start/mf-start-graph/src/main/resources/mf-graph-dev.yml`
 
-- [ ] **步骤 1：确保 nebula 配置完整**
+- [ ] **步骤 1：确保 NgBatis 配置完整**
 
 ```yaml
+# NgBatis NebulaGraph 配置
 nebula:
-  addresses: 192.168.111.103:9669
+  hosts: 192.168.111.103:9669
   username: root
   password: nebula
-  space:
-    name: plm_graph
+  space: plm_graph
+  ngbatis:
+    session-life-length: 300000
+    check-fixed-rate: 300000
+    use-session-pool: false
+  pool-config:
+    min-conns-size: 5
+    max-conns-size: 20
+    timeout: 3000
+    idle-time: 60
 ```
 
 ---
