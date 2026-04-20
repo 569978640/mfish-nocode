@@ -9,9 +9,42 @@
     <version>mf-2.3.1</version>
 
     <properties>
-        <maven.compiler.source>21</maven.compiler.source>
-        <maven.compiler.target>21</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
     </properties>
+    <dependencies>
+        <!-- PostgreSQL数据库驱动 -->
+        <dependency>
+            <groupId>org.postgresql</groupId>
+            <artifactId>postgresql</artifactId>
+        </dependency>
+        <!-- 公共Web模块依赖 -->
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-common-web</artifactId>
+        </dependency>
+        <!-- PLM公共模块依赖 -->
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-common-plm</artifactId>
+            <version>${mfish.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+            <version>${rocketmq.version}</version>
+        </dependency>
+        <!-- Feign 接口依赖 -->
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-oauth-api</artifactId>
+            <version>${mfish.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-sys-api</artifactId>
+            <version>${mfish.version}</version>
+        </dependency>
+    </dependencies>
     
 </project>
