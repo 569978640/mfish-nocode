@@ -35,7 +35,6 @@ public class DebeziumRunner {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Executor executor = Executors.newSingleThreadExecutor();
 
-    @Autowired
     private RocketMQTemplate rocketMQTemplate;
 
     @Value("${rocketmq.producer.topic:plm-graph-sync}")

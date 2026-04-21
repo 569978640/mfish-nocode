@@ -1,11 +1,11 @@
-package cn.com.mfish.graph.sync.graph;
+package cn.com.mfish.graph.sync.mapper;
 
 import org.apache.ibatis.annotations.Param;
 
 /**
  * 图数据库操作 DAO（NgBatis 风格）
  */
-public interface GraphOperationDao {
+public interface GraphOperationMapper {
 
     /**
      * UPSERT 顶点

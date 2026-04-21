@@ -1,6 +1,7 @@
 package cn.com.mfish.graph.sync.fail.impl;
 
 import cn.com.mfish.graph.sync.fail.*;
+import cn.com.mfish.graph.sync.mapper.FailedRecordMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

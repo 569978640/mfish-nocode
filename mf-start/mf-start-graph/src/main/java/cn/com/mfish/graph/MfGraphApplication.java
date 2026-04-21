@@ -19,7 +19,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 @Slf4j
 @AutoCloud
-@MapperScan("cn.com.mfish.graph.sync.**.mapper")
+@MapperScan("cn.com.mfish.**.mapper")
 public class MfGraphApplication {
     public static void main(String[] args) {
         ConfigurableApplicationContext application = SpringApplication.run(MfGraphApplication.class, args);

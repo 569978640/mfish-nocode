@@ -473,7 +473,7 @@ public class FailedRecordServiceImpl implements FailedRecordService {
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="cn.com.mfish.graph.sync.fail.FailedRecordMapper">
+<mapper namespace="cn.com.mfish.graph.sync.mapper.FailedRecordMapper">
 </mapper>
 ```
 
@@ -559,7 +559,7 @@ public interface GraphOperationDao {
 ```xml
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
-<mapper namespace="cn.com.mfish.graph.sync.graph.GraphOperationDao">
+<mapper namespace="cn.com.mfish.graph.sync.mapper.GraphOperationMapper">
 
     <!-- UPSERT 顶点 -->
     <update id="upsertVertex">

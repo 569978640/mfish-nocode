@@ -1,6 +1,7 @@
 package cn.com.mfish.graph.sync.graph.impl;
 
 import cn.com.mfish.graph.sync.graph.*;
+import cn.com.mfish.graph.sync.mapper.GraphOperationMapper;
 import cn.com.mfish.graph.sync.model.*;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
@@ -17,7 +18,7 @@ import java.util.stream.Collectors;
 @Service
 @RequiredArgsConstructor
 public class GraphOperationServiceImpl implements GraphOperationService {
-    private final GraphOperationDao graphOperationDao;
+    private final GraphOperationMapper graphOperationDao;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Override
