@@ -32,6 +32,12 @@
             <artifactId>mf-nocode-api</artifactId>
             <version>${mfish.version}</version>
         </dependency>
+        <!-- 图数据库业务模块 -->
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-graph</artifactId>
+            <version>${mfish.version}</version>
+        </dependency>
     </dependencies>
 
     <build>
