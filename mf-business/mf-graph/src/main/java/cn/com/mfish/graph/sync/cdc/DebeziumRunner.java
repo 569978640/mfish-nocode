@@ -8,7 +8,12 @@ import io.debezium.engine.DebeziumEngine;
 import io.debezium.engine.format.Json;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+//import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.apache.rocketmq.client.producer.SendCallback;
+import org.apache.rocketmq.client.producer.SendResult;
 import org.apache.rocketmq.spring.core.RocketMQTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Component;
 
@@ -26,9 +31,15 @@ import java.util.concurrent.Executors;
 @ConditionalOnProperty(name = "debezium.enabled", havingValue = "true", matchIfMissing = false)
 public class DebeziumRunner {
     private final PgCdcConfig pgCdcConfig;
-    private final RocketMQTemplate rocketMQTemplate;
+//    private final RocketMQTemplate rocketMQTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final Executor executor = Executors.newSingleThreadExecutor();
+
+    @Autowired
+    private RocketMQTemplate rocketMQTemplate;
+
+    @Value("${rocketmq.producer.topic:plm-graph-sync}")
+    private String topic;
 
     private DebeziumEngine<ChangeEvent<String, String>> engine;
 
@@ -153,7 +164,22 @@ public class DebeziumRunner {
     private void sendToRocketMQ(CdcEvent event) {
         try {
             String message = objectMapper.writeValueAsString(event);
-            rocketMQTemplate.convertAndSend("plm-graph-sync", message);
+            rocketMQTemplate.convertAndSend(topic, message);
+            try {
+//                rocketMQTemplate.asyncSend(topic, message, new SendCallback() {
+//                    @Override
+//                    public void onSuccess(SendResult sendResult) {
+//                        log.info("图同步事件发送成功,  result={}", message);
+//                    }
+//
+//                    @Override
+//                    public void onException(Throwable e) {
+//                        log.error("图同步事件发送失败, message={}", message, e);
+//                    }
+//                });
+            } catch (Exception e) {
+                log.error("发送图同步事件异常, message={}", message, e);
+            }
             log.debug("CDC 事件已发送到 RocketMQ: table={}, op={}", event.getTable(), event.getOp());
         } catch (Exception e) {
             log.error("发送消息到 RocketMQ 失败", e);
