@@ -58,10 +58,7 @@ public class DebeziumRunner {
         String offsetFile = offsetStoragePath + File.separator + "offsets.dat";
         log.info("Debezium 偏移量存储路径: {}", offsetFile);
 
-        String tableList = pgCdcConfig.getTables().stream()
-//            .map(t -> pgCdcConfig.getDatabase() + ".public." + t)
-            .map(t -> "public." + t)
-            .collect(Collectors.joining(","));
+        String tableList = String.join(",", pgCdcConfig.getTables());
         log.info("table.include.list = {}", tableList);
 
         Configuration config = Configuration.create()

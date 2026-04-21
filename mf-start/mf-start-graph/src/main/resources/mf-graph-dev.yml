@@ -68,13 +68,13 @@ debezium:
     slot: mf_plm_slot
     publication: mf_plm_publication
     tables:
-      - part
-      - document
-      - document_master
-      - folder
-      - part_master
-      - product
-      - contains_link
-      - iteraite_link
+      - public.part
+      - public.document
+      - public.document_master
+      - public.folder
+      - public.part_master
+      - public.product
+      - public.contains_link
+      - public.iteraite_link
     table-exclude:
       - sync_failed_records
