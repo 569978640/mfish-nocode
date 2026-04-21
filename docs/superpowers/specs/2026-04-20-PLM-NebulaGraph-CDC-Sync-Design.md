@@ -111,7 +111,7 @@ CREATE SPACE IF NOT EXISTS plm_graph (
 ```ngql
 # 点类型示例（实际根据业务动态创建）
 -- Part 部件小版本
-CREATE TAG IF NOT EXISTS Part( 
+CREATE TAG IF NOT EXISTS WPart( 
     id STRING NOT NULL, 
     type STRING, 
     version STRING, 
@@ -123,7 +123,7 @@ CREATE TAG IF NOT EXISTS Part(
 );
 
 -- PartMaster 部件主数据
-CREATE TAG IF NOT EXISTS PartMaster( 
+CREATE TAG IF NOT EXISTS WPartMaster( 
     id STRING NOT NULL, 
     type STRING, 
     number STRING, 
@@ -180,15 +180,15 @@ CREATE TAG IF NOT EXISTS Product(
     updateTime TIMESTAMP 
 );
 
-CREATE TAG INDEX IF NOT EXISTS idx_part_id ON Part(id(32));
-CREATE TAG INDEX IF NOT EXISTS idx_partmaster_id ON PartMaster(id(32));
+CREATE TAG INDEX IF NOT EXISTS idx_wpart_id ON WPart(id(32));
+CREATE TAG INDEX IF NOT EXISTS idx_wpartmaster_id ON WPartMaster(id(32));
 CREATE TAG INDEX IF NOT EXISTS idx_document_id ON Document(id(32));
 CREATE TAG INDEX IF NOT EXISTS idx_documentmaster_id ON DocumentMaster(id(32));
 CREATE TAG INDEX IF NOT EXISTS idx_folder_id ON Folder(id(32));
 CREATE TAG INDEX IF NOT EXISTS idx_product_id ON Product(id(32));
 
-REBUILD TAG INDEX idx_part_id;
-REBUILD TAG INDEX idx_partmaster_id;
+REBUILD TAG INDEX idx_wpart_id;
+REBUILD TAG INDEX idx_wpartmaster_id;
 REBUILD TAG INDEX idx_document_id;
 REBUILD TAG INDEX idx_documentmaster_id;
 REBUILD TAG INDEX idx_folder_id;
@@ -453,11 +453,11 @@ SELECT * FROM pg_create_logical_replication_slot('mf_plm_slot', 'pgoutput');
 
 -- 创建 Publication（包含所有需要同步的表）
 CREATE PUBLICATION mf_plm_publication FOR TABLE
-    wPart,
+    w_part,
+    w_part_master,
     document,
     document_master,
     folder,
-    part_master,
     product,
     contains_link,
     iteraite_link;
@@ -475,12 +475,11 @@ SELECT * FROM pg_stat_replication;
 -- 检查 Publication
 SELECT * FROM pg_publication_tables;
 -- 检查 wPart 表的 REPLICA IDENTITY
-ALTER TABLE wPart REPLICA IDENTITY FULL;
-ALTER TABLE wPart REPLICA IDENTITY FULL;
+ALTER TABLE w_part REPLICA IDENTITY FULL;
+ALTER TABLE w_part_master REPLICA IDENTITY FULL;
 ALTER TABLE document REPLICA IDENTITY FULL;
 ALTER TABLE document_master REPLICA IDENTITY FULL;
 ALTER TABLE folder REPLICA IDENTITY FULL;
-ALTER TABLE part_master REPLICA IDENTITY FULL;
 ALTER TABLE product REPLICA IDENTITY FULL;
 ALTER TABLE contains_link REPLICA IDENTITY FULL;
 ALTER TABLE iteraite_link REPLICA IDENTITY FULL;
