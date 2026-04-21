@@ -19,7 +19,6 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 @Slf4j
 @AutoCloud
-@ImportAutoConfiguration(exclude = {LogAspect.class, AsyncSaveLog.class, SysLogServiceImpl.class})
 @MapperScan("cn.com.mfish.graph.sync.**.mapper")
 public class MfGraphApplication {
     public static void main(String[] args) {
