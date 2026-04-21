@@ -134,18 +134,21 @@ public class SyncServiceImpl implements SyncService {
 
     private List<SyncTable> getSyncTables() {
         return List.of(
-            new SyncTable("part", "Part", false, "id"),
-            new SyncTable("document", "Document", false, "id"),
-            new SyncTable("document_master", "DocumentMaster", false, "id"),
-            new SyncTable("folder", "Folder", false, "id"),
-            new SyncTable("part_master", "PartMaster", false, "id"),
-            new SyncTable("product", "Product", false, "id"),
-            new SyncTable("contains_link", "ContainsLink", true, "id"),
-            new SyncTable("iteraite_link", "IteraiteLink", true, "id")
+                new SyncTable("part", "Part", false, "id"),
+                new SyncTable("document", "Document", false, "id"),
+                new SyncTable("document_master", "DocumentMaster", false, "id"),
+                new SyncTable("folder", "Folder", false, "id"),
+                new SyncTable("part_master", "PartMaster", false, "id"),
+                new SyncTable("product", "Product", false, "id"),
+                new SyncTable("contains_link", "ContainsLink", true, "id"),
+                new SyncTable("iteraite_link", "IteraiteLink", true, "id")
         );
     }
 
     private boolean isEdgeTable(String tableName) {
+        if (EDGE_TABLES == null || EDGE_TABLES.isEmpty()) {
+            return tableName.endsWith("_link");
+        }
         return EDGE_TABLES.contains(tableName.toLowerCase());
     }
 

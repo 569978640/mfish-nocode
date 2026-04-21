@@ -59,7 +59,8 @@ public class DebeziumRunner {
         log.info("Debezium 偏移量存储路径: {}", offsetFile);
 
         String tableList = pgCdcConfig.getTables().stream()
-            .map(t -> pgCdcConfig.getDatabase() + ".public." + t)
+//            .map(t -> pgCdcConfig.getDatabase() + ".public." + t)
+            .map(t -> "public." + t)
             .collect(Collectors.joining(","));
         log.info("table.include.list = {}", tableList);
 
@@ -87,7 +88,7 @@ public class DebeziumRunner {
             .with("value.converter", "org.apache.kafka.connect.json.JsonConverter")
             .with("value.converter.schemas.enable", "false")
             .with("signal.enabled", "true")
-            .with("signaling.data-collection", "mf_plm.public.sync_failed_records")
+            .with("signaling.data-collection", "public.sync_failed_records")
             .with("poll.interval.ms", "100")
             .build();
 
@@ -185,6 +186,10 @@ public class DebeziumRunner {
         try {
             log.debug("解析 JSON 事件: {}", jsonStr);
             CdcEvent event = objectMapper.readValue(jsonStr, CdcEvent.class);
+            //赋值tableName
+            if (event.getSource() != null && event.getSource().containsKey("table")) {
+                event.setTable(event.getSource().get("table").toString());
+            }
             log.info("解析 CDC 事件成功: table={}, op={}", event.getTable(), event.getOp());
             return event;
         } catch (Exception e) {
