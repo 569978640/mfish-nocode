@@ -62,7 +62,7 @@
 
 | 实体类名 | 表名 | type 值 | 说明 |
 |----------|------|---------|------|
-| Part | part | Part | 部件小版本 |
+| Part | wPart | Part | 部件小版本 |
 | Document | document | Document | 文档小版本 |
 | DocumentMaster | document_master | DocumentMaster | 文档主数据 |
 | Folder | folder | Folder | 文件夹 |
@@ -375,7 +375,7 @@ debezium:
     slot: mf_plm_slot
     publication: mf_plm_publication
     tables:
-      - part
+      - wPart
       - document
       - document_master
       - folder
@@ -453,7 +453,7 @@ SELECT * FROM pg_create_logical_replication_slot('mf_plm_slot', 'pgoutput');
 
 -- 创建 Publication（包含所有需要同步的表）
 CREATE PUBLICATION mf_plm_publication FOR TABLE
-    part,
+    wPart,
     document,
     document_master,
     folder,
@@ -474,9 +474,9 @@ SELECT * FROM pg_stat_replication;
 
 -- 检查 Publication
 SELECT * FROM pg_publication_tables;
--- 检查 part 表的 REPLICA IDENTITY
-ALTER TABLE part REPLICA IDENTITY FULL;
-ALTER TABLE part REPLICA IDENTITY FULL;
+-- 检查 wPart 表的 REPLICA IDENTITY
+ALTER TABLE wPart REPLICA IDENTITY FULL;
+ALTER TABLE wPart REPLICA IDENTITY FULL;
 ALTER TABLE document REPLICA IDENTITY FULL;
 ALTER TABLE document_master REPLICA IDENTITY FULL;
 ALTER TABLE folder REPLICA IDENTITY FULL;

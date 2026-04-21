@@ -134,7 +134,7 @@ public class SyncServiceImpl implements SyncService {
 
     private List<SyncTable> getSyncTables() {
         return List.of(
-                new SyncTable("part", "Part", false, "id"),
+                new SyncTable("part", "WPart", false, "id"),
                 new SyncTable("document", "Document", false, "id"),
                 new SyncTable("document_master", "DocumentMaster", false, "id"),
                 new SyncTable("folder", "Folder", false, "id"),

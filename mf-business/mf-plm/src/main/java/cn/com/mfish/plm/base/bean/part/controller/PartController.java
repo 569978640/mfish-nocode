@@ -4,7 +4,7 @@ import cn.com.mfish.common.log.annotation.Log;
 import cn.com.mfish.common.oauth.annotation.RequiresPermissions;
 import cn.com.mfish.common.core.enums.OperateType;
 import cn.com.mfish.common.core.web.Result;
-import cn.com.mfish.plm.base.bean.part.entity.Part;
+import cn.com.mfish.plm.base.bean.part.entity.WPart;
 import cn.com.mfish.plm.base.bean.part.req.ReqPart;
 import cn.com.mfish.plm.base.bean.part.service.PartService;
 import cn.com.mfish.common.core.web.PageResult;
@@ -42,36 +42,36 @@ public class PartController {
     @Operation(summary = "部件小版本-分页列表查询", description = "部件小版本-分页列表查询")
     @GetMapping
     @RequiresPermissions("plm:part:query")
-    public Result<PageResult<Part>> queryPageList(ReqPart reqPart, ReqPage reqPage) {
+    public Result<PageResult<WPart>> queryPageList(ReqPart reqPart, ReqPage reqPage) {
     	return partService.queryPageList(reqPart, reqPage);
     }
 
     /**
      * 添加
      *
-     * @param part 部件小版本对象
+     * @param wPart 部件小版本对象
      * @return 返回部件小版本-添加结果
      */
     @Log(title = "部件小版本-添加", operateType = OperateType.INSERT)
     @Operation(summary = "部件小版本-添加")
     @PostMapping
-    @RequiresPermissions("plm:part:insert")
-    public Result<Part> add(@RequestBody Part part) {
-    	return partService.add(part);
+    @RequiresPermissions("plm:wPart:insert")
+    public Result<WPart> add(@RequestBody WPart wPart) {
+    	return partService.add(wPart);
     }
 
     /**
      * 编辑
      *
-     * @param part 部件小版本对象
+     * @param wPart 部件小版本对象
      * @return 返回部件小版本-编辑结果
      */
     @Log(title = "部件小版本-编辑", operateType = OperateType.UPDATE)
     @Operation(summary = "部件小版本-编辑")
     @PutMapping
-    @RequiresPermissions("plm:part:update")
-    public Result<Part> edit(@RequestBody Part part) {
-    	return partService.edit(part);
+    @RequiresPermissions("plm:wPart:update")
+    public Result<WPart> edit(@RequestBody WPart wPart) {
+    	return partService.edit(wPart);
     }
 
     /**
@@ -111,7 +111,7 @@ public class PartController {
     @Operation(summary = "部件小版本-通过id查询")
     @GetMapping("/{id}")
     @RequiresPermissions("plm:part:query")
-    public Result<Part> queryById(@Parameter(name = "id", description = "唯一性ID") @PathVariable String id) {
+    public Result<WPart> queryById(@Parameter(name = "id", description = "唯一性ID") @PathVariable String id) {
     	return partService.queryById(id);
     }
 

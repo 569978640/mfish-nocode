@@ -4,7 +4,7 @@ import cn.com.mfish.common.core.utils.excel.ExcelUtils;
 import cn.com.mfish.common.core.web.PageResult;
 import cn.com.mfish.common.core.web.ReqPage;
 import cn.com.mfish.common.core.web.Result;
-import cn.com.mfish.plm.base.bean.part.entity.Part;
+import cn.com.mfish.plm.base.bean.part.entity.WPart;
 import cn.com.mfish.plm.base.bean.part.req.ReqPart;
 import cn.com.mfish.plm.base.bean.part.mapper.PartMapper;
 import cn.com.mfish.plm.base.bean.part.service.PartService;
@@ -28,7 +28,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 * @version: V2.3.1
 */
 @Service
-public class PartServiceImpl extends ServiceImpl<PartMapper, Part> implements PartService {
+public class PartServiceImpl extends ServiceImpl<PartMapper, WPart> implements PartService {
     /**
      * 分页列表查询
      *
@@ -37,7 +37,7 @@ public class PartServiceImpl extends ServiceImpl<PartMapper, Part> implements Pa
      * @return 返回部件小版本-分页列表
      */
     @Override
-    public Result<PageResult<Part>> queryPageList(ReqPart reqPart, ReqPage reqPage) {
+    public Result<PageResult<WPart>> queryPageList(ReqPart reqPart, ReqPage reqPage) {
         return Result.ok(new PageResult<>(queryList(reqPart, reqPage)), "部件小版本-查询成功!");
     }
 
@@ -48,10 +48,10 @@ public class PartServiceImpl extends ServiceImpl<PartMapper, Part> implements Pa
      * @param reqPage 分页参数
      * @return 返回部件小版本-分页列表
      */
-    private List<Part> queryList(ReqPart reqPart, ReqPage reqPage) {
+    private List<WPart> queryList(ReqPart reqPart, ReqPage reqPage) {
     PageHelper.startPage(reqPage.getPageNum(), reqPage.getPageSize());
-        LambdaQueryWrapper<Part> lambdaQueryWrapper = new LambdaQueryWrapper<Part>()
-                .eq(!StringUtils.isEmpty(reqPart.getState()), Part::getState, reqPart.getState())
+        LambdaQueryWrapper<WPart> lambdaQueryWrapper = new LambdaQueryWrapper<WPart>()
+                .eq(!StringUtils.isEmpty(reqPart.getState()), WPart::getState, reqPart.getState())
         ;
         return list(lambdaQueryWrapper);
     }
@@ -59,29 +59,29 @@ public class PartServiceImpl extends ServiceImpl<PartMapper, Part> implements Pa
     /**
      * 添加
      *
-     * @param part 部件小版本对象
+     * @param wPart 部件小版本对象
      * @return 返回部件小版本-添加结果
      */
     @Override
-    public Result<Part> add(Part part) {
-        if (save(part)) {
-            return Result.ok(part, "部件小版本-添加成功!");
+    public Result<WPart> add(WPart wPart) {
+        if (save(wPart)) {
+            return Result.ok(wPart, "部件小版本-添加成功!");
         }
-        return Result.fail(part, "错误:部件小版本-添加失败!");
+        return Result.fail(wPart, "错误:部件小版本-添加失败!");
     }
 
     /**
      * 编辑
      *
-     * @param part 部件小版本对象
+     * @param wPart 部件小版本对象
      * @return 返回部件小版本-编辑结果
      */
     @Override
-    public Result<Part> edit(Part part) {
-        if (updateById(part)) {
-            return Result.ok(part, "部件小版本-编辑成功!");
+    public Result<WPart> edit(WPart wPart) {
+        if (updateById(wPart)) {
+            return Result.ok(wPart, "部件小版本-编辑成功!");
         }
-        return Result.fail(part, "错误:部件小版本-编辑失败!");
+        return Result.fail(wPart, "错误:部件小版本-编辑失败!");
     }
 
     /**
@@ -119,9 +119,9 @@ public class PartServiceImpl extends ServiceImpl<PartMapper, Part> implements Pa
      * @return 返回部件小版本对象
      */
     @Override
-    public Result<Part> queryById(String id) {
-        Part part = getById(id);
-        return Result.ok(part, "部件小版本-查询成功!");
+    public Result<WPart> queryById(String id) {
+        WPart wPart = getById(id);
+        return Result.ok(wPart, "部件小版本-查询成功!");
     }
 
     /**

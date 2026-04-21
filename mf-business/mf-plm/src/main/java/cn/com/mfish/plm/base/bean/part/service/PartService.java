@@ -3,7 +3,7 @@ package cn.com.mfish.plm.base.bean.part.service;
 import cn.com.mfish.common.core.web.PageResult;
 import cn.com.mfish.common.core.web.ReqPage;
 import cn.com.mfish.common.core.web.Result;
-import cn.com.mfish.plm.base.bean.part.entity.Part;
+import cn.com.mfish.plm.base.bean.part.entity.WPart;
 import cn.com.mfish.plm.base.bean.part.req.ReqPart;
 import com.baomidou.mybatisplus.extension.service.IService;
 
@@ -15,7 +15,7 @@ import java.io.IOException;
  * @date: 2026-04-17
  * @version: V2.3.1
  */
-public interface PartService extends IService<Part> {
+public interface PartService extends IService<WPart> {
     /**
      * 分页列表查询
      *
@@ -23,23 +23,23 @@ public interface PartService extends IService<Part> {
      * @param reqPage 分页参数
      * @return 返回部件小版本-分页列表
      */
-    Result<PageResult<Part>> queryPageList(ReqPart reqPart, ReqPage reqPage);
+    Result<PageResult<WPart>> queryPageList(ReqPart reqPart, ReqPage reqPage);
 
     /**
      * 添加
      *
-     * @param part 部件小版本对象
+     * @param wPart 部件小版本对象
      * @return 返回部件小版本-添加结果
      */
-    Result<Part> add(Part part);
+    Result<WPart> add(WPart wPart);
 
     /**
      * 编辑
      *
-     * @param part 部件小版本对象
+     * @param wPart 部件小版本对象
      * @return 返回部件小版本-编辑结果
      */
-    Result<Part> edit(Part part);
+    Result<WPart> edit(WPart wPart);
 
     /**
      * 通过id删除
@@ -63,7 +63,7 @@ public interface PartService extends IService<Part> {
      * @param id 唯一ID
      * @return 返回部件小版本对象
      */
-    Result<Part> queryById(String id);
+    Result<WPart> queryById(String id);
 
     /**
      * 导出

@@ -12,5 +12,5 @@ SELECT
 FROM information_schema.tables t
 JOIN pg_class c ON c.relname = t.table_name
 WHERE t.table_schema = 'public'
-  AND t.table_name IN ('part', 'document', 'document_master', 'folder', 'part_master', 'product', 'contains_link', 'iteraite_link')
+  AND t.table_name IN ('wPart', 'document', 'document_master', 'folder', 'part_master', 'product', 'contains_link', 'iteraite_link')
 ORDER BY t.table_name;

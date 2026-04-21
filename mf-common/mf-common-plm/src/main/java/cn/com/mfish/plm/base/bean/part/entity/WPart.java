@@ -21,7 +21,7 @@ import lombok.experimental.Accessors;
 @TableName("part")
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "part对象 部件小版本")
-public class Part extends BaseEntity<String> {
+public class WPart extends BaseEntity<String> {
     @ExcelProperty("唯一ID")
     @Schema(description = "唯一ID")
     @TableId(type = IdType.ASSIGN_UUID)
