@@ -100,29 +100,99 @@ CREATE SPACE IF NOT EXISTS plm_graph (
     partition_num = 100,
     replica_factor = 1,
     charset = utf8,
-    collate = utf8_bin
+    collate = utf8_bin,
+    vid_type = FIXED_STRING(32)
 );
 
-USE plm_graph;
 ```
 
 ### 3.2 Tag 定义（动态 type = 100+ 种）
 
 ```ngql
 # 点类型示例（实际根据业务动态创建）
-CREATE TAG IF NOT EXISTS Part(
-    id STRING NOT NULL,
-    type STRING,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP
+-- Part 部件小版本
+CREATE TAG IF NOT EXISTS Part( 
+    id STRING NOT NULL, 
+    type STRING, 
+    version STRING, 
+    state STRING, 
+    createBy STRING, 
+    createTime TIMESTAMP, 
+    updateBy STRING, 
+    updateTime TIMESTAMP 
 );
 
-CREATE TAG IF NOT EXISTS Document(
-    id STRING NOT NULL,
-    type STRING,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP
+-- PartMaster 部件主数据
+CREATE TAG IF NOT EXISTS PartMaster( 
+    id STRING NOT NULL, 
+    type STRING, 
+    number STRING, 
+    name STRING, 
+    createBy STRING, 
+    createTime TIMESTAMP, 
+    updateBy STRING, 
+    updateTime TIMESTAMP 
 );
+
+-- Document 文档小版本
+CREATE TAG IF NOT EXISTS Document( 
+    id STRING NOT NULL, 
+    type STRING, 
+    version STRING, 
+    state STRING, 
+    createBy STRING, 
+    createTime TIMESTAMP, 
+    updateBy STRING, 
+    updateTime TIMESTAMP 
+);
+
+-- DocumentMaster 文档主数据
+CREATE TAG IF NOT EXISTS DocumentMaster( 
+    id STRING NOT NULL, 
+    type STRING, 
+    number STRING, 
+    name STRING, 
+    createBy STRING, 
+    createTime TIMESTAMP, 
+    updateBy STRING, 
+    updateTime TIMESTAMP 
+);
+
+-- Folder 文件夹
+CREATE TAG IF NOT EXISTS Folder( 
+    id STRING NOT NULL, 
+    type STRING, 
+    name STRING, 
+    createBy STRING, 
+    createTime TIMESTAMP, 
+    updateBy STRING, 
+    updateTime TIMESTAMP 
+);
+
+-- Product 产品库
+CREATE TAG IF NOT EXISTS Product( 
+    id STRING NOT NULL, 
+    type STRING, 
+    name STRING, 
+    createBy STRING, 
+    createTime TIMESTAMP, 
+    updateBy STRING, 
+    updateTime TIMESTAMP 
+);
+
+CREATE TAG INDEX IF NOT EXISTS idx_part_id ON Part(id(32));
+CREATE TAG INDEX IF NOT EXISTS idx_partmaster_id ON PartMaster(id(32));
+CREATE TAG INDEX IF NOT EXISTS idx_document_id ON Document(id(32));
+CREATE TAG INDEX IF NOT EXISTS idx_documentmaster_id ON DocumentMaster(id(32));
+CREATE TAG INDEX IF NOT EXISTS idx_folder_id ON Folder(id(32));
+CREATE TAG INDEX IF NOT EXISTS idx_product_id ON Product(id(32));
+
+REBUILD TAG INDEX idx_part_id;
+REBUILD TAG INDEX idx_partmaster_id;
+REBUILD TAG INDEX idx_document_id;
+REBUILD TAG INDEX idx_documentmaster_id;
+REBUILD TAG INDEX idx_folder_id;
+REBUILD TAG INDEX idx_product_id;
 
 # 其他 Tag 类似...
 # 总计约 100+ 个动态 Tag
@@ -131,6 +201,7 @@ CREATE TAG IF NOT EXISTS Document(
 ### 3.3 Edge 定义
 
 ```ngql
+-- 创建 ContainsLink 边（3.x 正确语法）
 CREATE EDGE IF NOT EXISTS ContainsLink(
     id STRING NOT NULL,
     type STRING,
@@ -142,6 +213,7 @@ CREATE EDGE IF NOT EXISTS ContainsLink(
     update_time TIMESTAMP
 );
 
+-- 创建 IteraiteLink 边（3.x 正确语法）
 CREATE EDGE IF NOT EXISTS IteraiteLink(
     id STRING NOT NULL,
     type STRING,
@@ -152,6 +224,25 @@ CREATE EDGE IF NOT EXISTS IteraiteLink(
     create_time TIMESTAMP,
     update_time TIMESTAMP
 );
+
+# ContainsLink 边索引（id/fromId/toId 全部创建，字符串指定索引长度32）
+CREATE EDGE INDEX IF NOT EXISTS idx_contains_id ON ContainsLink(id(32));
+CREATE EDGE INDEX IF NOT EXISTS idx_contains_fromid ON ContainsLink(fromId(32));
+CREATE EDGE INDEX IF NOT EXISTS idx_contains_toid ON ContainsLink(toId(32));
+
+# IteraiteLink 边索引
+CREATE EDGE INDEX IF NOT EXISTS idx_iterate_id ON IteraiteLink(id(32));
+CREATE EDGE INDEX IF NOT EXISTS idx_iterate_fromid ON IteraiteLink(fromId(32));
+CREATE EDGE INDEX IF NOT EXISTS idx_iterate_toid ON IteraiteLink(toId(32));
+
+REBUILD EDGE INDEX idx_contains_id;
+REBUILD EDGE INDEX idx_contains_fromid;
+REBUILD EDGE INDEX idx_contains_toid;
+
+REBUILD EDGE INDEX idx_iterate_id;
+REBUILD EDGE INDEX idx_iterate_fromid;
+REBUILD EDGE INDEX idx_iterate_toid;
+
 ```
 
 ---
@@ -348,7 +439,7 @@ host    mf_plm         replication_user   0.0.0.0/0     md5
 
 ```sql
 -- 以 postgres 管理员执行
-CREATE USER replication_user WITH REPLICATION ENCRYPTED PASSWORD 'your_password';
+CREATE USER replication_user WITH REPLICATION ENCRYPTED PASSWORD 'postgres';
 GRANT CONNECT ON DATABASE mf_plm TO replication_user;
 GRANT USAGE ON SCHEMA public TO replication_user;
 GRANT SELECT ON ALL TABLES IN SCHEMA public TO replication_user;
