@@ -25,6 +25,12 @@
             <groupId>cn.com.mfish</groupId>
             <artifactId>mf-common-web</artifactId>
         </dependency>
+        <!-- NebulaGraph 图数据库模块依赖 -->
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-common-graph</artifactId>
+            <version>${mfish.version}</version>
+        </dependency>
         <!-- PLM公共模块依赖 -->
         <dependency>
             <groupId>cn.com.mfish</groupId>
@@ -68,18 +74,6 @@
             <groupId>io.debezium</groupId>
             <artifactId>debezium-connector-postgres</artifactId>
             <version>${debezium.version}</version>
-        </dependency>
-        <!-- NgBatis -->
-        <dependency>
-            <groupId>org.nebula-contrib</groupId>
-            <artifactId>ngbatis</artifactId>
-            <version>${ngbatis.version}</version>
-        </dependency>
-        <!-- NebulaGraph Java Client -->
-        <dependency>
-            <groupId>com.vesoft</groupId>
-            <artifactId>client</artifactId>
-            <version>${vesoft.client.version}</version>
         </dependency>
     </dependencies>
     

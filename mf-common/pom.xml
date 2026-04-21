@@ -36,6 +36,7 @@
         <module>mf-common-nocode</module>
         <module>mf-common-prometheus</module>
         <module>mf-common-plm</module>
+        <module>mf-common-graph</module>
     </modules>
 
 </project>
