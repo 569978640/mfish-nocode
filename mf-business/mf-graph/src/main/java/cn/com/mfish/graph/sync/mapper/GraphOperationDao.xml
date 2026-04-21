@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="cn.com.mfish.graph.sync.graph.GraphOperationDao">
+
+    <!-- UPSERT 顶点 -->
+    <update id="upsertVertex">
+        UPSERT VERTEX ON ${tagName} "${id}" SET ${props}
+    </update>
+
+    <!-- UPSERT 边 -->
+    <update id="upsertEdge">
+        UPSERT EDGE ON ${edgeName} "${fromId}" -> "${toId}"@0 SET ${props}
+    </update>
+
+    <!-- 删除顶点 -->
+    <update id="deleteVertex">
+        DELETE VERTEX ON ${tagName} "${id}"
+    </update>
+
+    <!-- 删除边 -->
+    <update id="deleteEdge">
+        DELETE EDGE ON ${edgeName} "${fromId}" -> "${toId}"@0
+    </update>
+
+    <!-- 检查顶点是否存在 -->
+    <select id="vertexExists" resultType="java.lang.Integer">
+        FETCH PROP ON ${tagName} "${id}" YIELD vertex AS v | YIELD COUNT(*) AS cnt
+    </select>
+
+    <!-- 检查边是否存在 -->
+    <select id="edgeExists" resultType="java.lang.Integer">
+        FETCH PROP ON ${edgeName} "${fromId}" -> "${toId}"@0 YIELD edge AS e | YIELD COUNT(*) AS cnt
+    </select>
+
+</mapper>
