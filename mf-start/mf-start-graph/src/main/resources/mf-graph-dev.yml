@@ -56,6 +56,9 @@ nebula:
 
 debezium:
   enabled: true
+  offset:
+    storage:
+      path: ./debezium-offsets
   connector:
     host: 192.168.111.103
     port: 5432
@@ -73,3 +76,5 @@ debezium:
       - product
       - contains_link
       - iteraite_link
+    table-exclude:
+      - sync_failed_records

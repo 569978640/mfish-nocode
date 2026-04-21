@@ -474,6 +474,30 @@ SELECT * FROM pg_stat_replication;
 
 -- 检查 Publication
 SELECT * FROM pg_publication_tables;
+-- 检查 part 表的 REPLICA IDENTITY
+ALTER TABLE part REPLICA IDENTITY FULL;
+ALTER TABLE part REPLICA IDENTITY FULL;
+ALTER TABLE document REPLICA IDENTITY FULL;
+ALTER TABLE document_master REPLICA IDENTITY FULL;
+ALTER TABLE folder REPLICA IDENTITY FULL;
+ALTER TABLE part_master REPLICA IDENTITY FULL;
+ALTER TABLE product REPLICA IDENTITY FULL;
+ALTER TABLE contains_link REPLICA IDENTITY FULL;
+ALTER TABLE iteraite_link REPLICA IDENTITY FULL;
+
+
+
+-- 修复
+-- 停止应用
+
+-- 删除旧复制槽
+SELECT pg_drop_replication_slot('mf_plm_slot');
+
+-- 重新创建复制槽（从最新位置开始）
+SELECT * FROM pg_create_logical_replication_slot('mf_plm_slot', 'pgoutput');
+
+-- 确认
+SELECT slot_name, confirmed_flush_lsn FROM pg_replication_slots WHERE slot_name = 'mf_plm_slot';
 ```
 
 ---
