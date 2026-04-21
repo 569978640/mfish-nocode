@@ -4,7 +4,7 @@ import cn.com.mfish.common.log.annotation.Log;
 import cn.com.mfish.common.oauth.annotation.RequiresPermissions;
 import cn.com.mfish.common.core.enums.OperateType;
 import cn.com.mfish.common.core.web.Result;
-import cn.com.mfish.plm.base.bean.part.entity.PartMaster;
+import cn.com.mfish.plm.base.bean.part.entity.WPartMaster;
 import cn.com.mfish.plm.base.bean.part.req.ReqPartMaster;
 import cn.com.mfish.plm.base.bean.part.service.PartMasterService;
 import cn.com.mfish.common.core.web.PageResult;
@@ -42,36 +42,36 @@ public class PartMasterController {
     @Operation(summary = "部件主数据-分页列表查询", description = "部件主数据-分页列表查询")
     @GetMapping
     @RequiresPermissions("plm:partMaster:query")
-    public Result<PageResult<PartMaster>> queryPageList(ReqPartMaster reqPartMaster, ReqPage reqPage) {
+    public Result<PageResult<WPartMaster>> queryPageList(ReqPartMaster reqPartMaster, ReqPage reqPage) {
     	return partMasterService.queryPageList(reqPartMaster, reqPage);
     }
 
     /**
      * 添加
      *
-     * @param partMaster 部件主数据对象
+     * @param wPartMaster 部件主数据对象
      * @return 返回部件主数据-添加结果
      */
     @Log(title = "部件主数据-添加", operateType = OperateType.INSERT)
     @Operation(summary = "部件主数据-添加")
     @PostMapping
-    @RequiresPermissions("plm:partMaster:insert")
-    public Result<PartMaster> add(@RequestBody PartMaster partMaster) {
-    	return partMasterService.add(partMaster);
+    @RequiresPermissions("plm:wPartMaster:insert")
+    public Result<WPartMaster> add(@RequestBody WPartMaster wPartMaster) {
+    	return partMasterService.add(wPartMaster);
     }
 
     /**
      * 编辑
      *
-     * @param partMaster 部件主数据对象
+     * @param wPartMaster 部件主数据对象
      * @return 返回部件主数据-编辑结果
      */
     @Log(title = "部件主数据-编辑", operateType = OperateType.UPDATE)
     @Operation(summary = "部件主数据-编辑")
     @PutMapping
-    @RequiresPermissions("plm:partMaster:update")
-    public Result<PartMaster> edit(@RequestBody PartMaster partMaster) {
-    	return partMasterService.edit(partMaster);
+    @RequiresPermissions("plm:wPartMaster:update")
+    public Result<WPartMaster> edit(@RequestBody WPartMaster wPartMaster) {
+    	return partMasterService.edit(wPartMaster);
     }
 
     /**
@@ -111,7 +111,7 @@ public class PartMasterController {
     @Operation(summary = "部件主数据-通过id查询")
     @GetMapping("/{id}")
     @RequiresPermissions("plm:partMaster:query")
-    public Result<PartMaster> queryById(@Parameter(name = "id", description = "唯一性ID") @PathVariable String id) {
+    public Result<WPartMaster> queryById(@Parameter(name = "id", description = "唯一性ID") @PathVariable String id) {
     	return partMasterService.queryById(id);
     }
 

@@ -4,7 +4,7 @@ import cn.com.mfish.common.core.utils.excel.ExcelUtils;
 import cn.com.mfish.common.core.web.PageResult;
 import cn.com.mfish.common.core.web.ReqPage;
 import cn.com.mfish.common.core.web.Result;
-import cn.com.mfish.plm.base.bean.part.entity.PartMaster;
+import cn.com.mfish.plm.base.bean.part.entity.WPartMaster;
 import cn.com.mfish.plm.base.bean.part.req.ReqPartMaster;
 import cn.com.mfish.plm.base.bean.part.mapper.PartMasterMapper;
 import cn.com.mfish.plm.base.bean.part.service.PartMasterService;
@@ -28,7 +28,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 * @version: V2.3.1
 */
 @Service
-public class PartMasterServiceImpl extends ServiceImpl<PartMasterMapper, PartMaster> implements PartMasterService {
+public class PartMasterServiceImpl extends ServiceImpl<PartMasterMapper, WPartMaster> implements PartMasterService {
     /**
      * 分页列表查询
      *
@@ -37,7 +37,7 @@ public class PartMasterServiceImpl extends ServiceImpl<PartMasterMapper, PartMas
      * @return 返回部件主数据-分页列表
      */
     @Override
-    public Result<PageResult<PartMaster>> queryPageList(ReqPartMaster reqPartMaster, ReqPage reqPage) {
+    public Result<PageResult<WPartMaster>> queryPageList(ReqPartMaster reqPartMaster, ReqPage reqPage) {
         return Result.ok(new PageResult<>(queryList(reqPartMaster, reqPage)), "部件主数据-查询成功!");
     }
 
@@ -48,11 +48,11 @@ public class PartMasterServiceImpl extends ServiceImpl<PartMasterMapper, PartMas
      * @param reqPage 分页参数
      * @return 返回部件主数据-分页列表
      */
-    private List<PartMaster> queryList(ReqPartMaster reqPartMaster, ReqPage reqPage) {
+    private List<WPartMaster> queryList(ReqPartMaster reqPartMaster, ReqPage reqPage) {
     PageHelper.startPage(reqPage.getPageNum(), reqPage.getPageSize());
-        LambdaQueryWrapper<PartMaster> lambdaQueryWrapper = new LambdaQueryWrapper<PartMaster>()
-                .eq(!StringUtils.isEmpty(reqPartMaster.getNumber()), PartMaster::getNumber, reqPartMaster.getNumber())
-                        .eq(!StringUtils.isEmpty(reqPartMaster.getName()), PartMaster::getName, reqPartMaster.getName())
+        LambdaQueryWrapper<WPartMaster> lambdaQueryWrapper = new LambdaQueryWrapper<WPartMaster>()
+                .eq(!StringUtils.isEmpty(reqPartMaster.getNumber()), WPartMaster::getNumber, reqPartMaster.getNumber())
+                        .eq(!StringUtils.isEmpty(reqPartMaster.getName()), WPartMaster::getName, reqPartMaster.getName())
         ;
         return list(lambdaQueryWrapper);
     }
@@ -60,29 +60,29 @@ public class PartMasterServiceImpl extends ServiceImpl<PartMasterMapper, PartMas
     /**
      * 添加
      *
-     * @param partMaster 部件主数据对象
+     * @param wPartMaster 部件主数据对象
      * @return 返回部件主数据-添加结果
      */
     @Override
-    public Result<PartMaster> add(PartMaster partMaster) {
-        if (save(partMaster)) {
-            return Result.ok(partMaster, "部件主数据-添加成功!");
+    public Result<WPartMaster> add(WPartMaster wPartMaster) {
+        if (save(wPartMaster)) {
+            return Result.ok(wPartMaster, "部件主数据-添加成功!");
         }
-        return Result.fail(partMaster, "错误:部件主数据-添加失败!");
+        return Result.fail(wPartMaster, "错误:部件主数据-添加失败!");
     }
 
     /**
      * 编辑
      *
-     * @param partMaster 部件主数据对象
+     * @param wPartMaster 部件主数据对象
      * @return 返回部件主数据-编辑结果
      */
     @Override
-    public Result<PartMaster> edit(PartMaster partMaster) {
-        if (updateById(partMaster)) {
-            return Result.ok(partMaster, "部件主数据-编辑成功!");
+    public Result<WPartMaster> edit(WPartMaster wPartMaster) {
+        if (updateById(wPartMaster)) {
+            return Result.ok(wPartMaster, "部件主数据-编辑成功!");
         }
-        return Result.fail(partMaster, "错误:部件主数据-编辑失败!");
+        return Result.fail(wPartMaster, "错误:部件主数据-编辑失败!");
     }
 
     /**
@@ -120,9 +120,9 @@ public class PartMasterServiceImpl extends ServiceImpl<PartMasterMapper, PartMas
      * @return 返回部件主数据对象
      */
     @Override
-    public Result<PartMaster> queryById(String id) {
-        PartMaster partMaster = getById(id);
-        return Result.ok(partMaster, "部件主数据-查询成功!");
+    public Result<WPartMaster> queryById(String id) {
+        WPartMaster wPartMaster = getById(id);
+        return Result.ok(wPartMaster, "部件主数据-查询成功!");
     }
 
     /**

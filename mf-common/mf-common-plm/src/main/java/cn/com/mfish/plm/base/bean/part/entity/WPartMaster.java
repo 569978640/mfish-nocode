@@ -21,7 +21,7 @@ import lombok.experimental.Accessors;
 @TableName("part_master")
 @EqualsAndHashCode(callSuper = true)
 @Schema(description = "part_master对象 部件主数据")
-public class PartMaster extends BaseEntity<String> {
+public class WPartMaster extends BaseEntity<String> {
     @ExcelProperty("唯一ID")
     @Schema(description = "唯一ID")
     @TableId(type = IdType.ASSIGN_UUID)

@@ -138,7 +138,7 @@ public class SyncServiceImpl implements SyncService {
                 new SyncTable("document", "Document", false, "id"),
                 new SyncTable("document_master", "DocumentMaster", false, "id"),
                 new SyncTable("folder", "Folder", false, "id"),
-                new SyncTable("part_master", "PartMaster", false, "id"),
+                new SyncTable("part_master", "WPartMaster", false, "id"),
                 new SyncTable("product", "Product", false, "id"),
                 new SyncTable("contains_link", "ContainsLink", true, "id"),
                 new SyncTable("iteraite_link", "IteraiteLink", true, "id")
