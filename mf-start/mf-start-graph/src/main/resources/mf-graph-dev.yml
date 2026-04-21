@@ -44,6 +44,8 @@ nebula:
   username: root
   password: nebula
   pool:
+    # min-conns: 10
+    # max-conns: 100
     min-conns: 5
     max-conns: 20
     timeout: 3000
@@ -53,3 +55,23 @@ nebula:
     charset: utf8
     replica-factor: 1
     partition-num: 100
+
+debezium:
+  enabled: true
+  connector:
+    host: 192.168.111.103
+    port: 5432
+    database: mf_plm
+    username: replication_user
+    password: postgres
+    slot: mf_plm_slot
+    publication: mf_plm_publication
+    tables:
+      - part
+      - document
+      - document_master
+      - folder
+      - part_master
+      - product
+      - contains_link
+      - iteraite_link
