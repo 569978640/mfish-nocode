@@ -201,27 +201,11 @@ public abstract class PlmBaseServiceImpl<T, M extends BaseMapper<T>> extends Ser
     }
 
     @Override
-    public Result<T> updateAndReturn(T entity, LambdaQueryWrapper<T> updateWrapper) {
-        if (super.update(entity, updateWrapper)) {
-            return Result.ok(entity, "更新成功!");
-        }
-        return Result.fail(entity, "更新失败!");
-    }
-
-    @Override
     public Result<Boolean> update(T entity, QueryWrapper<T> updateWrapper) {
         if (super.update(entity, updateWrapper)) {
             return Result.ok(true, "更新成功!");
         }
         return Result.fail(false, "更新失败!");
-    }
-
-    @Override
-    public Result<T> updateAndReturn(T entity, QueryWrapper<T> updateWrapper) {
-        if (super.update(entity, updateWrapper)) {
-            return Result.ok(entity, "更新成功!");
-        }
-        return Result.fail(entity, "更新失败!");
     }
 
     @Override

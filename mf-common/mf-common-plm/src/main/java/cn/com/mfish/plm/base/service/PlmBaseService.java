@@ -217,14 +217,6 @@ public interface PlmBaseService<T> extends IService<T> {
      */
     Result<Boolean> update(T entity, LambdaQueryWrapper<T> updateWrapper);
 
-    /**
-     * 根据条件更新并返回更新的实体
-     *
-     * @param entity 实体
-     * @param updateWrapper 更新条件
-     * @return 更新后的实体
-     */
-    Result<T> updateAndReturn(T entity, LambdaQueryWrapper<T> updateWrapper);
 
     /**
      * 根据条件更新
@@ -235,14 +227,6 @@ public interface PlmBaseService<T> extends IService<T> {
      */
     Result<Boolean> update(T entity, QueryWrapper<T> updateWrapper);
 
-    /**
-     * 根据条件更新并返回更新的实体
-     *
-     * @param entity 实体
-     * @param updateWrapper 更新条件
-     * @return 更新后的实体
-     */
-    Result<T> updateAndReturn(T entity, QueryWrapper<T> updateWrapper);
 
     /**
      * 根据条件更新
@@ -252,13 +236,6 @@ public interface PlmBaseService<T> extends IService<T> {
      */
     Result<Boolean> update(LambdaUpdateWrapper<T> updateWrapper);
 
-    /**
-     * 根据条件更新并返回更新的实体
-     *
-     * @param updateWrapper 更新条件
-     * @return 更新后的实体
-     */
-    Result<T> updateAndReturn(LambdaUpdateWrapper<T> updateWrapper);
 
     /**
      * 根据条件更新
@@ -268,13 +245,6 @@ public interface PlmBaseService<T> extends IService<T> {
      */
     Result<Boolean> update(UpdateWrapper<T> updateWrapper);
 
-    /**
-     * 根据条件更新并返回更新的实体
-     *
-     * @param updateWrapper 更新条件
-     * @return 更新后的实体
-     */
-    Result<T> updateAndReturn(UpdateWrapper<T> updateWrapper);
 
     // ==================== 删除方法（返回Result包装 + 图同步） ====================
 
