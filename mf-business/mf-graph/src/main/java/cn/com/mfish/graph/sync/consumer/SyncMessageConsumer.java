@@ -3,6 +3,7 @@ package cn.com.mfish.graph.sync.consumer;
 import cn.com.mfish.graph.sync.service.incremental.IncrementalSyncHandler;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.beanutils.converters.DateTimeConverter;
 import org.apache.rocketmq.spring.annotation.RocketMQMessageListener;
 import org.apache.rocketmq.spring.core.RocketMQListener;
 import org.springframework.stereotype.Component;

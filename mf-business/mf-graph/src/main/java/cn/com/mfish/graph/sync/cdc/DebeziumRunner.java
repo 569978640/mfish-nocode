@@ -18,6 +18,7 @@ import org.springframework.stereotype.Component;
 
 import jakarta.annotation.PostConstruct;
 import jakarta.annotation.PreDestroy;
+
 import java.io.File;
 import java.util.List;
 import java.util.concurrent.Executor;
@@ -62,49 +63,49 @@ public class DebeziumRunner {
         log.info("table.include.list = {}", tableList);
 
         Configuration config = Configuration.create()
-            .with("name", "plm-cdc-connector")
-            .with("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
-            .with("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
-            .with("offset.storage.file.filename", offsetFile)
-            .with("offset.flush.interval.ms", "1000")
-            .with("offset.commit.mode", "ACCEPTED")
-            .with("database.hostname", pgCdcConfig.getHost())
-            .with("database.port", pgCdcConfig.getPort())
-            .with("database.user", pgCdcConfig.getUsername())
-            .with("database.password", pgCdcConfig.getPassword())
-            .with("database.dbname", pgCdcConfig.getDatabase())
-            .with("database.server.name", "plm-server")
-            .with("plugin.name", "pgoutput")
-            .with("slot.name", pgCdcConfig.getSlot())
-            .with("publication.name", pgCdcConfig.getPublication())
-            .with("table.include.list", tableList)
-            .with("topic.prefix", "plm")
-            .with("schema.include.list", "public")
-            .with("key.converter", "org.apache.kafka.connect.json.JsonConverter")
-            .with("key.converter.schemas.enable", "false")
-            .with("value.converter", "org.apache.kafka.connect.json.JsonConverter")
-            .with("value.converter.schemas.enable", "false")
-            .with("signal.enabled", "true")
-            .with("signaling.data-collection", "public.sync_failed_records")
-            .with("poll.interval.ms", "100")
-            .build();
+                .with("name", "plm-cdc-connector")
+                .with("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
+                .with("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
+                .with("offset.storage.file.filename", offsetFile)
+                .with("offset.flush.interval.ms", "1000")
+                .with("offset.commit.mode", "ACCEPTED")
+                .with("database.hostname", pgCdcConfig.getHost())
+                .with("database.port", pgCdcConfig.getPort())
+                .with("database.user", pgCdcConfig.getUsername())
+                .with("database.password", pgCdcConfig.getPassword())
+                .with("database.dbname", pgCdcConfig.getDatabase())
+                .with("database.server.name", "plm-server")
+                .with("plugin.name", "pgoutput")
+                .with("slot.name", pgCdcConfig.getSlot())
+                .with("publication.name", pgCdcConfig.getPublication())
+                .with("table.include.list", tableList)
+                .with("topic.prefix", "plm")
+                .with("schema.include.list", "public")
+                .with("key.converter", "org.apache.kafka.connect.json.JsonConverter")
+                .with("key.converter.schemas.enable", "false")
+                .with("value.converter", "org.apache.kafka.connect.json.JsonConverter")
+                .with("value.converter.schemas.enable", "false")
+                .with("signal.enabled", "true")
+                .with("signaling.data-collection", "public.sync_failed_records")
+                .with("poll.interval.ms", "100")
+                .build();
 
         log.info("========== Debezium 配置项 ==========");
         config.asProperties().forEach((key, value) -> log.info("  {} = {}", key, value));
         log.info("======================================");
 
         engine = DebeziumEngine.create(Json.class)
-            .using(config.asProperties())
-            .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<String, String>>) (records, committer) -> {
-                log.info("收到 Debezium 回调, 记录数={}", records.size());
-                for (ChangeEvent<String, String> record : records) {
-                    handleSingleEvent(record);
-                }
-            })
-            .using((success, message, error) -> {
-                log.info("Debezium 引擎关闭: success={}, message={}, error={}", success, message, error);
-            })
-            .build();
+                .using(config.asProperties())
+                .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<String, String>>) (records, committer) -> {
+                    log.info("收到 Debezium 回调, 记录数={}", records.size());
+                    for (ChangeEvent<String, String> record : records) {
+                        handleSingleEvent(record);
+                    }
+                })
+                .using((success, message, error) -> {
+                    log.info("Debezium 引擎关闭: success={}, message={}, error={}", success, message, error);
+                })
+                .build();
 
         log.info("准备启动 Debezium 引擎...");
         log.info("配置项数量: {}", config.asProperties().size());
@@ -130,7 +131,6 @@ public class DebeziumRunner {
     }
 
 
-
     @PreDestroy
     public void stop() {
         log.info("停止 Debezium Embedded...");
@@ -147,26 +147,26 @@ public class DebeziumRunner {
         try {
             Object eventValue = event.value();
             log.info("收到 ChangeEvent, key 类型: {}, value 类型: {}",
-                event.key(), eventValue.getClass().getName());
+                    event.key(), eventValue.getClass().getName());
 
             if (eventValue instanceof byte[] bytes) {
                 String jsonStr = new String(bytes);
                 log.info("收到字节数组事件, length={}, 内容预览={}",
-                    bytes.length, jsonStr.substring(0, Math.min(200, jsonStr.length())));
+                        bytes.length, jsonStr.substring(0, Math.min(200, jsonStr.length())));
                 CdcEvent cdcEvent = parseJsonEvent(jsonStr);
                 if (cdcEvent != null) {
                     sendToRocketMQ(cdcEvent);
                 }
             } else if (eventValue instanceof String jsonStr) {
                 log.info("收到字符串事件, length={}, 内容预览={}",
-                    jsonStr.length(), jsonStr.substring(0, Math.min(200, jsonStr.length())));
+                        jsonStr.length(), jsonStr.substring(0, Math.min(200, jsonStr.length())));
                 CdcEvent cdcEvent = parseJsonEvent(jsonStr);
                 if (cdcEvent != null) {
                     sendToRocketMQ(cdcEvent);
                 }
             } else if (eventValue instanceof org.apache.kafka.connect.source.SourceRecord record) {
                 log.info("收到 SourceRecord: topic={}, partition={}, offset={}",
-                    record.topic(), record.sourcePartition(), record.sourceOffset());
+                        record.topic(), record.sourcePartition(), record.sourceOffset());
                 CdcEvent cdcEvent = convertToCdcEvent(record);
                 if (cdcEvent != null) {
                     sendToRocketMQ(cdcEvent);
@@ -253,13 +253,13 @@ public class DebeziumRunner {
                 @Override
                 public void onSuccess(SendResult sendResult) {
                     log.info("图同步事件发送成功, messageId={}, table={}, op={}",
-                        sendResult.getMsgId(), event.getTable(), event.getOp());
+                            sendResult.getMsgId(), event.getTable(), event.getOp());
                 }
 
                 @Override
                 public void onException(Throwable e) {
                     log.error("图同步事件发送失败, table={}, op={}, message={}",
-                        event.getTable(), event.getOp(), message, e);
+                            event.getTable(), event.getOp(), message, e);
                 }
             });
             log.debug("CDC 事件已发送到 RocketMQ: table={}, op={}", event.getTable(), event.getOp());

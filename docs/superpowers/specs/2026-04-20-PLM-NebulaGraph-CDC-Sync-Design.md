@@ -116,10 +116,10 @@ CREATE TAG IF NOT EXISTS WPart(
     type STRING, 
     version STRING, 
     state STRING, 
-    createBy STRING, 
-    createTime TIMESTAMP, 
-    updateBy STRING, 
-    updateTime TIMESTAMP 
+    create_by STRING, 
+    create_time DATETIME, 
+    update_by STRING, 
+    update_time DATETIME 
 );
 
 -- PartMaster 部件主数据
@@ -128,10 +128,10 @@ CREATE TAG IF NOT EXISTS WPartMaster(
     type STRING, 
     number STRING, 
     name STRING, 
-    createBy STRING, 
-    createTime TIMESTAMP, 
-    updateBy STRING, 
-    updateTime TIMESTAMP 
+    create_by STRING, 
+    create_time DATETIME, 
+    update_by STRING, 
+    update_time DATETIME 
 );
 
 -- Document 文档小版本
@@ -140,10 +140,10 @@ CREATE TAG IF NOT EXISTS Document(
     type STRING, 
     version STRING, 
     state STRING, 
-    createBy STRING, 
-    createTime TIMESTAMP, 
-    updateBy STRING, 
-    updateTime TIMESTAMP 
+    create_by STRING, 
+    create_time DATETIME, 
+    update_by STRING, 
+    update_time DATETIME 
 );
 
 -- DocumentMaster 文档主数据
@@ -152,10 +152,10 @@ CREATE TAG IF NOT EXISTS DocumentMaster(
     type STRING, 
     number STRING, 
     name STRING, 
-    createBy STRING, 
-    createTime TIMESTAMP, 
-    updateBy STRING, 
-    updateTime TIMESTAMP 
+    create_by STRING, 
+    create_time DATETIME, 
+    update_by STRING, 
+    update_time DATETIME 
 );
 
 -- Folder 文件夹
@@ -163,10 +163,10 @@ CREATE TAG IF NOT EXISTS Folder(
     id STRING NOT NULL, 
     type STRING, 
     name STRING, 
-    createBy STRING, 
-    createTime TIMESTAMP, 
-    updateBy STRING, 
-    updateTime TIMESTAMP 
+    create_by STRING, 
+    create_time DATETIME, 
+    update_by STRING, 
+    update_time DATETIME 
 );
 
 -- Product 产品库
@@ -174,10 +174,10 @@ CREATE TAG IF NOT EXISTS Product(
     id STRING NOT NULL, 
     type STRING, 
     name STRING, 
-    createBy STRING, 
-    createTime TIMESTAMP, 
-    updateBy STRING, 
-    updateTime TIMESTAMP 
+    create_by STRING, 
+    create_time DATETIME, 
+    update_by STRING, 
+    update_time DATETIME 
 );
 
 CREATE TAG INDEX IF NOT EXISTS idx_wpart_id ON WPart(id(32));
@@ -205,35 +205,35 @@ REBUILD TAG INDEX idx_product_id;
 CREATE EDGE IF NOT EXISTS ContainsLink(
     id STRING NOT NULL,
     type STRING,
-    fromId STRING,
-    fromType STRING,
-    toId STRING,
-    toType STRING,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP
+    from_id STRING,
+    from_type STRING,
+    to_id STRING,
+    to_type STRING,
+    create_time DATETIME,
+    update_time DATETIME
 );
 
 -- 创建 IteraiteLink 边（3.x 正确语法）
 CREATE EDGE IF NOT EXISTS IteraiteLink(
     id STRING NOT NULL,
     type STRING,
-    fromId STRING,
-    fromType STRING,
-    toId STRING,
-    toType STRING,
-    create_time TIMESTAMP,
-    update_time TIMESTAMP
+    from_id STRING,
+    from_type STRING,
+    to_id STRING,
+    to_type STRING,
+    create_time DATETIME,
+    update_time DATETIME
 );
 
 # ContainsLink 边索引（id/fromId/toId 全部创建，字符串指定索引长度32）
 CREATE EDGE INDEX IF NOT EXISTS idx_contains_id ON ContainsLink(id(32));
-CREATE EDGE INDEX IF NOT EXISTS idx_contains_fromid ON ContainsLink(fromId(32));
-CREATE EDGE INDEX IF NOT EXISTS idx_contains_toid ON ContainsLink(toId(32));
+CREATE EDGE INDEX IF NOT EXISTS idx_contains_fromid ON ContainsLink(from_id(32));
+CREATE EDGE INDEX IF NOT EXISTS idx_contains_toid ON ContainsLink(to_id(32));
 
 # IteraiteLink 边索引
 CREATE EDGE INDEX IF NOT EXISTS idx_iterate_id ON IteraiteLink(id(32));
-CREATE EDGE INDEX IF NOT EXISTS idx_iterate_fromid ON IteraiteLink(fromId(32));
-CREATE EDGE INDEX IF NOT EXISTS idx_iterate_toid ON IteraiteLink(toId(32));
+CREATE EDGE INDEX IF NOT EXISTS idx_iterate_fromid ON IteraiteLink(from_id(32));
+CREATE EDGE INDEX IF NOT EXISTS idx_iterate_toid ON IteraiteLink(to_id(32));
 
 REBUILD EDGE INDEX idx_contains_id;
 REBUILD EDGE INDEX idx_contains_fromid;

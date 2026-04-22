@@ -131,8 +131,14 @@ public class GraphOperationServiceImpl implements GraphOperationService {
         if (value instanceof String) {
             return "\"" + value + "\"";
         }
-        if (value instanceof java.util.Date) {
-            return "TIMESTAMP(\"" + value + "\")";
+//        if (value instanceof java.util.Date) {
+//            return "TIMESTAMP(\"" + value + "\")";
+//        }
+        if (value instanceof Number) {
+            long numValue = ((Number) value).longValue();
+            if (numValue > 1000000000000L) {
+                return "DATETIME(" + (numValue / 1000) + ")";
+            }
         }
         return value.toString();
     }
