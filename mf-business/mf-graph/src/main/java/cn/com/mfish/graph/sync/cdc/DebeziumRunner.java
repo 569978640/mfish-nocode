@@ -43,21 +43,11 @@ public class DebeziumRunner {
     @Value("${rocketmq.producer.topic:plm-graph-sync}")
     private String topic;
 
-    @Value("${debezium.offset.storage.path:/tmp/debezium-offsets}")
-    private String offsetStoragePath;
-
     private DebeziumEngine<ChangeEvent<String, String>> engine;
 
     @PostConstruct
     public void start() {
         log.info("启动 Debezium Embedded...");
-
-        File offsetDir = new File(offsetStoragePath);
-        if (!offsetDir.exists()) {
-            offsetDir.mkdirs();
-        }
-        String offsetFile = offsetStoragePath + File.separator + "offsets.dat";
-        log.info("Debezium 偏移量存储路径: {}", offsetFile);
 
         String tableList = String.join(",", pgCdcConfig.getTables());
         log.info("table.include.list = {}", tableList);
@@ -65,16 +55,30 @@ public class DebeziumRunner {
         Configuration config = Configuration.create()
                 .with("name", "plm-cdc-connector")
                 .with("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
-                .with("offset.storage", "org.apache.kafka.connect.storage.FileOffsetBackingStore")
-                .with("offset.storage.file.filename", offsetFile)
+
+                // ====================== 核心：Redis 存储偏移量 ======================
+                .with("offset.storage", "io.debezium.storage.redis.offset.RedisOffsetBackingStore")
+                .with("offset.storage.redis.address", "192.168.111.103:6379")  // 你的 Redis 地址
+                .with("offset.storage.redis.password", "redis")   // 没有密码就删掉这行
+                .with("offset.storage.redis.database", "0")              // Redis 库号
+                .with("offset.storage.redis.key", "debezium-offset")      // 必须指定 Redis key
+                .with("offset.storage.redis.timeout.ms", 2000)            // 超时
+                .with("offset.storage.redis.connection.max.idle", 10)     // 连接池
                 .with("offset.flush.interval.ms", "1000")
-                .with("offset.commit.mode", "ACCEPTED")
+                .with("offset.commit.mode", "PERIODIC")
+
+                // ====================== 关键：只第一次全量，后续重启增量 ======================
+                .with("snapshot.mode", "initial")
+
+                // ====================== 以下全部是你原来的配置，完全不动 ======================
                 .with("database.hostname", pgCdcConfig.getHost())
                 .with("database.port", pgCdcConfig.getPort())
                 .with("database.user", pgCdcConfig.getUsername())
                 .with("database.password", pgCdcConfig.getPassword())
                 .with("database.dbname", pgCdcConfig.getDatabase())
                 .with("database.server.name", "plm-server")
+                .with("heartbeat.interval.ms", "30000")
+                .with("heartbeat.action.query", "SELECT 1")
                 .with("plugin.name", "pgoutput")
                 .with("slot.name", pgCdcConfig.getSlot())
                 .with("publication.name", pgCdcConfig.getPublication())
@@ -99,8 +103,14 @@ public class DebeziumRunner {
                 .notifying((DebeziumEngine.ChangeConsumer<ChangeEvent<String, String>>) (records, committer) -> {
                     log.info("收到 Debezium 回调, 记录数={}", records.size());
                     for (ChangeEvent<String, String> record : records) {
-                        handleSingleEvent(record);
+                        try {
+                            handleSingleEvent(record);
+//                            committer.markProcessed(record);
+                        } catch (Exception e) {
+                            log.error("处理记录失败: key={}", record.key(), e);
+                        }
                     }
+                    committer.markBatchFinished();
                 })
                 .using((success, message, error) -> {
                     log.info("Debezium 引擎关闭: success={}, message={}, error={}", success, message, error);

@@ -117,67 +117,59 @@ CREATE TAG IF NOT EXISTS WPart(
     version STRING, 
     state STRING, 
     create_by STRING, 
-    create_time DATETIME, 
+    create_time TIMESTAMP, 
     update_by STRING, 
-    update_time DATETIME 
+    update_time TIMESTAMP 
 );
 
 -- PartMaster 部件主数据
 CREATE TAG IF NOT EXISTS WPartMaster( 
     id STRING NOT NULL, 
     type STRING, 
-    number STRING, 
-    name STRING, 
     create_by STRING, 
-    create_time DATETIME, 
+    create_time TIMESTAMP, 
     update_by STRING, 
-    update_time DATETIME 
+    update_time TIMESTAMP 
 );
 
 -- Document 文档小版本
 CREATE TAG IF NOT EXISTS Document( 
     id STRING NOT NULL, 
     type STRING, 
-    version STRING, 
-    state STRING, 
     create_by STRING, 
-    create_time DATETIME, 
+    create_time TIMESTAMP, 
     update_by STRING, 
-    update_time DATETIME 
+    update_time TIMESTAMP 
 );
 
 -- DocumentMaster 文档主数据
 CREATE TAG IF NOT EXISTS DocumentMaster( 
     id STRING NOT NULL, 
     type STRING, 
-    number STRING, 
-    name STRING, 
     create_by STRING, 
-    create_time DATETIME, 
+    create_time TIMESTAMP, 
     update_by STRING, 
-    update_time DATETIME 
+    update_time TIMESTAMP 
 );
 
 -- Folder 文件夹
 CREATE TAG IF NOT EXISTS Folder( 
     id STRING NOT NULL, 
     type STRING, 
-    name STRING, 
     create_by STRING, 
-    create_time DATETIME, 
+    create_time TIMESTAMP, 
     update_by STRING, 
-    update_time DATETIME 
+    update_time TIMESTAMP 
 );
 
 -- Product 产品库
 CREATE TAG IF NOT EXISTS Product( 
     id STRING NOT NULL, 
     type STRING, 
-    name STRING, 
     create_by STRING, 
-    create_time DATETIME, 
+    create_time TIMESTAMP, 
     update_by STRING, 
-    update_time DATETIME 
+    update_time TIMESTAMP 
 );
 
 CREATE TAG INDEX IF NOT EXISTS idx_wpart_id ON WPart(id(32));
@@ -209,8 +201,8 @@ CREATE EDGE IF NOT EXISTS ContainsLink(
     from_type STRING,
     to_id STRING,
     to_type STRING,
-    create_time DATETIME,
-    update_time DATETIME
+    create_time TIMESTAMP,
+    update_time TIMESTAMP
 );
 
 -- 创建 IteraiteLink 边（3.x 正确语法）
@@ -221,8 +213,8 @@ CREATE EDGE IF NOT EXISTS IteraiteLink(
     from_type STRING,
     to_id STRING,
     to_type STRING,
-    create_time DATETIME,
-    update_time DATETIME
+    create_time TIMESTAMP,
+    update_time TIMESTAMP
 );
 
 # ContainsLink 边索引（id/fromId/toId 全部创建，字符串指定索引长度32）
@@ -461,6 +453,19 @@ CREATE PUBLICATION mf_plm_publication FOR TABLE
     product,
     contains_link,
     iteraite_link;
+
+ALTER PUBLICATION mf_plm_publication
+ADD TABLE
+  public.product (id,type,create_by,create_time,update_by,update_time),
+  public.document (id,type,create_by,create_time,update_by,update_time),
+  public.document_master (id,type,create_by,create_time,update_by,update_time),
+  public.folder (id,type,create_by,create_time,update_by,update_time),
+  public.w_part (id,type,create_by,create_time,update_by,update_time),
+  public.w_part_master (id,type,create_by,create_time,update_by,update_time),
+  public.contains_link (id,type,from_id,from_type,to_id,to_type,create_by,create_time,update_by,update_time),
+  public.iteraite_link (id,type,from_id,from_type,to_id,to_type,create_by,create_time,update_by,update_time);
+
+    
 ```
 
 ### 7.5 验证配置

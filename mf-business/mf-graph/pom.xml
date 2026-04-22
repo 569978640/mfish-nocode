@@ -69,6 +69,11 @@
             <artifactId>debezium-storage-file</artifactId>
             <version>${debezium.version}</version>
         </dependency>
+        <dependency>
+            <groupId>io.debezium</groupId>
+            <artifactId>debezium-storage-redis</artifactId>
+            <version>${debezium.version}</version>
+        </dependency>
         <!-- PostgreSQL Connector for Debezium -->
         <dependency>
             <groupId>io.debezium</groupId>
