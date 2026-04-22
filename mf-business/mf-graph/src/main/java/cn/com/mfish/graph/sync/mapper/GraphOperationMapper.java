@@ -35,7 +35,7 @@ public class GraphOperationMapper {
 
     public void deleteVertex(String tagName, String id) {
         try {
-            String nGql = String.format("DELETE VERTEX ON %s \"%s\"", tagName, id);
+            String nGql = String.format("DELETE VERTEX \"%s\"", id);
             nebulaTemplate.executeWithoutResult(nGql);
             log.debug("DELETE vertex success: {}", nGql);
         } catch (Exception e) {
@@ -46,7 +46,7 @@ public class GraphOperationMapper {
 
     public void deleteEdge(String edgeName, String fromId, String toId) {
         try {
-            String nGql = String.format("DELETE EDGE ON %s \"%s\" -> \"%s\"@0", edgeName, fromId, toId);
+            String nGql = String.format("DELETE EDGE \"%s\" -> \"%s\"@0", fromId, toId);
             nebulaTemplate.executeWithoutResult(nGql);
             log.debug("DELETE edge success: {}", nGql);
         } catch (Exception e) {
