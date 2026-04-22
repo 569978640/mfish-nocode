@@ -157,42 +157,6 @@ public class DebeziumRunner {
         }
     }
 
-//    private void handleChangeEvent(ChangeEvent event) {
-//        try {
-//            Object eventValue = event.value();
-//            log.info("收到 ChangeEvent, key 类型: {}, value 类型: {}",
-//                    event.key(), eventValue.getClass().getName());
-//
-//            if (eventValue instanceof byte[] bytes) {
-//                String jsonStr = new String(bytes);
-//                log.info("收到字节数组事件, length={}, 内容预览={}",
-//                        bytes.length, jsonStr.substring(0, Math.min(200, jsonStr.length())));
-//                CdcEvent cdcEvent = parseJsonEvent(jsonStr);
-//                if (cdcEvent != null) {
-//                    sendToRocketMQ(cdcEvent);
-//                }
-//            } else if (eventValue instanceof String jsonStr) {
-//                log.info("收到字符串事件, length={}, 内容预览={}",
-//                        jsonStr.length(), jsonStr.substring(0, Math.min(200, jsonStr.length())));
-//                CdcEvent cdcEvent = parseJsonEvent(jsonStr);
-//                if (cdcEvent != null) {
-//                    sendToRocketMQ(cdcEvent);
-//                }
-//            } else if (eventValue instanceof org.apache.kafka.connect.source.SourceRecord record) {
-//                log.info("收到 SourceRecord: topic={}, partition={}, offset={}",
-//                        record.topic(), record.sourcePartition(), record.sourceOffset());
-//                CdcEvent cdcEvent = convertToCdcEvent(record);
-//                if (cdcEvent != null) {
-//                    sendToRocketMQ(cdcEvent);
-//                }
-//            } else {
-//                log.warn("未知的 ChangeEvent 类型: {}, value={}", eventValue.getClass(), eventValue);
-//            }
-//        } catch (Exception e) {
-//            log.error("处理 Debezium 记录失败", e);
-//        }
-//    }
-
     private CdcEvent parseJsonEvent(String jsonStr) {
         try {
             log.debug("解析 JSON 事件: {}", jsonStr);
@@ -209,73 +173,24 @@ public class DebeziumRunner {
         }
     }
 
-//    private CdcEvent convertToCdcEvent(org.apache.kafka.connect.source.SourceRecord record) {
-//        try {
-//            String topic = record.topic();
-//            String table = topic.substring(topic.lastIndexOf('.') + 1);
-//
-//            Object valueObj = record.value();
-//            if (valueObj == null) {
-//                return null;
-//            }
-//
-//            CdcEvent event = new CdcEvent();
-//            event.setTable(table);
-//
-//            if (valueObj instanceof org.apache.kafka.connect.data.Struct valueStruct) {
-//                event.setOp(String.valueOf(valueStruct.get("op")));
-//                event.setTs(valueStruct.getInt64("ts_ms"));
-//
-//                org.apache.kafka.connect.data.Struct sourceStruct = valueStruct.getStruct("source");
-//                if (sourceStruct != null) {
-//                    event.setTable(sourceStruct.getString("table"));
-//                }
-//
-//                if (valueStruct.getStruct("before") != null) {
-//                    event.setBefore(structToMap(valueStruct.getStruct("before")));
-//                }
-//                if (valueStruct.getStruct("after") != null) {
-//                    event.setAfter(structToMap(valueStruct.getStruct("after")));
-//                }
-//            } else {
-//                String jsonStr = objectMapper.writeValueAsString(valueObj);
-//                CdcEvent parsed = objectMapper.readValue(jsonStr, CdcEvent.class);
-//                return parsed;
-//            }
-//
-//            return event;
-//        } catch (Exception e) {
-//            log.error("转换 CDC 记录失败: {}", record, e);
-//            return null;
-//        }
-//    }
-
-//    private java.util.Map<String, Object> structToMap(org.apache.kafka.connect.data.Struct struct) {
-//        if (struct == null) return null;
-//        java.util.Map<String, Object> map = new java.util.HashMap<>();
-//        for (org.apache.kafka.connect.data.Field field : struct.schema().fields()) {
-//            map.put(field.name(), struct.get(field));
-//        }
-//        return map;
-//    }
-
     private void sendToRocketMQ(CdcEvent event) {
         try {
             String message = objectMapper.writeValueAsString(event);
             log.info("发送 CDC 事件到 RocketMQ: topic={}, table={}, op={}", topic, event.getTable(), event.getOp());
-            rocketMQTemplate.asyncSend(topic, message, new SendCallback() {
-                @Override
-                public void onSuccess(SendResult sendResult) {
-                    log.info("图同步事件发送成功, messageId={}, table={}, op={}",
-                            sendResult.getMsgId(), event.getTable(), event.getOp());
-                }
-
-                @Override
-                public void onException(Throwable e) {
-                    log.error("图同步事件发送失败, table={}, op={}, message={}",
-                            event.getTable(), event.getOp(), message, e);
-                }
-            });
+            rocketMQTemplate.convertAndSend(topic, message);
+//            rocketMQTemplate.asyncSend(topic, message, new SendCallback() {
+//                @Override
+//                public void onSuccess(SendResult sendResult) {
+//                    log.info("图同步事件发送成功, messageId={}, table={}, op={}",
+//                            sendResult.getMsgId(), event.getTable(), event.getOp());
+//                }
+//
+//                @Override
+//                public void onException(Throwable e) {
+//                    log.error("图同步事件发送失败, table={}, op={}, message={}",
+//                            event.getTable(), event.getOp(), message, e);
+//                }
+//            });
             log.debug("CDC 事件已发送到 RocketMQ: table={}, op={}", event.getTable(), event.getOp());
         } catch (Exception e) {
             log.error("发送消息到 RocketMQ 失败", e);
