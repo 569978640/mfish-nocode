@@ -20,4 +20,7 @@ public class PgCdcConfig {
     private String slot;
     private String publication;
     private List<String> tables;
+    private String redisAddress;
+    private String redisPassword;
+    private Integer redisDatabase;
 }

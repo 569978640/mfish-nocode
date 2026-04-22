@@ -48,6 +48,7 @@ public class DebeziumRunner {
     @PostConstruct
     public void start() {
         log.info("启动 Debezium Embedded...");
+        log.info("Redis 配置: address={}, database={}", pgCdcConfig.getRedisAddress(), pgCdcConfig.getRedisDatabase());
 
         String tableList = String.join(",", pgCdcConfig.getTables());
         log.info("table.include.list = {}", tableList);
@@ -58,14 +59,17 @@ public class DebeziumRunner {
 
                 // ====================== 核心：Redis 存储偏移量 ======================
                 .with("offset.storage", "io.debezium.storage.redis.offset.RedisOffsetBackingStore")
-                .with("offset.storage.redis.address", "192.168.111.103:6379")  // 你的 Redis 地址
-                .with("offset.storage.redis.password", "redis")   // 没有密码就删掉这行
-                .with("offset.storage.redis.database", "0")              // Redis 库号
-                .with("offset.storage.redis.key", "debezium-offset")      // 必须指定 Redis key
-                .with("offset.storage.redis.timeout.ms", 2000)            // 超时
-                .with("offset.storage.redis.connection.max.idle", 10)     // 连接池
-                .with("offset.flush.interval.ms", "1000")
+                .with("offset.storage.redis.address", pgCdcConfig.getRedisAddress())
+                .with("offset.storage.redis.password", pgCdcConfig.getRedisPassword() != null ? pgCdcConfig.getRedisPassword() : "")
+                .with("offset.storage.redis.database", pgCdcConfig.getRedisDatabase() != null ? pgCdcConfig.getRedisDatabase() : 0)
+                .with("offset.storage.redis.key", "debezium-offset")
+                .with("offset.storage.redis.timeout.ms", 10000)
+                .with("offset.storage.redis.connection.max.idle", 10)
+                .with("offset.storage.redis.connection.min.idle", 2)
+                .with("offset.storage.redis.connection.max.total", 20)
+                .with("offset.storage.redis.separator", ":")
                 .with("offset.commit.mode", "PERIODIC")
+                .with("offset.flush.interval.ms", 10000)
 
                 // ====================== 关键：只第一次全量，后续重启增量 ======================
                 .with("snapshot.mode", "initial")
@@ -105,7 +109,7 @@ public class DebeziumRunner {
                     for (ChangeEvent<String, String> record : records) {
                         try {
                             handleSingleEvent(record);
-//                            committer.markProcessed(record);
+                            committer.markProcessed(record);
                         } catch (Exception e) {
                             log.error("处理记录失败: key={}", record.key(), e);
                         }
@@ -153,41 +157,41 @@ public class DebeziumRunner {
         }
     }
 
-    private void handleChangeEvent(ChangeEvent event) {
-        try {
-            Object eventValue = event.value();
-            log.info("收到 ChangeEvent, key 类型: {}, value 类型: {}",
-                    event.key(), eventValue.getClass().getName());
-
-            if (eventValue instanceof byte[] bytes) {
-                String jsonStr = new String(bytes);
-                log.info("收到字节数组事件, length={}, 内容预览={}",
-                        bytes.length, jsonStr.substring(0, Math.min(200, jsonStr.length())));
-                CdcEvent cdcEvent = parseJsonEvent(jsonStr);
-                if (cdcEvent != null) {
-                    sendToRocketMQ(cdcEvent);
-                }
-            } else if (eventValue instanceof String jsonStr) {
-                log.info("收到字符串事件, length={}, 内容预览={}",
-                        jsonStr.length(), jsonStr.substring(0, Math.min(200, jsonStr.length())));
-                CdcEvent cdcEvent = parseJsonEvent(jsonStr);
-                if (cdcEvent != null) {
-                    sendToRocketMQ(cdcEvent);
-                }
-            } else if (eventValue instanceof org.apache.kafka.connect.source.SourceRecord record) {
-                log.info("收到 SourceRecord: topic={}, partition={}, offset={}",
-                        record.topic(), record.sourcePartition(), record.sourceOffset());
-                CdcEvent cdcEvent = convertToCdcEvent(record);
-                if (cdcEvent != null) {
-                    sendToRocketMQ(cdcEvent);
-                }
-            } else {
-                log.warn("未知的 ChangeEvent 类型: {}, value={}", eventValue.getClass(), eventValue);
-            }
-        } catch (Exception e) {
-            log.error("处理 Debezium 记录失败", e);
-        }
-    }
+//    private void handleChangeEvent(ChangeEvent event) {
+//        try {
+//            Object eventValue = event.value();
+//            log.info("收到 ChangeEvent, key 类型: {}, value 类型: {}",
+//                    event.key(), eventValue.getClass().getName());
+//
+//            if (eventValue instanceof byte[] bytes) {
+//                String jsonStr = new String(bytes);
+//                log.info("收到字节数组事件, length={}, 内容预览={}",
+//                        bytes.length, jsonStr.substring(0, Math.min(200, jsonStr.length())));
+//                CdcEvent cdcEvent = parseJsonEvent(jsonStr);
+//                if (cdcEvent != null) {
+//                    sendToRocketMQ(cdcEvent);
+//                }
+//            } else if (eventValue instanceof String jsonStr) {
+//                log.info("收到字符串事件, length={}, 内容预览={}",
+//                        jsonStr.length(), jsonStr.substring(0, Math.min(200, jsonStr.length())));
+//                CdcEvent cdcEvent = parseJsonEvent(jsonStr);
+//                if (cdcEvent != null) {
+//                    sendToRocketMQ(cdcEvent);
+//                }
+//            } else if (eventValue instanceof org.apache.kafka.connect.source.SourceRecord record) {
+//                log.info("收到 SourceRecord: topic={}, partition={}, offset={}",
+//                        record.topic(), record.sourcePartition(), record.sourceOffset());
+//                CdcEvent cdcEvent = convertToCdcEvent(record);
+//                if (cdcEvent != null) {
+//                    sendToRocketMQ(cdcEvent);
+//                }
+//            } else {
+//                log.warn("未知的 ChangeEvent 类型: {}, value={}", eventValue.getClass(), eventValue);
+//            }
+//        } catch (Exception e) {
+//            log.error("处理 Debezium 记录失败", e);
+//        }
+//    }
 
     private CdcEvent parseJsonEvent(String jsonStr) {
         try {
@@ -205,55 +209,55 @@ public class DebeziumRunner {
         }
     }
 
-    private CdcEvent convertToCdcEvent(org.apache.kafka.connect.source.SourceRecord record) {
-        try {
-            String topic = record.topic();
-            String table = topic.substring(topic.lastIndexOf('.') + 1);
+//    private CdcEvent convertToCdcEvent(org.apache.kafka.connect.source.SourceRecord record) {
+//        try {
+//            String topic = record.topic();
+//            String table = topic.substring(topic.lastIndexOf('.') + 1);
+//
+//            Object valueObj = record.value();
+//            if (valueObj == null) {
+//                return null;
+//            }
+//
+//            CdcEvent event = new CdcEvent();
+//            event.setTable(table);
+//
+//            if (valueObj instanceof org.apache.kafka.connect.data.Struct valueStruct) {
+//                event.setOp(String.valueOf(valueStruct.get("op")));
+//                event.setTs(valueStruct.getInt64("ts_ms"));
+//
+//                org.apache.kafka.connect.data.Struct sourceStruct = valueStruct.getStruct("source");
+//                if (sourceStruct != null) {
+//                    event.setTable(sourceStruct.getString("table"));
+//                }
+//
+//                if (valueStruct.getStruct("before") != null) {
+//                    event.setBefore(structToMap(valueStruct.getStruct("before")));
+//                }
+//                if (valueStruct.getStruct("after") != null) {
+//                    event.setAfter(structToMap(valueStruct.getStruct("after")));
+//                }
+//            } else {
+//                String jsonStr = objectMapper.writeValueAsString(valueObj);
+//                CdcEvent parsed = objectMapper.readValue(jsonStr, CdcEvent.class);
+//                return parsed;
+//            }
+//
+//            return event;
+//        } catch (Exception e) {
+//            log.error("转换 CDC 记录失败: {}", record, e);
+//            return null;
+//        }
+//    }
 
-            Object valueObj = record.value();
-            if (valueObj == null) {
-                return null;
-            }
-
-            CdcEvent event = new CdcEvent();
-            event.setTable(table);
-
-            if (valueObj instanceof org.apache.kafka.connect.data.Struct valueStruct) {
-                event.setOp(String.valueOf(valueStruct.get("op")));
-                event.setTs(valueStruct.getInt64("ts_ms"));
-
-                org.apache.kafka.connect.data.Struct sourceStruct = valueStruct.getStruct("source");
-                if (sourceStruct != null) {
-                    event.setTable(sourceStruct.getString("table"));
-                }
-
-                if (valueStruct.getStruct("before") != null) {
-                    event.setBefore(structToMap(valueStruct.getStruct("before")));
-                }
-                if (valueStruct.getStruct("after") != null) {
-                    event.setAfter(structToMap(valueStruct.getStruct("after")));
-                }
-            } else {
-                String jsonStr = objectMapper.writeValueAsString(valueObj);
-                CdcEvent parsed = objectMapper.readValue(jsonStr, CdcEvent.class);
-                return parsed;
-            }
-
-            return event;
-        } catch (Exception e) {
-            log.error("转换 CDC 记录失败: {}", record, e);
-            return null;
-        }
-    }
-
-    private java.util.Map<String, Object> structToMap(org.apache.kafka.connect.data.Struct struct) {
-        if (struct == null) return null;
-        java.util.Map<String, Object> map = new java.util.HashMap<>();
-        for (org.apache.kafka.connect.data.Field field : struct.schema().fields()) {
-            map.put(field.name(), struct.get(field));
-        }
-        return map;
-    }
+//    private java.util.Map<String, Object> structToMap(org.apache.kafka.connect.data.Struct struct) {
+//        if (struct == null) return null;
+//        java.util.Map<String, Object> map = new java.util.HashMap<>();
+//        for (org.apache.kafka.connect.data.Field field : struct.schema().fields()) {
+//            map.put(field.name(), struct.get(field));
+//        }
+//        return map;
+//    }
 
     private void sendToRocketMQ(CdcEvent event) {
         try {

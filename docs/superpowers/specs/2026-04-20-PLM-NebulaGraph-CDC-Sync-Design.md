@@ -114,8 +114,6 @@ CREATE SPACE IF NOT EXISTS plm_graph (
 CREATE TAG IF NOT EXISTS WPart( 
     id STRING NOT NULL, 
     type STRING, 
-    version STRING, 
-    state STRING, 
     create_by STRING, 
     create_time TIMESTAMP, 
     update_by STRING, 
