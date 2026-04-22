@@ -80,6 +80,12 @@
             <artifactId>debezium-connector-postgres</artifactId>
             <version>${debezium.version}</version>
         </dependency>
+        <!-- Kafka Connect API (Debezium 3.2 需要) -->
+<!--        <dependency>-->
+<!--            <groupId>org.apache.kafka</groupId>-->
+<!--            <artifactId>connect-api</artifactId>-->
+<!--            <version>4.1.2</version>-->
+<!--        </dependency>-->
     </dependencies>
     
 </project>

@@ -59,7 +59,7 @@
         <okhttp.version>5.3.2</okhttp.version>
         <flowable.version>8.0.0</flowable.version>
         <vesoft.client.version>3.8.4</vesoft.client.version>
-        <debezium.version>2.7.2.Final</debezium.version>
+        <debezium.version>3.2.0.Final</debezium.version>
         <ngbatis.version>2.0.1</ngbatis.version>
         <jakarta.annotation.version>2.1.1</jakarta.annotation.version>
     </properties>
