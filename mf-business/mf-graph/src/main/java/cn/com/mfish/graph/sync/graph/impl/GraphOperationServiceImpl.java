@@ -9,6 +9,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 /**
@@ -137,7 +138,7 @@ public class GraphOperationServiceImpl implements GraphOperationService {
         if (value instanceof Number) {
             long numValue = ((Number) value).longValue();
             if (numValue > 1000000000000L) {
-                return "DATETIME(" + (numValue / 1000) + ")";
+                return "TIMESTAMP(" + TimeUnit.MICROSECONDS.toSeconds(numValue) + ")";
             }
         }
         return value.toString();
