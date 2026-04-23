@@ -51,8 +51,11 @@ public class MybatisInterceptor implements Interceptor {
                 case INSERT:
                     if (!StringUtils.isEmpty(account)) {
                         parameter.setCreateBy(account);
+                        parameter.setUpdateBy(account);
                     }
-                    parameter.setCreateTime(new Date());
+                    Date now = new Date();
+                    parameter.setCreateTime(now);
+                    parameter.setUpdateTime(now);
                     break;
                 case UPDATE:
                     if (!StringUtils.isEmpty(account)) {
