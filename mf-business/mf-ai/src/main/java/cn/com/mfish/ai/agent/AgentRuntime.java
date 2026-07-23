@@ -9,9 +9,11 @@ import cn.com.mfish.common.ai.entity.AiRequest;
 import cn.com.mfish.common.ai.entity.ChatResponseVo;
 import cn.com.mfish.common.ai.entity.EventType;
 import cn.com.mfish.common.ai.entity.PlanStep;
+import cn.com.mfish.common.ai.memory.ConversationMemory;
+import cn.com.mfish.common.ai.memory.ConversationMemoryStore;
+import cn.com.mfish.common.ai.memory.DocumentChunk;
 import cn.com.mfish.common.core.utils.AuthInfoUtils;
 import cn.com.mfish.common.core.utils.ServletUtils;
-import cn.com.mfish.common.core.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestAttributes;
@@ -51,30 +53,34 @@ public class AgentRuntime {
     private final Executor executor;
     private final LlmModelRouter llmModelRouter;
     private final FileParseService fileParseService;
+    private final ConversationMemoryStore memoryStore;
 
     public AgentRuntime(Planner planner, Executor executor, LlmModelRouter llmModelRouter,
-                        FileParseService fileParseService) {
+                        FileParseService fileParseService, ConversationMemoryStore memoryStore) {
         this.planner = planner;
         this.executor = executor;
         this.llmModelRouter = llmModelRouter;
         this.fileParseService = fileParseService;
+        this.memoryStore = memoryStore;
     }
 
     /**
      * 运行智能体编排
      * <p>
-     * 在请求线程捕获租户上下文快照，后台启动 Plan → Execute 流程，同时返回事件流供前端订阅。
-     * 编排流程在 boundedElastic 调度器上执行，不阻塞当前线程。
+     * 重构后流程（接入 Memory 模块）：
+     * <ol>
+     *   <li>获取（或创建）sessionId 对应的 {@link ConversationMemory}</li>
+     *   <li>在请求线程捕获 TenantContext 并绑定到 Memory 的 Vars Context</li>
+     *   <li>若请求携带 fileIds：在请求线程解析文件为 DocumentChunk 列表，
+     *       注入到 Memory 的 Document Context</li>
+     *   <li>从 Memory 读取 Document Context 拼接文本，注入到用户 prompt 前</li>
+     *   <li>后台启动 Plan → Execute 流程</li>
+     * </ol>
      * </p>
      * <p>
-     * 关键点：必须在请求线程捕获 {@link TenantContext}（含 tenantId/userId/token/RequestAttributes/Exchange），
-     * 因为 AuthInfoUtils 和 RequestContextHolder 不支持异步线程访问，编排切到 boundedElastic 后
-     * 需要用快照构建 ToolContext 和 ChatClient。
-     * </p>
-     * <p>
-     * 文件解析：若请求携带 fileIds，在请求线程同步加载文件内容（Feign 调用 mf-storage），
-     * 拼接到用户提示词前。必须在请求线程执行，因为 Feign 的 BearerTokenInterceptor 依赖
-     * RequestContextHolder 中继令牌，异步线程拿不到。
+     * 关键点：必须在请求线程完成 Memory 写入（TenantContext 绑定 + 文件解析），
+     * 因为 AuthInfoUtils 和 Feign BearerTokenInterceptor 都依赖 RequestContextHolder，
+     * 切到 boundedElastic 异步线程后拿不到请求上下文。
      * </p>
      * <p>
      * 所有返回的 {@link ChatResponseVo} 的 id 字段填充为 {@link AiRequest#getId()}，
@@ -88,45 +94,31 @@ public class AgentRuntime {
         String requestId = aiRequest.getId();
         String sessionId = aiRequest.getSessionId();
         String prompt = aiRequest.getMessage() != null ? aiRequest.getMessage().getContent() : null;
-        // 用请求 id 作为事件 id，与普通聊天返回结构一致
         EventBus eventBus = new EventBus(requestId);
 
-        // 在请求线程捕获租户上下文快照，供异步编排使用
-        TenantContext tenantContext = captureTenantContext();
+        // 获取（或创建）会话 Memory
+        ConversationMemory memory = memoryStore.getOrCreate(sessionId);
 
-        // 文件解析必须在请求线程执行：Feign BearerTokenInterceptor 依赖 RequestContextHolder
-        prompt = resolveFileContents(prompt, aiRequest.getFileIds());
+        // 在请求线程捕获租户上下文并绑定到 Memory 的 Vars Context
+        TenantContext tenantContext = captureTenantContext();
+        memory.bindTenantContext(tenantContext);
+
+        // 文件解析 + 注入 Memory 的 Document Context（必须在请求线程执行）
+        List<DocumentChunk> chunks = fileParseService.loadAsChunks(aiRequest.getFileIds());
+        if (!chunks.isEmpty()) {
+            memory.addDocumentChunks(chunks);
+        }
+
+        // Document Context 的拼接交由 Planner 统一处理：
+        // Planner.plan() 会从 Memory 读取 getSystemContext()（含 Vars + Document）拼接到 prompt 前。
+        // AgentRuntime 只负责 Memory 写入（文件解析 + 租户绑定），不再拼接 DocumentContext 到 prompt，
+        // 避免与 Planner 重复拼接。
 
         // 后台启动编排流程
         runOrchestration(sessionId, prompt, eventBus, tenantContext);
 
         // 返回事件流供前端订阅
         return eventBus.asFlux();
-    }
-
-    /**
-     * 加载文件内容并拼接到提示词前
-     * <p>
-     * 若 fileIds 为空或全部加载失败，返回原始 prompt。
-     * 文件内容加载失败时记录日志但不阻断流程，降级为纯文本对话。
-     * </p>
-     *
-     * @param prompt  原始用户提示词
-     * @param fileIds 文件fileKey列表
-     * @return 拼接后的提示词
-     */
-    private String resolveFileContents(String prompt, List<String> fileIds) {
-        if (fileIds == null || fileIds.isEmpty()) {
-            return prompt;
-        }
-        String fileContents = fileParseService.loadFileContents(fileIds);
-        if (StringUtils.isEmpty(fileContents)) {
-            log.warn("[AgentRuntime] 文件内容加载为空 fileIds={}", fileIds);
-            return prompt;
-        }
-        return "以下是用户上传的文件内容，请基于文件内容进行分析：\n\n"
-                + fileContents
-                + "\n用户需求：" + prompt;
     }
 
     /**

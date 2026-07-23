@@ -2,9 +2,13 @@ package cn.com.mfish.ai.agent;
 
 import cn.com.mfish.ai.service.LlmModelRouter;
 import cn.com.mfish.common.ai.agent.TenantContext;
+import cn.com.mfish.common.ai.capability.ActionDefinition;
+import cn.com.mfish.common.ai.capability.CapabilityEngine;
 import cn.com.mfish.common.ai.entity.AgentPlan;
 import cn.com.mfish.common.ai.entity.PlanStep;
-import cn.com.mfish.common.core.constants.ServiceConstants;
+import cn.com.mfish.common.ai.memory.ConversationMemory;
+import cn.com.mfish.common.ai.memory.ConversationMemoryStore;
+import cn.com.mfish.common.core.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
 import org.springframework.ai.chat.client.advisor.MessageChatMemoryAdvisor;
@@ -14,22 +18,35 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.util.Arrays;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 import static org.springframework.ai.chat.memory.ChatMemory.CONVERSATION_ID;
 
 /**
- * 任务规划器
+ * 任务规划器（已接入 CapabilityEngine + Memory）
  * <p>
- * 调用 LLM 将用户原始需求拆解为结构化的 {@link AgentPlan}：
+ * 重构后职责（第二阶段存量平移）：
  * <ol>
- *   <li>分析用户意图</li>
- *   <li>拆解为多个可执行的步骤</li>
- *   <li>每步指定需要调用的微服务集合</li>
+ *   <li>从 {@link ConversationMemoryStore} 读取会话 Memory，获取系统上下文（Vars + Document）</li>
+ *   <li>从 {@link CapabilityEngine} 获取所有可用 {@link ActionDefinition}，按服务分组展示给 LLM</li>
+ *   <li>将上下文 + 动作列表 + 用户需求打包发给 LLM，生成结构化 {@link AgentPlan}</li>
  * </ol>
+ * </p>
+ * <p>
+ * <b>与旧版差异</b>：
+ * <ul>
+ *     <li>服务列表来源：旧版从 {@code ServiceConstants.MfService.values()} 硬编码枚举获取；
+ *         新版从 {@link CapabilityEngine#getAvailableActions()} 动态获取，自动反映已注册的子引擎</li>
+ *     <li>上下文注入：旧版仅传入原始 prompt；新版从 Memory 读取 {@code getSystemContext()}
+ *         拼接到 prompt 前，包含租户信息、业务变量和文档内容</li>
+ *     <li>动作摘要：新版在规划提示词中展示每个服务的动作数量和示例动作名，
+ *         帮助 LLM 更精准地选择 serviceIds</li>
+ * </ul>
  * </p>
  * <p>
  * 采用结构化输出（responseEntity），LLM 直接返回 JSON 反序列化为 AgentPlan。
@@ -45,22 +62,36 @@ public class Planner {
 
     private final ChatMemory chatMemory;
     private final LlmModelRouter llmModelRouter;
+    private final CapabilityEngine capabilityEngine;
+    private final ConversationMemoryStore memoryStore;
 
-    public Planner(ChatMemory chatMemory, LlmModelRouter llmModelRouter) {
+    public Planner(ChatMemory chatMemory, LlmModelRouter llmModelRouter,
+                   CapabilityEngine capabilityEngine, ConversationMemoryStore memoryStore) {
         this.chatMemory = chatMemory;
         this.llmModelRouter = llmModelRouter;
+        this.capabilityEngine = capabilityEngine;
+        this.memoryStore = memoryStore;
     }
 
     /**
      * 规划：将用户需求拆解为步骤列表
      * <p>
-     * 注意：本方法会被异步调度器（boundedElastic）调用，因此 ChatClient 必须在请求线程
-     * 预构建并通过闭包传入。{@link TenantContext} 中包含请求线程捕获的 tenantId，
+     * 重构后流程：
+     * <ol>
+     *   <li>从 Memory 读取系统上下文（Vars + Document），拼接到 prompt 前</li>
+     *   <li>从 CapabilityEngine 获取所有可用 ActionDefinition，构建规划提示词</li>
+     *   <li>调用 LLM 生成结构化 AgentPlan</li>
+     *   <li>失败时降级为单步执行，聚合所有已注册服务</li>
+     * </ol>
+     * </p>
+     * <p>
+     * 注意：本方法会被异步调度器（boundedElastic）调用，因此 ChatClient 和系统提示词
+     * 必须在请求线程预构建并通过闭包传入。{@link TenantContext} 中包含请求线程捕获的 tenantId，
      * 用于路由到该租户的 ChatModel。
      * </p>
      *
      * @param sessionId      会话ID
-     * @param prompt         用户原始需求
+     * @param prompt         用户原始需求（已由 AgentRuntime 拼接 Document Context）
      * @param tenantContext  请求线程捕获的租户上下文
      * @return 执行计划
      */
@@ -70,16 +101,26 @@ public class Planner {
                 ? tenantContext.getTenantId()
                 : llmModelRouter.currentTenantId();
         ChatClient chatClient = getChatClient(tenantId);
+
+        // 从 Memory 读取系统上下文（Vars + Document），拼接到 prompt 前
+        String systemContext = resolveSystemContext(sessionId);
+
+        // 从 CapabilityEngine 获取动作列表，构建规划提示词
         String systemPrompt = buildPlannerPrompt();
+
+        // 拼接最终 prompt：系统上下文 + 用户需求
+        String finalPrompt = StringUtils.isNotEmpty(systemContext)
+                ? systemContext + "\n用户需求：" + prompt
+                : prompt;
 
         return Mono.fromCallable(() -> {
                     var responseEntity = chatClient.prompt()
                             .system(systemPrompt)
-                            .user(prompt)
+                            .user(finalPrompt)
                             .advisors(a -> a.param(CONVERSATION_ID, sessionId))
                             .call()
                             .responseEntity(AgentPlan.class);
-                    AgentPlan plan = Objects.requireNonNullElseGet(responseEntity.entity(), () -> fallbackPlan(prompt));
+                    AgentPlan plan = Objects.requireNonNullElseGet(responseEntity.entity(), () -> fallbackPlan(finalPrompt));
                     plan.setOriginalPrompt(prompt);
                     log.info("[Planner] 规划完成, 步骤数={}, summary={}",
                             plan.getSteps() != null ? plan.getSteps().size() : 0, plan.getSummary());
@@ -88,17 +129,63 @@ public class Planner {
                 .subscribeOn(Schedulers.boundedElastic())
                 .onErrorResume(ex -> {
                     log.error("[Planner] 规划失败，降级为单步执行", ex);
-                    return Mono.just(fallbackPlan(prompt));
+                    return Mono.just(fallbackPlan(finalPrompt));
                 });
     }
 
     /**
-     * 构建规划师系统提示词，包含可用服务列表
+     * 从 Memory 读取系统上下文（Vars Context + Document Context）
+     * <p>
+     * AgentRuntime 已在请求线程将 DocumentContext 拼接到 prompt 中，
+     * 此处进一步补充 Vars Context（租户信息、业务变量），
+     * 使 Planner 能感知用户身份和业务上下文。
+     * </p>
+     */
+    private String resolveSystemContext(String sessionId) {
+        try {
+            ConversationMemory memory = memoryStore.getOrCreate(sessionId);
+            return memory.getSystemContext();
+        } catch (Exception e) {
+            log.warn("[Planner] 读取 Memory 系统上下文失败 sessionId={}", sessionId, e);
+            return "";
+        }
+    }
+
+    /**
+     * 构建规划师系统提示词，包含可用服务列表和动作摘要
+     * <p>
+     * 重构后从 {@link CapabilityEngine#getAvailableActions()} 动态获取动作列表，
+     * 按服务分组展示。相比旧版从 {@code ServiceConstants.MfService.values()} 硬编码枚举获取，
+     * 新版自动反映已注册的子引擎状态（如某服务未启动则不出现在列表中）。
+     * </p>
      */
     private String buildPlannerPrompt() {
-        String serviceList = Arrays.stream(ServiceConstants.MfService.values())
-                .map(s -> String.format("  - %s: %s", s.getValue(), s.getGatewayPrefix()))
-                .collect(Collectors.joining("\n"));
+        // 从 CapabilityEngine 获取所有动作，按 serviceId 分组
+        List<ActionDefinition> actions = capabilityEngine.getAvailableActions();
+        Map<String, List<ActionDefinition>> actionsByService = groupActionsByService(actions);
+
+        // 构建服务列表（仅包含有动作的服务）
+        StringBuilder serviceList = new StringBuilder();
+        for (Map.Entry<String, List<ActionDefinition>> entry : actionsByService.entrySet()) {
+            String serviceId = entry.getKey();
+            List<ActionDefinition> serviceActions = entry.getValue();
+            serviceList.append(String.format("  - %s: %d 个可用动作", serviceId, serviceActions.size()));
+
+            // 展示前 3 个动作名作为示例，帮助 LLM 理解服务能力
+            List<String> sampleNames = serviceActions.stream()
+                    .limit(3)
+                    .map(ActionDefinition::getName)
+                    .toList();
+            if (!sampleNames.isEmpty()) {
+                serviceList.append("（示例: ").append(String.join(", ", sampleNames)).append("）");
+            }
+            serviceList.append("\n");
+        }
+
+        // 如果没有动作，使用兜底提示
+        if (serviceList.isEmpty()) {
+            serviceList.append("  （当前无可用服务，请直接回答用户问题）\n");
+        }
 
         return """
                 你是"摸鱼低代码"平台的任务规划师。
@@ -154,17 +241,39 @@ public class Planner {
     }
 
     /**
-     * 规划失败时的兜底：单步执行原始需求，聚合所有服务工具
+     * 将动作列表按 serviceId 分组（保持注册顺序）
+     */
+    private Map<String, List<ActionDefinition>> groupActionsByService(List<ActionDefinition> actions) {
+        Map<String, List<ActionDefinition>> grouped = new LinkedHashMap<>();
+        if (actions == null || actions.isEmpty()) {
+            return grouped;
+        }
+        for (ActionDefinition action : actions) {
+            String serviceId = action.getServiceId() != null ? action.getServiceId() : "unknown";
+            grouped.computeIfAbsent(serviceId, k -> new java.util.ArrayList<>()).add(action);
+        }
+        return grouped;
+    }
+
+    /**
+     * 规划失败时的兜底：单步执行原始需求，聚合所有已注册服务
+     * <p>
+     * 重构后从 {@link CapabilityEngine#getAvailableActions()} 提取所有 serviceId，
+     * 相比旧版从 {@code ServiceConstants.MfService.values()} 硬编码枚举获取，
+     * 新版仅聚合实际有动作的服务，避免向未启动的服务发送请求。
+     * </p>
      */
     private AgentPlan fallbackPlan(String prompt) {
-        List<String> allServices = Arrays.stream(ServiceConstants.MfService.values())
-                .map(ServiceConstants.MfService::getValue)
-                .collect(Collectors.toList());
+        Set<String> allServiceIds = capabilityEngine.getAvailableActions().stream()
+                .map(ActionDefinition::getServiceId)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        List<String> serviceIdList = List.copyOf(allServiceIds);
         return new AgentPlan()
                 .setOriginalPrompt(prompt)
                 .setSummary("规划降级：直接执行")
                 .setSteps(List.of(
-                        new PlanStep(prompt, allServices)
+                        new PlanStep(prompt, serviceIdList)
                 ));
     }
 

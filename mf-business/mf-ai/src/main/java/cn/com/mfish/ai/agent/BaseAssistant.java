@@ -7,6 +7,8 @@ import cn.com.mfish.common.ai.engine.ApiToolEngine;
 import cn.com.mfish.common.ai.entity.AiRequest;
 import cn.com.mfish.common.ai.entity.ChatResponseVo;
 import cn.com.mfish.common.ai.agent.ToolCapable;
+import cn.com.mfish.common.ai.memory.ConversationMemory;
+import cn.com.mfish.common.ai.memory.ConversationMemoryStore;
 import cn.com.mfish.common.core.constants.RPCConstants;
 import cn.com.mfish.common.core.utils.AuthInfoUtils;
 import cn.com.mfish.common.core.utils.ServletUtils;
@@ -60,6 +62,19 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
      */
     @Autowired
     protected FileParseService fileParseService;
+
+    /**
+     * 会话记忆存储：三驾马车 Memory 模块的入口
+     * <p>
+     * 用于按 sessionId 获取 {@link ConversationMemory}，将文件解析结果、租户上下文、
+     * 业务变量等统一收纳到 Memory，供后续 Planner 拼接上下文。
+     * </p>
+     * <p>
+     * 字段注入避免修改所有子类构造函数。
+     * </p>
+     */
+    @Autowired
+    protected ConversationMemoryStore memoryStore;
 
     public BaseAssistant(ChatMemory chatMemory, LlmModelRouter llmModelRouter, ApiToolEngine apiToolEngine) {
         this.llmModelRouter = llmModelRouter;
@@ -279,25 +294,47 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
     /**
      * 聊天返回id
      * <p>
-     * 若请求携带fileIds，会先通过FileParseService从文件服务获取文件内容，
-     * 将其拼接到用户提示词前，再交由子类chat(sessionId, prompt)处理。
+     * 重构后流程（接入 Memory 模块）：
+     * <ol>
+     *   <li>获取（或创建）sessionId 对应的 {@link ConversationMemory}</li>
+     *   <li>若请求携带 fileIds：通过 FileParseService 解析为 DocumentChunk 列表，
+     *       注入到 Memory 的 Document Context（替代旧的字符串拼接）</li>
+     *   <li>从 Memory 读取 Document Context 拼接文本，注入到用户 prompt 前</li>
+     *   <li>交由子类 chat(sessionId, prompt) 处理（保持向后兼容）</li>
+     * </ol>
+     * <p>
+     * 关键约束：文件解析必须在请求线程执行（Feign BearerTokenInterceptor 依赖
+     * RequestContextHolder），Memory 写入也在请求线程完成（保证一致性）。
      *
      * @return 聊天信息
      */
     @Override
     public Flux<ChatResponseVo> chat(AiRequest aiRequest) {
+        String sessionId = aiRequest.getSessionId();
         String prompt = aiRequest.getMessage().getContent();
+        ConversationMemory memory = memoryStore.getOrCreate(sessionId);
+
+        // 文件解析 + 注入 Memory 的 Document Context
         List<String> fileIds = aiRequest.getFileIds();
         if (fileIds != null && !fileIds.isEmpty()) {
-            String fileContents = fileParseService.loadFileContents(fileIds);
-            if (StringUtils.isNotEmpty(fileContents)) {
-                prompt = "以下是用户上传的文件内容，请基于文件内容进行分析：\n\n"
-                        + fileContents
-                        + "\n用户问题：" + prompt;
+            List<cn.com.mfish.common.ai.memory.DocumentChunk> chunks = fileParseService.loadAsChunks(fileIds);
+            if (!chunks.isEmpty()) {
+                memory.addDocumentChunks(chunks);
             }
         }
+
+        // 从 Memory 读取文档上下文，拼接到 prompt 前
+        // 当前使用 getDocumentContext() 全量注入；当文档较多、token 预算紧张时，
+        // 未来可切换为 memory.searchDocumentContext(prompt, 5) 走 RAG 检索（向量库版 Memory 覆写此方法）。
+        String documentContext = memory.getDocumentContext();
+        if (StringUtils.isNotEmpty(documentContext)) {
+            prompt = "以下是用户上传的文件内容，请基于文件内容进行分析：\n\n"
+                    + documentContext
+                    + "\n用户问题：" + prompt;
+        }
+
         final String finalPrompt = prompt;
-        return chat(aiRequest.getSessionId(), finalPrompt)
+        return chat(sessionId, finalPrompt)
                 .filter(resp -> "STOP".equals(Objects.requireNonNull(resp.getResult()).getMetadata().getFinishReason())
                         || StringUtils.isNotEmpty(resp.getResult().getOutput().getText()))
                 .map(resp -> new ChatResponseVo().setId(aiRequest.getId())

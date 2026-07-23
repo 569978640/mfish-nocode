@@ -186,4 +186,53 @@ public class ApiToolEngine {
     public ToolCallbackProvider getToolCallbackProvider(Set<String> serviceIds) {
         return ToolCallbackProvider.from(getToolCallbacks(serviceIds));
     }
+
+    /**
+     * 获取所有已注册的微服务ID
+     * <p>
+     * 供 {@code ToolCapabilityEngine} 枚举所有服务的工具，将其暴露为 ActionDefinition。
+     * </p>
+     *
+     * @return 已注册的 serviceId 集合（不可变快照）
+     */
+    public Set<String> getAllServiceIds() {
+        return Set.copyOf(toolsByService.keySet());
+    }
+
+    /**
+     * 获取所有服务的全部工具（跨服务，同名工具按 serviceId 顺序去重）
+     * <p>
+     * 供 {@code ToolCapabilityEngine} 构建全局动作列表。
+     * 去重策略与 {@link #getToolCallbacks(Collection)} 一致：先注册的保留。
+     * </p>
+     *
+     * @return 全部工具列表（去重后的快照）
+     */
+    public List<ToolCallback> getAllToolCallbacks() {
+        return getToolCallbacks(toolsByService.keySet());
+    }
+
+    /**
+     * 按动作名查找对应的 ToolCallback
+     * <p>
+     * 供 {@code ToolCapabilityEngine.execute()} 通过 actionName 路由到具体工具。
+     * 遍历所有服务，返回首个名称匹配的 ToolCallback。
+     * </p>
+     *
+     * @param actionName 动作名（即 ToolCallback.getToolDefinition().name()）
+     * @return 匹配的 ToolCallback，未找到时返回 null
+     */
+    public ToolCallback findToolCallback(String actionName) {
+        if (actionName == null || actionName.isEmpty()) {
+            return null;
+        }
+        for (List<ToolCallback> callbacks : toolsByService.values()) {
+            for (ToolCallback tc : callbacks) {
+                if (actionName.equals(tc.getToolDefinition().name())) {
+                    return tc;
+                }
+            }
+        }
+        return null;
+    }
 }
