@@ -1,5 +1,6 @@
 package cn.com.mfish.common.ai.capability;
 
+import cn.com.mfish.common.ai.engine.ApiToolEngine;
 import cn.com.mfish.common.core.utils.StringUtils;
 import com.alibaba.fastjson2.JSON;
 import io.modelcontextprotocol.client.McpClient;
@@ -10,10 +11,15 @@ import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
+import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.mcp.client.webflux.transport.WebClientStreamableHttpTransport;
 import org.springframework.ai.mcp.client.webflux.transport.WebFluxSseClientTransport;
+import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.definition.DefaultToolDefinition;
+import org.springframework.ai.tool.definition.ToolDefinition;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.reactive.function.client.WebClient;
+import org.jspecify.annotations.NonNull;
 
 import java.io.File;
 import java.time.Duration;
@@ -100,6 +106,12 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
     private final McpServerConfigProvider configProvider;
 
     /**
+     * ApiToolEngine 引用：MCP 工具发现后包装为 ToolCallback 注册到 ApiToolEngine，
+     * 使 BaseAssistant 能通过 apiToolEngine.getToolCallbackProvider(serviceIds) 获取 MCP 工具
+     */
+    private final ApiToolEngine apiToolEngine;
+
+    /**
      * MCP 客户端映射：serverName → McpSyncClient
      */
     private final Map<String, McpSyncClient> clients = new ConcurrentHashMap<>();
@@ -127,8 +139,9 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
      */
     private final AtomicBoolean initializing = new AtomicBoolean(false);
 
-    public McpCapabilityEngine(McpServerConfigProvider configProvider) {
+    public McpCapabilityEngine(McpServerConfigProvider configProvider, ApiToolEngine apiToolEngine) {
         this.configProvider = configProvider;
+        this.apiToolEngine = apiToolEngine;
     }
 
     @Override
@@ -263,23 +276,32 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
                 }
                 clients.put(config.getServerName(), client);
 
-                // 列出工具并映射为 ActionDefinition
+                // 列出工具并映射为 ActionDefinition + McpToolCallback
                 McpSchema.ListToolsResult toolsResult = client.listTools();
                 if (toolsResult == null || toolsResult.tools() == null) {
                     continue;
                 }
+                List<ToolCallback> serverCallbacks = new ArrayList<>();
                 for (McpSchema.Tool tool : toolsResult.tools()) {
                     String actionName = buildActionName(config.getServerName(), tool.name());
+                    String inputSchema = serializeSchema(tool.inputSchema());
                     ActionDefinition action = new ActionDefinition()
                             .setName(actionName)
                             .setDescription(tool.description())
-                            .setInputSchema(serializeSchema(tool.inputSchema()))
+                            .setInputSchema(inputSchema)
                             .setEngineType(EngineType.MCP)
                             .setServiceId(config.getServerName());
                     actions.add(action);
                     actionRegistry.put(actionName, new McpActionEntry(client, tool.name()));
+                    // 包装为 ToolCallback，使 BaseAssistant 能通过 ApiToolEngine 获取到 MCP 工具
+                    serverCallbacks.add(new McpToolCallback(actionName, tool.description(),
+                            inputSchema, client, tool.name()));
                     log.info("[McpCapabilityEngine] 注册 MCP 工具 server={} tool={} action={}",
                             config.getServerName(), tool.name(), actionName);
+                }
+                // 将该 MCP 服务器的工具注册到 ApiToolEngine（replace 覆盖旧数据，支持动态刷新）
+                if (apiToolEngine != null && !serverCallbacks.isEmpty()) {
+                    apiToolEngine.replace(config.getServerName(), serverCallbacks);
                 }
                 log.info("[McpCapabilityEngine] MCP 服务器 {} 连接成功，注册 {} 个工具",
                         config.getServerName(), toolsResult.tools().size());
@@ -530,6 +552,10 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
             } catch (Exception e) {
                 log.warn("[McpCapabilityEngine] 关闭 MCP 客户端失败 server={}", entry.getKey(), e);
             }
+            // 清理 ApiToolEngine 中该 MCP server 的工具注册
+            if (apiToolEngine != null) {
+                apiToolEngine.replace(entry.getKey(), List.of());
+            }
         }
         clients.clear();
         actionRegistry.clear();
@@ -546,6 +572,94 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
         McpActionEntry(McpSyncClient client, String toolName) {
             this.client = client;
             this.toolName = toolName;
+        }
+    }
+
+    /**
+     * MCP 工具 → Spring AI ToolCallback 适配器
+     * <p>
+     * 将 MCP 远程工具包装为 {@link ToolCallback}，使 BaseAssistant 能通过
+     * {@code apiToolEngine.getToolCallbackProvider(serviceIds)} 获取到 MCP 工具，
+     * 并通过 {@code chatClient.tools(toolProvider)} 注册给 LLM 进行工具调用。
+     * </p>
+     * <p>
+     * LLM 调用工具时，Spring AI 框架会调用 {@link #call(String)} 方法，
+     * 传入 JSON 格式的工具参数，本类解析后委托 {@link McpSyncClient#callTool} 执行。
+     * </p>
+     */
+    private static class McpToolCallback implements ToolCallback {
+
+        private final McpSyncClient client;
+        private final String originalToolName;
+        private final ToolDefinition toolDefinition;
+
+        /**
+         * @param actionName       动作名（mcp.{serverName}.{toolName}，即 LLM 看到的工具名）
+         * @param description      工具描述
+         * @param inputSchema      输入参数 JSON Schema
+         * @param client           MCP 同步客户端
+         * @param originalToolName MCP 服务器上的原始工具名
+         */
+        McpToolCallback(String actionName, String description, String inputSchema,
+                        McpSyncClient client, String originalToolName) {
+            this.client = client;
+            this.originalToolName = originalToolName;
+            this.toolDefinition = DefaultToolDefinition.builder()
+                    .name(actionName)
+                    .description(description != null ? description : actionName)
+                    .inputSchema(inputSchema != null ? inputSchema : "{}")
+                    .build();
+        }
+
+        @Override
+        public ToolDefinition getToolDefinition() {
+            return toolDefinition;
+        }
+
+        @Override
+        public @NonNull String call(@NonNull String toolInput) {
+            return call(toolInput, null);
+        }
+
+        @Override
+        public @NonNull String call(@NonNull String toolInput, ToolContext context) {
+            try {
+                // 解析 LLM 传入的 JSON 参数
+                Map<String, Object> params;
+                if (toolInput == null || toolInput.isBlank()) {
+                    params = Collections.emptyMap();
+                } else {
+                    params = JSON.parseObject(toolInput, Map.class);
+                    if (params == null) {
+                        params = Collections.emptyMap();
+                    }
+                }
+                McpSchema.CallToolRequest request = new McpSchema.CallToolRequest(originalToolName, params);
+                McpSchema.CallToolResult result = client.callTool(request);
+                return extractTextContent(result);
+            } catch (Exception e) {
+                log.error("[McpToolCallback] MCP 工具调用失败 tool={} input={}", originalToolName, toolInput, e);
+                return "MCP 工具调用失败: " + e.getMessage();
+            }
+        }
+
+        /**
+         * 从 CallToolResult 提取文本内容
+         */
+        private String extractTextContent(McpSchema.CallToolResult result) {
+            if (result == null || result.content() == null || result.content().isEmpty()) {
+                return "";
+            }
+            StringBuilder sb = new StringBuilder();
+            for (McpSchema.Content content : result.content()) {
+                if (content instanceof McpSchema.TextContent tc) {
+                    sb.append(tc.text());
+                } else {
+                    sb.append(JSON.toJSONString(content));
+                }
+                sb.append("\n");
+            }
+            return sb.toString().trim();
         }
     }
 }

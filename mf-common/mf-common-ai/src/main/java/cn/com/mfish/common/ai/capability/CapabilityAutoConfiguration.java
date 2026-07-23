@@ -85,8 +85,9 @@ public class CapabilityAutoConfiguration {
     @Bean
     @ConditionalOnClass(name = "io.modelcontextprotocol.client.McpSyncClient")
     @ConditionalOnBean(McpServerConfigProvider.class)
-    public McpCapabilityEngine mcpCapabilityEngine(McpServerConfigProvider configProvider) {
-        return new McpCapabilityEngine(configProvider);
+    public McpCapabilityEngine mcpCapabilityEngine(McpServerConfigProvider configProvider,
+                                                      ApiToolEngine apiToolEngine) {
+        return new McpCapabilityEngine(configProvider, apiToolEngine);
     }
 
     /**
