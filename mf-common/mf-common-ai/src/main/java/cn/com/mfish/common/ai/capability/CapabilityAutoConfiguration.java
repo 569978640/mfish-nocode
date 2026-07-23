@@ -97,8 +97,14 @@ public class CapabilityAutoConfiguration {
      * 与 ApiToolAutoConfiguration 的 apiToolEngineInitializer 模式一致。
      * </p>
      * <p>
-     * 对于 McpCapabilityEngine，在注册前先调用 {@code refresh()} 连接所有 MCP 服务器并发现工具，
-     * 确保 {@code getActions()} 在注册到 CapabilityEngine 时返回完整的动作列表。
+     * 对于 McpCapabilityEngine，采用<b>异步初始化</b>策略：
+     * <ol>
+     *   <li>先将 MCP 引擎注册到 CapabilityEngine（此时 actions 为空，不阻塞主线程）</li>
+     *   <li>再触发 {@code refreshAsync()} 在 daemon 线程连接 MCP 服务器、发现工具</li>
+     *   <li>初始化完成后回调 {@code capabilityEngine.refreshActionIndex()} 重建动作索引</li>
+     * </ol>
+     * 这样 Spring Boot 启动不被 MCP 服务器连接耗时阻塞，其他子引擎（ToolEngine 等）立即可用。
+     * MCP 工具在初始化完成前不可调用（{@code execute()} 返回友好提示）。
      * </p>
      */
     @Bean
@@ -109,15 +115,16 @@ public class CapabilityAutoConfiguration {
                     subEngines.size(),
                     subEngines.stream().map(e -> e.getEngineType().name()).toList());
 
-            // MCP 引擎需在注册前初始化（连接 MCP 服务器、发现工具）
+            // 1. 先注册所有子引擎（MCP 引擎此时 actions 为空，立即注册不阻塞）
+            capabilityEngine.registerSubEngines(subEngines);
+
+            // 2. 异步触发 MCP 引擎初始化（连接服务器、发现工具），不阻塞主线程
             for (CapabilitySubEngine engine : subEngines) {
                 if (engine instanceof McpCapabilityEngine mcpEngine) {
-                    log.info("[CapabilityAutoConfiguration] 触发 MCP 引擎初始化");
-                    mcpEngine.refresh();
+                    log.info("[CapabilityAutoConfiguration] 触发 MCP 引擎异步初始化");
+                    mcpEngine.refreshAsync(capabilityEngine);
                 }
             }
-
-            capabilityEngine.registerSubEngines(subEngines);
         };
     }
 }

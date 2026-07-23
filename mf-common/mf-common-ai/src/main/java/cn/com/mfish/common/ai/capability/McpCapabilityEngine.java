@@ -15,6 +15,7 @@ import org.springframework.ai.mcp.client.webflux.transport.WebFluxSseClientTrans
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.io.File;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,6 +23,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicBoolean;
 
 /**
  * MCP 能力引擎
@@ -61,8 +63,8 @@ import java.util.concurrent.ConcurrentHashMap;
  * </p>
  * <p>
  * <b>线程安全</b>：clients 和 actions 映射使用 ConcurrentHashMap，支持并发读取。
- * 初始化在 {@link cn.com.mfish.common.ai.capability.CapabilityAutoConfiguration} 的
- * SmartInitializingSingleton 中触发。
+ * 初始化通过 {@link #refreshAsync(CapabilityEngine)} 在 daemon 线程异步执行，
+ * 不阻塞 Spring Boot 主线程。初始化完成后回调重建动作索引。
  * </p>
  *
  * @author: mfish
@@ -112,6 +114,19 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
      */
     private volatile List<ActionDefinition> cachedActions = Collections.emptyList();
 
+    /**
+     * 初始化状态标志：true 表示已完成一次 refresh（无论成功与否）
+     * <p>
+     * 异步初始化期间为 false，{@link #execute} 会据此返回友好提示。
+     * </p>
+     */
+    private final AtomicBoolean initialized = new AtomicBoolean(false);
+
+    /**
+     * 初始化中标志：防止并发重复触发 refresh
+     */
+    private final AtomicBoolean initializing = new AtomicBoolean(false);
+
     public McpCapabilityEngine(McpServerConfigProvider configProvider) {
         this.configProvider = configProvider;
     }
@@ -143,6 +158,11 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
     @Override
     public ActionResult execute(String actionName, Map<String, Object> params, ExecutionContext ctx) {
         long start = System.currentTimeMillis();
+        // 异步初始化尚未完成时，拒绝执行并返回友好提示
+        if (!initialized.get()) {
+            return ActionResult.failure(EngineType.MCP,
+                    "MCP 引擎正在异步初始化中，请稍后重试: " + actionName, System.currentTimeMillis() - start);
+        }
         McpActionEntry entry = actionRegistry.get(actionName);
         if (entry == null) {
             return ActionResult.failure(EngineType.MCP,
@@ -164,9 +184,50 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
     }
 
     /**
-     * 初始化：连接所有 MCP 服务器，发现工具，构建动作注册表
+     * 异步初始化：在后台线程执行 {@link #refresh()}，不阻塞主线程（Spring Boot 启动）。
      * <p>
-     * 由 {@link CapabilityAutoConfiguration} 的 SmartInitializingSingleton 触发。
+     * 初始化完成后回调 {@code capabilityEngine.refreshActionIndex()} 重建动作索引，
+     * 使 MCP 工具对 Planner 可见。
+     * </p>
+     * <p>
+     * 使用 daemon 线程，JVM 退出时自动终止；通过 {@link #initializing} 标志防止并发重复触发。
+     * </p>
+     *
+     * @param capabilityEngine 能力引擎门面（初始化完成后回调重建索引）
+     */
+    public void refreshAsync(CapabilityEngine capabilityEngine) {
+        if (!initializing.compareAndSet(false, true)) {
+            log.info("[McpCapabilityEngine] 初始化已在进行中，跳过重复触发");
+            return;
+        }
+        Thread thread = new Thread(() -> {
+            try {
+                log.info("[McpCapabilityEngine] 异步初始化开始（不阻塞主线程）");
+                refresh();
+            } catch (Exception e) {
+                log.error("[McpCapabilityEngine] 异步初始化异常", e);
+            } finally {
+                initialized.set(true);
+                initializing.set(false);
+                // 初始化完成后重建动作索引，使 MCP 工具对 Planner 可见
+                if (capabilityEngine != null) {
+                    try {
+                        capabilityEngine.refreshActionIndex();
+                        log.info("[McpCapabilityEngine] 动作索引已重建，MCP 工具现已可用");
+                    } catch (Exception e) {
+                        log.error("[McpCapabilityEngine] 重建动作索引失败", e);
+                    }
+                }
+            }
+        }, "mcp-capability-engine-init");
+        thread.setDaemon(true);
+        thread.start();
+    }
+
+    /**
+     * 同步初始化：连接所有 MCP 服务器，发现工具，构建动作注册表
+     * <p>
+     * 由 {@link #refreshAsync(CapabilityEngine)} 在后台线程调用，或供外部手动触发。
      * 某个服务器连接失败不影响其他服务器。
      * </p>
      */
@@ -258,7 +319,9 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
             return null;
         }
 
-        ServerParameters.Builder builder = ServerParameters.builder(config.getCommand());
+        // Windows 平台适配：ProcessBuilder 不会自动解析 .cmd 扩展名（npx/npm/yarn 等）
+        String resolvedCommand = resolveWindowsCommand(config.getCommand());
+        ServerParameters.Builder builder = ServerParameters.builder(resolvedCommand);
 
         // 解析 args（JSON 数组字符串 → List<String>）
         if (StringUtils.isNotEmpty(config.getArgs())) {
@@ -286,6 +349,48 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
         McpJsonMapper jsonMapper = McpJsonDefaults.getMapper();
         StdioClientTransport transport = new StdioClientTransport(builder.build(), jsonMapper);
         return createAndInitialize(transport, config.getServerName());
+    }
+
+    /**
+     * Windows 平台命令适配
+     * <p>
+     * Windows 下 Java 的 {@link ProcessBuilder} 不会自动解析 {@code .cmd}/{@code .bat} 扩展名，
+     * 导致 {@code npx}/{@code npm}/{@code yarn} 等命令（实际为 {@code npx.cmd} 文件）无法启动。
+     * 本方法在 Windows 平台上遍历 PATH 环境变量，查找 {@code {command}.cmd} 的完整路径。
+     * </p>
+     * <p>
+     * 非 Windows 平台、已含路径分隔符、已含扩展名的命令均原样返回。
+     * </p>
+     *
+     * @param command 原始命令名（如 {@code npx}）
+     * @return 适配后的命令（如 {@code D:\Program Files\nodejs\npx.cmd}），或原样返回
+     */
+    private String resolveWindowsCommand(String command) {
+        // 非 Windows 平台，原样返回
+        if (!System.getProperty("os.name", "").toLowerCase().contains("win")) {
+            return command;
+        }
+        // 已包含路径分隔符或扩展名，原样返回
+        if (command.contains(File.separator) || command.contains(".")) {
+            return command;
+        }
+        // 在 PATH 中查找 {command}.cmd
+        String path = System.getenv("PATH");
+        if (path == null || path.isEmpty()) {
+            return command;
+        }
+        for (String dir : path.split(File.pathSeparator)) {
+            if (dir.isEmpty()) {
+                continue;
+            }
+            File cmdFile = new File(dir, command + ".cmd");
+            if (cmdFile.exists()) {
+                String absolutePath = cmdFile.getAbsolutePath();
+                log.info("[McpCapabilityEngine] Windows 命令适配: {} → {}", command, absolutePath);
+                return absolutePath;
+            }
+        }
+        return command;
     }
 
     /**
@@ -354,9 +459,18 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
 
     /**
      * 创建 McpSyncClient 并初始化连接
+     * <p>
+     * 超时说明：
+     * <ul>
+     *   <li>{@code initializationTimeout(120s)} — initialize() 握手超时，stdio 模式首次 npx 下载包较慢</li>
+     *   <li>{@code requestTimeout(60s)} — 工具调用（listTools/callTool）超时</li>
+     * </ul>
+     * MCP SDK 2.0.0 中这两个超时是独立的，initialize 默认只有 20s，stdio 拉起本地进程场景容易超时。
+     * </p>
      */
     private McpSyncClient createAndInitialize(McpClientTransport transport, String serverName) {
         McpSyncClient client = McpClient.sync(transport)
+                .initializationTimeout(Duration.ofSeconds(120))
                 .requestTimeout(Duration.ofSeconds(60))
                 .build();
         client.initialize();
