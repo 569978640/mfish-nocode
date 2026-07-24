@@ -6,6 +6,7 @@ import cn.com.mfish.common.ai.capability.WorkflowVariable;
 import cn.com.mfish.common.core.constants.RPCConstants;
 import cn.com.mfish.common.core.web.Result;
 import cn.com.mfish.common.workflow.api.entity.FlowManage;
+import cn.com.mfish.common.workflow.api.enums.FlowKey;
 import cn.com.mfish.common.workflow.api.remote.RemoteWorkflowService;
 import com.alibaba.fastjson2.JSON;
 import com.alibaba.fastjson2.JSONArray;
@@ -57,7 +58,15 @@ public class WorkflowConfigProviderImpl implements WorkflowConfigProvider {
             return Collections.emptyList();
         }
         List<WorkflowInfo> workflows = new ArrayList<>(flowManageList.size());
+        int filtered = 0;
         for (FlowManage flowManage : flowManageList) {
+            // 过滤掉有业务回调的流程：这类流程有业务单据，应通过业务系统的 HTTP 工具触发
+            // 工作流工具只导出无业务回调的纯自动化流程
+            FlowKey flowKey = FlowKey.getByKey(flowManage.getFlowKey());
+            if (flowKey != FlowKey.UNKNOWN && flowKey.hasCallback()) {
+                filtered++;
+                continue;
+            }
             WorkflowInfo info = new WorkflowInfo()
                     .setFlowKey(flowManage.getFlowKey())
                     .setFlowName(flowManage.getName())
@@ -69,7 +78,8 @@ public class WorkflowConfigProviderImpl implements WorkflowConfigProvider {
             }
             workflows.add(info);
         }
-        log.info("[WorkflowConfigProvider] 获取到 {} 个已发布流程", workflows.size());
+        log.info("[WorkflowConfigProvider] 获取到 {} 个已发布流程，过滤 {} 个有业务回调的流程",
+                workflows.size(), filtered);
         return workflows;
     }
 
