@@ -46,5 +46,5 @@ public enum EngineType {
      * 供 Planner 在需要人工审批或复杂流程编排时调用。
      * </p>
      */
-    WORKFLOW;
+    WORKFLOW
 }

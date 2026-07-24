@@ -9,6 +9,7 @@ import com.alibaba.fastjson2.JSON;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.tool.ToolCallback;
+import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.server.ServerWebExchange;
@@ -74,16 +75,13 @@ public class ToolCapabilityEngine implements CapabilitySubEngine {
     public List<ActionDefinition> getActions() {
         List<ActionDefinition> actions = new ArrayList<>();
         for (String serviceId : apiToolEngine.getAllServiceIds()) {
-            org.springframework.ai.tool.ToolCallbackProvider provider =
+            ToolCallbackProvider provider =
                     apiToolEngine.getToolCallbackProvider(serviceId);
             if (provider == null) {
                 continue;
             }
-            org.springframework.ai.tool.ToolCallback[] callbacks = provider.getToolCallbacks();
-            if (callbacks == null) {
-                continue;
-            }
-            for (org.springframework.ai.tool.ToolCallback tc : callbacks) {
+           ToolCallback[] callbacks = provider.getToolCallbacks();
+            for (ToolCallback tc : callbacks) {
                 try {
                     ToolDefinition td = tc.getToolDefinition();
                     actions.add(new ActionDefinition()

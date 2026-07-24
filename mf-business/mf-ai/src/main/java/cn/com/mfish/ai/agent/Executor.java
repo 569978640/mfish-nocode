@@ -81,7 +81,7 @@ public class Executor {
                         eventBus.emit(EventType.TOKEN_STREAM, stepIndex, token);
                     }
                 })
-                .filter(chatResponse -> isFinished(chatResponse))
+                .filter(this::isFinished)
                 .next()  // 取第一个 finish 信号
                 .map(chatResponse -> {
                     String result = resultBuilder.toString();
@@ -115,12 +115,10 @@ public class Executor {
      * </p>
      */
     private String buildStepPrompt(PlanStep step, int stepIndex, AgentPlan plan) {
-        StringBuilder sb = new StringBuilder();
-        sb.append("原始需求：").append(plan.getOriginalPrompt()).append("\n\n");
-        sb.append("当前是第 ").append(stepIndex + 1).append(" 步，共 ").append(plan.getSteps().size()).append(" 步。\n");
-        sb.append("这一步的任务：").append(step.getDescription()).append("\n\n");
-        sb.append("请调用合适的工具完成这一步任务，并基于工具返回的数据给出这一步的结论。");
-        return sb.toString();
+        return "原始需求：" + plan.getOriginalPrompt() + "\n\n" +
+                "当前是第 " + (stepIndex + 1) + " 步，共 " + plan.getSteps().size() + " 步。\n" +
+                "这一步的任务：" + step.getDescription() + "\n\n" +
+                "请调用合适的工具完成这一步任务，并基于工具返回的数据给出这一步的结论。";
     }
 
     /**
@@ -137,9 +135,10 @@ public class Executor {
      * 判断是否完成（finish_reason=stop）
      */
     private boolean isFinished(ChatResponse chatResponse) {
-        if (chatResponse == null || chatResponse.getResult() == null
-                || chatResponse.getResult().getMetadata() == null) {
+        if (chatResponse == null || chatResponse.getResult() == null) {
             return false;
+        } else {
+            chatResponse.getResult();
         }
         return "STOP".equals(chatResponse.getResult().getMetadata().getFinishReason());
     }

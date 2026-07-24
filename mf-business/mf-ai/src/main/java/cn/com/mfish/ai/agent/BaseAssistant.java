@@ -269,7 +269,7 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
      */
     private String buildToolUsageHint(ToolCallbackProvider toolProvider) {
         org.springframework.ai.tool.ToolCallback[] callbacks = toolProvider.getToolCallbacks();
-        if (callbacks == null || callbacks.length == 0) {
+        if (callbacks.length == 0) {
             return "## 工具使用规则\n当前没有可用的工具，请直接根据你的知识回答用户问题。";
         }
         StringBuilder sb = new StringBuilder("## 工具使用规则\n");
@@ -278,7 +278,7 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
             String name = tc.getToolDefinition().name();
             String desc = tc.getToolDefinition().description();
             sb.append("- ").append(name);
-            if (desc != null && !desc.isEmpty()) {
+            if (!desc.isEmpty()) {
                 sb.append(": ").append(desc);
             }
             sb.append("\n");

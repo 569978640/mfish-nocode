@@ -3,6 +3,7 @@ package cn.com.mfish.common.ai.capability;
 import cn.com.mfish.common.ai.engine.ApiToolEngine;
 import cn.com.mfish.common.core.utils.StringUtils;
 import com.alibaba.fastjson2.JSON;
+import com.alibaba.fastjson2.TypeReference;
 import io.modelcontextprotocol.client.McpClient;
 import io.modelcontextprotocol.client.McpSyncClient;
 import io.modelcontextprotocol.client.transport.ServerParameters;
@@ -11,21 +12,20 @@ import io.modelcontextprotocol.json.McpJsonDefaults;
 import io.modelcontextprotocol.json.McpJsonMapper;
 import io.modelcontextprotocol.spec.McpClientTransport;
 import io.modelcontextprotocol.spec.McpSchema;
+import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.ai.chat.model.ToolContext;
 import org.springframework.ai.mcp.client.webflux.transport.WebClientStreamableHttpTransport;
 import org.springframework.ai.mcp.client.webflux.transport.WebFluxSseClientTransport;
 import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.DefaultToolDefinition;
 import org.springframework.ai.tool.definition.ToolDefinition;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.reactive.function.client.WebClient;
-import org.jspecify.annotations.NonNull;
 
 import java.io.File;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
@@ -359,7 +359,8 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
         // 解析 env（JSON 对象字符串 → Map<String, String>）
         if (StringUtils.isNotEmpty(config.getEnv())) {
             try {
-                Map<String, String> envMap = JSON.parseObject(config.getEnv(), Map.class);
+                Map<String, String> envMap = JSON.parseObject(config.getEnv(), new TypeReference<>() {
+                });
                 builder.env(envMap);
             } catch (Exception e) {
                 log.warn("[McpCapabilityEngine] 解析 env 失败 server={} env={}",
@@ -612,7 +613,7 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
         }
 
         @Override
-        public ToolDefinition getToolDefinition() {
+        public @NonNull ToolDefinition getToolDefinition() {
             return toolDefinition;
         }
 
@@ -626,10 +627,10 @@ public class McpCapabilityEngine implements CapabilitySubEngine {
             try {
                 // 解析 LLM 传入的 JSON 参数
                 Map<String, Object> params;
-                if (toolInput == null || toolInput.isBlank()) {
+                if (toolInput.isBlank()) {
                     params = Collections.emptyMap();
                 } else {
-                    params = JSON.parseObject(toolInput, Map.class);
+                    params = JSON.parseObject(toolInput, new TypeReference<>() {});
                     if (params == null) {
                         params = Collections.emptyMap();
                     }

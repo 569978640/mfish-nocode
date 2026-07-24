@@ -1,14 +1,11 @@
 package cn.com.mfish.ai.service;
 
 import cn.com.mfish.ai.api.entity.McpServerConfig;
-import cn.com.mfish.common.ai.capability.McpServerInfo;
 import cn.com.mfish.common.ai.capability.McpServerConfigProvider;
 import cn.com.mfish.common.core.web.PageResult;
 import cn.com.mfish.common.core.web.ReqPage;
 import cn.com.mfish.common.core.web.Result;
 import com.baomidou.mybatisplus.extension.service.IService;
-
-import java.util.List;
 
 /**
  * @description: MCP服务器配置信息
