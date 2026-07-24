@@ -111,6 +111,29 @@ public class CapabilityAutoConfiguration {
     }
 
     /**
+     * 工作流能力引擎（条件注册）
+     * <p>
+     * 仅当容器中同时存在 {@link WorkflowConfigProvider} 和 {@link WorkflowExecutionProvider} 实现时才注册。
+     * 这两个接口由 mf-workflow 业务层实现（对接 Flowable API）。
+     * </p>
+     * <p>
+     * 条件说明：
+     * <ul>
+     *     <li>{@code @ConditionalOnBean(WorkflowConfigProvider.class)} — 确保业务层提供了工作流配置数据源</li>
+     *     <li>{@code @ConditionalOnBean(WorkflowExecutionProvider.class)} — 确保业务层提供了工作流执行能力</li>
+     * </ul>
+     * 若条件不满足（如 mf-workflow 模块未启动），工作流引擎不注册，不影响其他子引擎。
+     * </p>
+     */
+    @Bean
+    @ConditionalOnBean({WorkflowConfigProvider.class, WorkflowExecutionProvider.class})
+    public WorkflowCapabilityEngine workflowCapabilityEngine(WorkflowConfigProvider configProvider,
+                                                              WorkflowExecutionProvider executionProvider,
+                                                              ApiToolEngine apiToolEngine) {
+        return new WorkflowCapabilityEngine(configProvider, executionProvider, apiToolEngine);
+    }
+
+    /**
      * 能力引擎初始化触发器：在所有单例 Bean（含所有 CapabilitySubEngine）就绪后，
      * 将子引擎注册到 CapabilityEngine 并构建动作索引
      * <p>
@@ -148,6 +171,9 @@ public class CapabilityAutoConfiguration {
                 } else if (engine instanceof SkillCapabilityEngine skillEngine) {
                     log.info("[CapabilityAutoConfiguration] 触发 Skill 引擎异步初始化");
                     skillEngine.refreshAsync(capabilityEngine);
+                } else if (engine instanceof WorkflowCapabilityEngine workflowEngine) {
+                    log.info("[CapabilityAutoConfiguration] 触发 Workflow 引擎异步初始化");
+                    workflowEngine.refreshAsync(capabilityEngine);
                 }
             }
         };

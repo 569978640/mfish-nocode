@@ -206,6 +206,13 @@ public class FlowableServiceImpl implements FlowableService {
             log.error("错误：流程实例已存在");
             throw new MyRuntimeException("错误：流程实例已存在");
         }
+        // callback 为空时，按 FlowKey 枚举配置自动补全（支持 AI 等无显式 callback 的调用方）
+        if (StringUtils.isEmpty(param.getCallback())) {
+            FlowKey flowKey = FlowKey.getByKey(param.getKey());
+            if (flowKey != FlowKey.UNKNOWN && flowKey.hasCallback()) {
+                param.setCallback(flowKey.getCallback()).setPrefix(flowKey.getPrefix());
+            }
+        }
         // 设置启动人 如果未指定启动人，则默认使用当前登录用户 否则使用指定的启动人
         if (StringUtils.isEmpty(param.getStartAccount())) {
             String account = AuthInfoUtils.getCurrentAccount();
@@ -217,7 +224,10 @@ public class FlowableServiceImpl implements FlowableService {
         // 设置流程变量
         try {
             Map<String, Object> map = new HashMap<>();
-            map.put(Constants.WORKFLOW_PARAM, param);
+            // 有 callback 才放 WORKFLOW_PARAM，无 callback 时 CompleteCallbackHandler 取到 null 自然跳过回调
+            if (!StringUtils.isEmpty(param.getCallback())) {
+                map.put(Constants.WORKFLOW_PARAM, param);
+            }
             map.put(Constants.PROCESS_START_ACCOUNT, param.getStartAccount());
             if(param.getParam() != null){
                 map.putAll(param.getParam());
@@ -992,5 +1002,17 @@ public class FlowableServiceImpl implements FlowableService {
                 .eq(StringUtils.isNotEmpty(flowDefinition.getFlowKey()), FlowManage::getFlowKey, flowDefinition.getFlowKey())
                 .eq(flowDefinition.getVersion() != null, FlowManage::getVersion, flowDefinition.getVersion())
         );
+    }
+
+    /**
+     * 查询所有已发布的流程定义列表
+     *
+     * @return 已发布流程列表
+     */
+    @Override
+    public List<FlowManage> getActiveFlows() {
+        return flowManageMapper.selectList(new LambdaQueryWrapper<FlowManage>()
+                .eq(FlowManage::getReleased, 1)
+                .eq(FlowManage::getDelFlag, 0));
     }
 }

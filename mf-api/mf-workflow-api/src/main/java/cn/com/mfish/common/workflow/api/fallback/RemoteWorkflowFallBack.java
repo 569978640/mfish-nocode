@@ -128,7 +128,11 @@ public class RemoteWorkflowFallBack implements FallbackFactory<RemoteWorkflowSer
             public Result<List<String>> getActiveDefinitionKeys(String origin, String processInstanceId) {
                 return Result.fail(FeignFallbackHelper.resolveErrorMsg(cause, "错误：查询流程定义失败"));
             }
-        };
 
+            @Override
+            public Result<List<FlowManage>> getActiveFlows(String origin) {
+                return Result.fail(FeignFallbackHelper.resolveErrorMsg(cause, "错误：查询已发布流程列表失败"));
+            }
+        };
     }
 }
