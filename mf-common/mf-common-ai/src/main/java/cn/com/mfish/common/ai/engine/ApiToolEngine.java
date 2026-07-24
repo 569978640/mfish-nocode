@@ -200,6 +200,42 @@ public class ApiToolEngine {
     }
 
     /**
+     * 获取所有以指定前缀开头的 serviceId（用于聚合 MCP / Skill 扩展工具）
+     * <p>
+     * MCP 工具 serviceId = MCP 服务器名（通常以 mcp- 开头，如 mcp-everything）；
+     * Skill 工具 serviceId = skill-{skillCode}（如 skill-translator）。
+     * 垂直助手通过本方法聚合扩展工具，实现跨域调用 MCP/Skill 能力。
+     * </p>
+     *
+     * @param prefix serviceId 前缀（如 "mcp-"、"skill-"）
+     * @return 匹配前缀的 serviceId 集合（不可变快照）
+     */
+    public Set<String> getServiceIdsByPrefix(String prefix) {
+        return toolsByService.keySet().stream()
+                .filter(id -> id != null && id.startsWith(prefix))
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    /**
+     * 获取扩展工具的 serviceId 集合（排除指定的微服务ID）
+     * <p>
+     * 扩展工具包括 MCP 工具（serviceId=MCP服务器名）和 Skill 工具（serviceId=skill-{code}）。
+     * 它们的 serviceId 不属于标准微服务命名空间（mf-*），通过排除微服务ID即可获取。
+     * </p>
+     * <p>
+     * 垂直助手通过本方法聚合扩展工具，实现"主服务工具 + MCP/Skill 扩展工具"的组合调用。
+     * </p>
+     *
+     * @param microServiceIds 标准微服务ID集合（如 MfService.allServiceIds()），这些会被排除
+     * @return 扩展工具的 serviceId 集合（不可变快照）
+     */
+    public Set<String> getExtendedServiceIds(Set<String> microServiceIds) {
+        return toolsByService.keySet().stream()
+                .filter(id -> id != null && !microServiceIds.contains(id))
+                .collect(java.util.stream.Collectors.toUnmodifiableSet());
+    }
+
+    /**
      * 获取所有服务的全部工具（跨服务，同名工具按 serviceId 顺序去重）
      * <p>
      * 供 {@code ToolCapabilityEngine} 构建全局动作列表。

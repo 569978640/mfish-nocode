@@ -52,7 +52,7 @@ public class SchedulerAssistant extends BaseAssistant {
         if (StringUtils.isEmpty(prompt.trim())) {
             prompt = DEFAULT_PROMPT;
         }
-        return chatWithTools(sessionId, prompt, ServiceConstants.SCHEDULER_SERVICE);
+        return chatWithToolsAndExtensions(sessionId, prompt, ServiceConstants.SCHEDULER_SERVICE);
     }
 
     @Override

@@ -10,6 +10,7 @@ import cn.com.mfish.common.ai.agent.ToolCapable;
 import cn.com.mfish.common.ai.memory.ConversationMemory;
 import cn.com.mfish.common.ai.memory.ConversationMemoryStore;
 import cn.com.mfish.common.core.constants.RPCConstants;
+import cn.com.mfish.common.core.constants.ServiceConstants;
 import cn.com.mfish.common.core.utils.AuthInfoUtils;
 import cn.com.mfish.common.core.utils.ServletUtils;
 import cn.com.mfish.common.core.utils.StringUtils;
@@ -30,6 +31,7 @@ import reactor.core.scheduler.Schedulers;
 
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -186,6 +188,30 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
      */
     protected Flux<ChatResponse> chatWithTools(String sessionId, String prompt, String serviceId) {
         return chatWithTools(sessionId, prompt, Collections.singleton(serviceId));
+    }
+
+    /**
+     * 带扩展工具的流式聊天模板方法（主服务 + MCP/Skill 扩展工具）
+     * <p>
+     * 在垂直助手中使用：除了主服务（如 mf-sys）的 Feign 工具外，还聚合所有 MCP 工具和 Skill 工具，
+     * 让用户在路由到垂直助手时也能调用 MCP 服务器和提示词级 Skill 能力。
+     * </p>
+     * <p>
+     * 扩展工具集合 = ApiToolEngine 中所有已注册 serviceId - 标准微服务ID（MfService.allServiceIds()），
+     * 即排除 mf-* 后剩余的 MCP 服务器名和 skill-* 前缀的 serviceId。
+     * </p>
+     *
+     * @param sessionId      会话id
+     * @param prompt         提示词
+     * @param mainServiceId  主服务ID（垂直助手所属的微服务ID，如 SYS_SERVICE）
+     * @return 流式聊天响应
+     */
+    protected Flux<ChatResponse> chatWithToolsAndExtensions(String sessionId, String prompt, String mainServiceId) {
+        Set<String> serviceIds = new HashSet<>();
+        serviceIds.add(mainServiceId);
+        // 聚合所有扩展工具（MCP + Skill），排除标准微服务ID
+        serviceIds.addAll(apiToolEngine.getExtendedServiceIds(ServiceConstants.MfService.allServiceIds()));
+        return chatWithTools(sessionId, prompt, serviceIds);
     }
 
     /**
