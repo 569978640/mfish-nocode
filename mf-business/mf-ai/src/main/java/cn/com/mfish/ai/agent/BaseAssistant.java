@@ -263,6 +263,17 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
     public Flux<ChatResponse> chatWithTools(String sessionId, String prompt, Set<String> serviceIds,
                                             cn.com.mfish.common.ai.agent.TenantContext tenantContext) {
         ToolCallbackProvider toolProvider = apiToolEngine.getToolCallbackProvider(serviceIds);
+        // 诊断日志：输出当前步骤注入的工具数量和名称，便于排查 LLM "无法调用工具" 问题
+        org.springframework.ai.tool.ToolCallback[] diagnosticCallbacks = toolProvider.getToolCallbacks();
+        if (log.isInfoEnabled()) {
+            StringBuilder toolNames = new StringBuilder();
+            for (int i = 0; i < diagnosticCallbacks.length; i++) {
+                if (i > 0) toolNames.append(", ");
+                toolNames.append(diagnosticCallbacks[i].getToolDefinition().name());
+            }
+            log.info("[BaseAssistant] chatWithTools sessionId={} serviceIds={} toolCount={} tools=[{}]",
+                    sessionId, serviceIds, diagnosticCallbacks.length, toolNames);
+        }
         Map<String, Object> toolContextMap = tenantContext != null
                 ? buildToolContext(tenantContext)
                 : buildToolContext();

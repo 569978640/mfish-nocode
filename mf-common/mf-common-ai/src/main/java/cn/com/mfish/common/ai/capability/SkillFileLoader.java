@@ -11,6 +11,8 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -18,6 +20,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.stream.Collectors;
 
 /**
  * Skill 文件加载器
@@ -228,6 +231,8 @@ public class SkillFileLoader {
                 .setSkillCode(skillCode)
                 .setSkillName(meta.getOrDefault("title", skillCode))
                 .setDescription(meta.getOrDefault("description", skillCode))
+                .setType(meta.getOrDefault("type", "prompt"))
+                .setRequires(parseRequires(meta.get("requires")))
                 .setPromptTemplate(promptBody)
                 .setModelName(meta.get("model"))
                 .setParams(params)
@@ -276,6 +281,34 @@ public class SkillFileLoader {
             meta.put(key, value);
         }
         return meta;
+    }
+
+    /**
+     * 解析 frontmatter 的 requires 字段为服务ID列表
+     * <p>
+     * 支持两种格式：
+     * <ul>
+     *   <li>逗号分隔字符串：{@code mf-demo,mf-sys}</li>
+     *   <li>YAML 数组格式：{@code [mf-demo,mf-sys]}</li>
+     * </ul>
+     * </p>
+     */
+    private List<String> parseRequires(String value) {
+        if (value == null || value.isEmpty()) {
+            return Collections.emptyList();
+        }
+        // 去除方括号
+        String cleaned = value.trim();
+        if (cleaned.startsWith("[") && cleaned.endsWith("]")) {
+            cleaned = cleaned.substring(1, cleaned.length() - 1);
+        }
+        if (cleaned.isEmpty()) {
+            return Collections.emptyList();
+        }
+        return Arrays.stream(cleaned.split(","))
+                .map(String::trim)
+                .filter(s -> !s.isEmpty())
+                .collect(Collectors.toList());
     }
 
     /**

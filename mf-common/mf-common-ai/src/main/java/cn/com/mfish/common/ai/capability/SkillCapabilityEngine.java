@@ -155,6 +155,32 @@ public class SkillCapabilityEngine implements CapabilitySubEngine {
     }
 
     /**
+     * 查询指定 guide 类型 Skill 声明依赖的业务服务ID列表
+     * <p>
+     * 供 Planner 在规划时调用：当 Planner 发现某步骤需要调用 guide 类型 Skill 时，
+     * 通过此方法获取 Skill 声明的 requires（如 mf-demo），合并到步骤的 serviceIds，
+     * 确保 Executor 执行时 LLM 能看到被指南引用的业务工具。
+     * </p>
+     * <p>
+     * 非 guide 类型或未声明 requires 的 Skill 返回空列表。
+     * </p>
+     *
+     * @param skillActionName Skill 动作名（如 skill.leave-apply）
+     * @return 依赖的业务服务ID列表，可能为空
+     */
+    public List<String> getGuideRequires(String skillActionName) {
+        if (skillActionName == null) {
+            return Collections.emptyList();
+        }
+        SkillInfo skill = actionRegistry.get(skillActionName);
+        if (skill == null || !"guide".equalsIgnoreCase(skill.getType())) {
+            return Collections.emptyList();
+        }
+        List<String> requires = skill.getRequires();
+        return requires != null ? requires : Collections.emptyList();
+    }
+
+    /**
      * 执行 Skill 动作（显式调用模式）
      * <p>
      * 通常由 LLM 驱动模式（ToolCallback）自动调用，此方法供显式调用场景使用。
@@ -269,6 +295,10 @@ public class SkillCapabilityEngine implements CapabilitySubEngine {
 
     /**
      * 执行提示词级 Skill：模板填充 + LLM 调用
+     * <p>
+     * guide 类型 Skill 不走 LLM 调用，直接返回模板内容给外层 LLM，
+     * 指导其调用其他工具完成多步编排。
+     * </p>
      */
     private String executePromptSkill(SkillInfo skill, Map<String, Object> params, ExecutionContext ctx) {
         String promptTemplate = skill.getPromptTemplate();
@@ -276,7 +306,16 @@ public class SkillCapabilityEngine implements CapabilitySubEngine {
             throw new IllegalStateException("Skill " + skill.getSkillCode() + " 无提示词模板");
         }
 
-        // 填充模板占位符
+        // guide 类型：直接返回模板内容，不走 LLM 调用
+        // 避免内部 LLM 无工具时产生幻觉（假装已执行但实际未调工具）
+        if ("guide".equalsIgnoreCase(skill.getType())) {
+            String content = fillTemplate(promptTemplate, params != null ? params : Collections.emptyMap());
+            log.info("[SkillCapabilityEngine] guide 类型 Skill 直接返回内容 skill={} length={}",
+                    skill.getSkillCode(), content.length());
+            return content;
+        }
+
+        // prompt 类型：填充模板占位符 + 调用 LLM
         String filledPrompt = fillTemplate(promptTemplate, params != null ? params : Collections.emptyMap());
 
         // 获取租户 ID（从执行上下文）

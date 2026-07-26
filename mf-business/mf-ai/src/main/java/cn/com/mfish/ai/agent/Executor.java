@@ -112,13 +112,21 @@ public class Executor {
      * 构建步骤提示词
      * <p>
      * 把原始需求和当前步骤描述组合，让 LLM 理解这一步要做什么。
+     * 强化指导：必须实际调用工具，不得仅描述步骤或声称"无法调用"。
      * </p>
      */
     private String buildStepPrompt(PlanStep step, int stepIndex, AgentPlan plan) {
         return "原始需求：" + plan.getOriginalPrompt() + "\n\n" +
                 "当前是第 " + (stepIndex + 1) + " 步，共 " + plan.getSteps().size() + " 步。\n" +
                 "这一步的任务：" + step.getDescription() + "\n\n" +
-                "请调用合适的工具完成这一步任务，并基于工具返回的数据给出这一步的结论。";
+                """
+                # 执行要求（必须严格遵守）
+                1. **必须实际调用工具**：你已被注入了完成本步骤所需的全部工具，工具列表已在上方列出。必须从中选择匹配的工具并实际调用，不得仅描述"建议调用"或"需要调用"而不执行。
+                2. **工具名格式**：工具名采用 `controllerName.operationId` 格式（如 `demoLeaveApply.add`、`demoLeaveApply.submit`）。请从上方工具列表中找到名称完全匹配的工具调用，不要虚构或猜测工具名。
+                3. **guide 类型 Skill**：如果工具列表中包含 `skill.{code}` 开头的工具，请优先调用它获取操作指南，然后严格按指南中的步骤调用对应的业务工具（如 `demoLeaveApply.add`）完成实际操作。
+                4. **禁止虚假执行**：严禁出现"我无法直接调用"、"请您手动执行"、"请在后台系统中操作"等表述。工具已就绪，你完全可以调用。
+                5. **结果反馈**：调用工具后，基于工具返回的真实数据给出这一步的结论。如果工具返回失败，说明失败原因。
+                """;
     }
 
     /**

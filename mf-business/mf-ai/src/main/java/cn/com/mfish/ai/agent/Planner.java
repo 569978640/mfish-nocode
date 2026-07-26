@@ -4,6 +4,7 @@ import cn.com.mfish.ai.service.LlmModelRouter;
 import cn.com.mfish.common.ai.agent.TenantContext;
 import cn.com.mfish.common.ai.capability.ActionDefinition;
 import cn.com.mfish.common.ai.capability.CapabilityEngine;
+import cn.com.mfish.common.ai.capability.SkillCapabilityEngine;
 import cn.com.mfish.common.ai.entity.AgentPlan;
 import cn.com.mfish.common.ai.entity.PlanStep;
 import cn.com.mfish.common.ai.memory.ConversationMemory;
@@ -18,7 +19,9 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -64,13 +67,16 @@ public class Planner {
     private final LlmModelRouter llmModelRouter;
     private final CapabilityEngine capabilityEngine;
     private final ConversationMemoryStore memoryStore;
+    private final SkillCapabilityEngine skillCapabilityEngine;
 
     public Planner(ChatMemory chatMemory, LlmModelRouter llmModelRouter,
-                   CapabilityEngine capabilityEngine, ConversationMemoryStore memoryStore) {
+                   CapabilityEngine capabilityEngine, ConversationMemoryStore memoryStore,
+                   SkillCapabilityEngine skillCapabilityEngine) {
         this.chatMemory = chatMemory;
         this.llmModelRouter = llmModelRouter;
         this.capabilityEngine = capabilityEngine;
         this.memoryStore = memoryStore;
+        this.skillCapabilityEngine = skillCapabilityEngine;
     }
 
     /**
@@ -122,6 +128,8 @@ public class Planner {
                             .responseEntity(AgentPlan.class);
                     AgentPlan plan = Objects.requireNonNullElseGet(responseEntity.entity(), () -> fallbackPlan(finalPrompt));
                     plan.setOriginalPrompt(prompt);
+                    // 合并 guide 类型 Skill 声明的 requires 到各步骤的 serviceIds
+                    mergeGuideRequires(plan);
                     log.info("[Planner] 规划完成, 步骤数={}, summary={}",
                             plan.getSteps() != null ? plan.getSteps().size() : 0, plan.getSummary());
                     return plan;
@@ -238,6 +246,46 @@ public class Planner {
 
                 请以 JSON 格式返回，不要包含其他内容。
                 """;
+    }
+
+    /**
+     * 合并 guide 类型 Skill 声明的 requires 到各步骤的 serviceIds
+     * <p>
+     * Planner 生成的步骤可能只包含 skill-{code} 的 serviceId，但 guide 类型 Skill
+     * 在执行时需要调用被指南引用的业务工具（如 mf-demo 的 add/submit）。
+     * 此方法扫描每个步骤的 serviceIds，若发现 guide skill，将其 requires 合并进去。
+     * </p>
+     * <p>
+     * 同时在步骤描述中追加提示，告诉 Executor 这一步会调用 guide skill 获取操作指南，
+     * 拿到指南后必须按指南实际调用业务工具。
+     * </p>
+     */
+    private void mergeGuideRequires(AgentPlan plan) {
+        if (plan == null || plan.getSteps() == null || plan.getSteps().isEmpty()) {
+            return;
+        }
+        for (PlanStep step : plan.getSteps()) {
+            if (step.getServiceIds() == null || step.getServiceIds().isEmpty()) {
+                continue;
+            }
+            Set<String> merged = new LinkedHashSet<>(step.getServiceIds());
+            for (String serviceId : step.getServiceIds()) {
+                // 识别 skill 类型的 serviceId（格式为 skill-{code}）
+                if (serviceId == null || !serviceId.startsWith("skill-")) {
+                    continue;
+                }
+                // 转换为动作名 skill.{code}
+                String skillCode = serviceId.substring("skill-".length());
+                String actionName = "skill." + skillCode;
+                List<String> requires = skillCapabilityEngine.getGuideRequires(actionName);
+                if (!requires.isEmpty()) {
+                    merged.addAll(requires);
+                    log.info("[Planner] 步骤合并 guide requires: skill={} requires={} -> serviceIds={}",
+                            skillCode, requires, merged);
+                }
+            }
+            step.setServiceIds(new ArrayList<>(merged));
+        }
     }
 
     /**

@@ -35,6 +35,30 @@ public class SkillInfo {
     private String skillName;
 
     /**
+     * Skill 类型（来自 frontmatter 的 type 字段，缺省 prompt）
+     * <ul>
+     *   <li>{@code prompt}：提示词型，内部调 LLM 处理后返回结果（如翻译、摘要）</li>
+     *   <li>{@code guide}：指南型，直接返回 markdown 内容给外层 LLM，
+     *       指导其调用其他工具完成多步编排（如请假流程需先 add 再 submit）。
+     *       不走内部 LLM 调用，避免幻觉（LLM 假装已执行但实际未调工具）</li>
+     * </ul>
+     */
+    private String type = "prompt";
+
+    /**
+     * 依赖的业务服务ID列表（来自 frontmatter 的 requires 字段，逗号分隔）
+     * <p>
+     * guide 类型 Skill 声明其编排流程需要调用的业务服务，如 {@code mf-demo,mf-sys}。
+     * Planner 规划时会将这些 serviceId 与 skill 的 serviceId 合并，
+     * 确保 Executor 执行时 LLM 能看到被指南引用的业务工具。
+     * </p>
+     * <p>
+     * prompt 类型 Skill 不需要此字段（内部调 LLM，不编排外部工具）。
+     * </p>
+     */
+    private List<String> requires;
+
+    /**
      * 动作描述（来自 frontmatter 的 description 字段，供 LLM 理解用途）
      */
     private String description;
