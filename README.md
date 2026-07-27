@@ -36,177 +36,186 @@
 
 <style>
 :root {
-  --bg: #ffffff;
-  --surface: #ffffff;
-  --surface-muted: #f6f6f8;
-  --border: #e4e4e7;
-  --border-strong: #d4d4d8;
-  --text: #18181b;
-  --text-muted: #71717a;
-  --brand: #7c3aed;
-  --brand-bg: #f3eafe;
-  --brand-border: #c4b5fd;
-  --external: #b45309;
-  --external-bg: #fef3c7;
-  --external-border: #fcd34d;
-  --connector: #a1a1aa;
-  --font-sans: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  --font-mono: 'SF Mono', Monaco, Consolas, monospace;
+  color-scheme: light;
+  --surface: #F7F7F8;
+  --surface-muted: #EFEFF2;
+  --text: #171717;
+  --text-muted: #52525B;
+  --border: rgba(23, 23, 23, 0.12);
+  --brand: #4B3FE3;
+  --brand-soft: #F2F7FF;
+  --brand-soft-strong: #E5EAFF;
+  --brand-text: #1A1759;
+  --brand-on: #FFFFFF;
+  --chart-series-1: #3C2ECA;
+  --chart-series-2: #A9AEFF;
+  --chart-series-3: #6F6FFF;
+  --chart-series-4: #22A5F7;
+  --chart-other: #D3D4DA;
+  --accent: #27D2BF;
+  --accent-soft: #EAFBF8;
+  --accent-text: #0F766E;
+  --radius: 8px;
+  --radius-card: 12px;
+  --radius-full: 999px;
+  --spacer-4: 4px;
+  --spacer-8: 8px;
+  --spacer-12: 12px;
+  --spacer-16: 16px;
+  --spacer-20: 20px;
+  --spacer-24: 24px;
+  --font-sans: "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-metric: "Inter", "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  --weight-regular: 400;
   --weight-medium: 500;
   --weight-strong: 600;
+  --text-caption: 12px/18px;
+  --text-body: 14px/20px;
+  --text-title: 16px/24px;
+  --text-code: 13px/20px;
 }
 :root[data-widget-theme="dark"] {
-  --bg: #0f0f12;
-  --surface: #18181b;
-  --surface-muted: #27272a;
-  --border: #3f3f46;
-  --border-strong: #52525b;
-  --text: #f4f4f5;
-  --text-muted: #a1a1aa;
-  --brand: #a78bfa;
-  --brand-bg: #2e1065;
-  --brand-border: #6d28d9;
-  --external: #fbbf24;
-  --external-bg: #422006;
-  --external-border: #92400e;
-  --connector: #71717a;
+  color-scheme: dark;
+  --surface: #171717;
+  --surface-muted: #262626;
+  --text: #E5E5E5;
+  --text-muted: #A1A1AA;
+  --border: rgba(229, 229, 229, 0.12);
+  --brand: #6054F1;
+  --brand-soft: #1A1759;
+  --brand-soft-strong: #3C2ECA;
+  --brand-text: #CFD8FF;
+  --chart-series-1: #4B3FE3;
+  --accent-soft: #123F3C;
+  --accent-text: #CCFBF1;
+}
+.widget {
+  color: var(--text);
+  background: transparent;
+  font: var(--weight-regular) var(--text-body) var(--font-sans);
 }
 .arch-card {
   background: var(--surface);
   border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: 16px;
+  border-radius: var(--radius-card);
+  padding: var(--spacer-20);
 }
-.arch-svg { width: 100%; height: auto; display: block; }
-.arch-svg text { font-family: var(--font-sans); }
-.arch-svg .t-label { font-size: 14px; font-weight: var(--weight-medium); fill: var(--text); }
-.arch-svg .t-sub { font-size: 12px; fill: var(--text-muted); }
-.arch-svg .t-title { font-size: 13px; font-weight: var(--weight-strong); fill: var(--text-muted); letter-spacing: 0.3px; }
-.arch-svg .t-mini { font-size: 11px; fill: var(--text-muted); }
-.arch-svg .t-brand { fill: var(--brand); font-weight: var(--weight-medium); }
-.arch-svg .node-neutral { fill: var(--surface); stroke: var(--border-strong); stroke-width: 1; }
-.arch-svg .node-brand { fill: var(--brand-bg); stroke: var(--brand); stroke-width: 1.5; }
-.arch-svg .node-external { fill: var(--external-bg); stroke: var(--external-border); stroke-width: 1; stroke-dasharray: 4 3; }
-.arch-svg .boundary { fill: none; stroke: var(--border); stroke-width: 1; stroke-dasharray: 5 4; }
-.arch-svg .conn { fill: none; stroke: var(--connector); stroke-width: 1.4; stroke-linecap: round; stroke-linejoin: round; }
-.arch-svg .conn-brand { fill: none; stroke: var(--brand); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
-.arch-legend { display: flex; gap: 20px; flex-wrap: wrap; margin-top: 12px; font-size: 12px; color: var(--text-muted); font-family: var(--font-sans); }
-.arch-legend span { display: inline-flex; align-items: center; gap: 6px; }
-.arch-legend .sw { width: 18px; height: 10px; border-radius: 3px; display: inline-block; }
-.arch-note { margin-top: 10px; font-size: 12px; color: var(--text-muted); font-family: var(--font-sans); line-height: 1.5; }
+.arch-title {
+  font: var(--weight-medium) var(--text-title) var(--font-sans);
+  color: var(--text);
+  margin: 0 0 var(--spacer-4) 0;
+}
+.arch-sub {
+  font: var(--weight-regular) var(--text-caption) var(--font-sans);
+  color: var(--text-muted);
+  margin: 0 0 var(--spacer-16) 0;
+}
+.t { fill: var(--text); font: var(--weight-regular) var(--text-body) var(--font-sans); }
+.th { fill: var(--text); font: var(--weight-medium) var(--text-body) var(--font-sans); }
+.ts { fill: var(--text-muted); font: var(--weight-regular) var(--text-caption) var(--font-sans); }
+.tc { fill: var(--text); font: var(--weight-medium) var(--text-code) var(--font-mono); }
+.arr { stroke: var(--text-muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.arr-brand { stroke: var(--brand); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.boundary { fill: var(--surface-muted); stroke: var(--border); stroke-dasharray: 4 4; }
+.boundary-brand { fill: var(--brand-soft); stroke: var(--brand); stroke-dasharray: 4 4; }
+.node { fill: var(--surface); stroke: var(--border); }
+.node-brand { fill: var(--surface); stroke: var(--brand); }
+.legend-row { display: flex; align-items: center; gap: var(--spacer-8); font: var(--weight-regular) var(--text-caption) var(--font-sans); color: var(--text-muted); }
+.legend-swatch { width: 14px; height: 10px; border-radius: 3px; flex-shrink: 0; }
+.legend-line { width: 18px; height: 2px; flex-shrink: 0; }
 </style>
-<div class="arch-card" data-dynamic-ui-widget data-template="node-flow" data-mounted="true">
-<svg class="arch-svg" viewBox="0 0 720 810" role="img" aria-label="mfish AI 能力架构图">
-  <defs>
-    <marker id="arr" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
-      <path d="M1 1 L7 4 L1 7 Z" fill="#a1a1aa"/>
-    </marker>
-    <marker id="arr-brand" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
-      <path d="M1 1 L7 4 L1 7 Z" fill="#7c3aed"/>
-    </marker>
-  </defs>
-
-  <!-- 前端 -->
-  <rect x="300" y="24" width="120" height="38" rx="19" class="node-neutral"/>
-  <text x="360" y="48" text-anchor="middle" class="t-label">前端 Frontend</text>
-
-  <!-- 入口层 -->
-  <rect x="40" y="86" width="640" height="118" rx="12" class="boundary"/>
-  <text x="56" y="104" class="t-title">入口层 · Controllers</text>
-  <rect x="65" y="116" width="180" height="36" rx="8" class="node-neutral"/>
-  <text x="155" y="139" text-anchor="middle" class="t-label">AiController</text>
-  <rect x="270" y="116" width="180" height="36" rx="8" class="node-neutral"/>
-  <text x="360" y="139" text-anchor="middle" class="t-label">RouterController</text>
-  <rect x="475" y="116" width="180" height="36" rx="8" class="node-neutral"/>
-  <text x="565" y="139" text-anchor="middle" class="t-label">AgentController</text>
-  <rect x="270" y="162" width="180" height="30" rx="8" class="node-neutral"/>
-  <text x="360" y="181" text-anchor="middle" class="t-sub">AiRouteService · LLM路由</text>
-
-  <!-- 助手层 -->
-  <rect x="40" y="226" width="640" height="160" rx="12" class="boundary"/>
-  <text x="56" y="244" class="t-title">助手层 · Assistants</text>
-
-  <!-- BaseAssistant 分组 -->
-  <rect x="60" y="258" width="320" height="120" rx="8" class="boundary"/>
-  <rect x="80" y="272" width="280" height="32" rx="8" class="node-brand"/>
-  <text x="220" y="293" text-anchor="middle" class="t-label t-brand">BaseAssistant</text>
-  <text x="220" y="324" text-anchor="middle" class="t-mini">Mfish · Sys · Storage · Oauth</text>
-  <text x="220" y="342" text-anchor="middle" class="t-mini">Scheduler · NoCode · Workflow</text>
-  <text x="220" y="360" text-anchor="middle" class="t-mini">Gateway · Agent （9 子类）</text>
-
-  <!-- AgentRuntime 分组 -->
-  <rect x="400" y="258" width="280" height="120" rx="8" class="boundary"/>
-  <rect x="420" y="272" width="240" height="32" rx="8" class="node-brand"/>
-  <text x="540" y="293" text-anchor="middle" class="t-label t-brand">AgentRuntime</text>
-  <rect x="420" y="316" width="110" height="28" rx="8" class="node-neutral"/>
-  <text x="475" y="334" text-anchor="middle" class="t-sub">Planner</text>
-  <rect x="550" y="316" width="110" height="28" rx="8" class="node-neutral"/>
-  <text x="605" y="334" text-anchor="middle" class="t-sub">Executor</text>
-  <rect x="420" y="352" width="240" height="22" rx="8" class="node-neutral"/>
-  <text x="540" y="367" text-anchor="middle" class="t-mini">EventBus · SSE 事件流</text>
-
-  <!-- 能力层 -->
-  <rect x="40" y="406" width="640" height="110" rx="12" class="boundary"/>
-  <text x="56" y="424" class="t-title">能力层 · mf-ai Services</text>
-  <rect x="60" y="438" width="140" height="44" rx="8" class="node-neutral"/>
-  <text x="130" y="458" text-anchor="middle" class="t-label">FileParseService</text>
-  <text x="130" y="474" text-anchor="middle" class="t-mini">文件解析 · 新增</text>
-  <rect x="220" y="438" width="140" height="44" rx="8" class="node-neutral"/>
-  <text x="290" y="458" text-anchor="middle" class="t-label">LlmModelRouter</text>
-  <text x="290" y="474" text-anchor="middle" class="t-mini">按租户路由模型</text>
-  <rect x="380" y="438" width="140" height="44" rx="8" class="node-brand"/>
-  <text x="450" y="458" text-anchor="middle" class="t-label t-brand">ApiToolEngine</text>
-  <text x="450" y="474" text-anchor="middle" class="t-mini">工具聚合引擎</text>
-  <rect x="540" y="438" width="120" height="44" rx="8" class="node-neutral"/>
-  <text x="600" y="458" text-anchor="middle" class="t-sub">FaultTolerant</text>
-  <text x="600" y="474" text-anchor="middle" class="t-mini">ToolCallingManager</text>
-
-  <!-- 工具来源层 -->
-  <rect x="40" y="536" width="640" height="86" rx="12" class="boundary"/>
-  <text x="56" y="554" class="t-title">工具来源 · mf-common-ai · ToolProvider</text>
-  <rect x="100" y="568" width="240" height="38" rx="8" class="node-neutral"/>
-  <text x="220" y="585" text-anchor="middle" class="t-sub">FeignToolProvider</text>
-  <text x="220" y="599" text-anchor="middle" class="t-mini">扫描 @FeignClient 接口</text>
-  <rect x="380" y="568" width="240" height="38" rx="8" class="node-neutral"/>
-  <text x="500" y="585" text-anchor="middle" class="t-sub">HttpToolProvider</text>
-  <text x="500" y="599" text-anchor="middle" class="t-mini">基于 OpenAPI 文档</text>
-
-  <!-- 外部服务 -->
-  <rect x="70" y="642" width="180" height="44" rx="8" class="node-external"/>
-  <text x="160" y="662" text-anchor="middle" class="t-label">mf-storage</text>
-  <text x="160" y="678" text-anchor="middle" class="t-mini">文件存储服务</text>
-  <rect x="270" y="642" width="180" height="44" rx="8" class="node-external"/>
-  <text x="360" y="662" text-anchor="middle" class="t-label">微服务集群</text>
-  <text x="360" y="678" text-anchor="middle" class="t-mini">sys/oauth/scheduler/...</text>
-  <rect x="470" y="642" width="180" height="44" rx="8" class="node-external"/>
-  <text x="560" y="662" text-anchor="middle" class="t-label">LLM 提供商</text>
-  <text x="560" y="678" text-anchor="middle" class="t-mini">ChatModel 流式</text>
-
-  <!-- 连接线 -->
-  <path class="conn" d="M360 62 L360 86" marker-end="url(#arr)"/>
-  <path class="conn" d="M310 192 Q260 210 250 258" marker-end="url(#arr)"/>
-  <path class="conn" d="M410 192 Q470 210 520 258" marker-end="url(#arr)"/>
-  <path class="conn" d="M180 378 Q150 400 140 438" marker-end="url(#arr)"/>
-  <path class="conn-brand" d="M280 378 Q380 410 420 438" marker-end="url(#arr-brand)"/>
-  <path class="conn-brand" d="M540 378 Q500 410 470 438" marker-end="url(#arr-brand)"/>
-  <path class="conn-brand" d="M450 482 L450 568" marker-end="url(#arr-brand)"/>
-  <path class="conn" d="M130 482 Q140 560 150 642" marker-end="url(#arr)"/>
-  <path class="conn" d="M220 606 Q300 620 340 642" marker-end="url(#arr)"/>
-  <path class="conn" d="M500 606 Q420 620 390 642" marker-end="url(#arr)"/>
-  <path class="conn" d="M290 482 Q300 560 330 642" marker-end="url(#arr)"/>
-
-  <!-- Legend -->
-  <rect x="56" y="710" width="608" height="60" rx="8" fill="none" stroke="var(--border)" stroke-width="1"/>
-  <text x="68" y="728" class="t-title">图例</text>
-  <rect x="68" y="738" width="20" height="12" rx="3" class="node-brand"/>
-  <text x="94" y="748" class="t-mini">核心组件 / 主路径</text>
-  <rect x="220" y="738" width="20" height="12" rx="3" class="node-neutral"/>
-  <text x="246" y="748" class="t-mini">普通组件</text>
-  <rect x="360" y="738" width="20" height="12" rx="3" class="node-external"/>
-  <text x="386" y="748" class="t-mini">外部服务</text>
-  <line x1="480" y1="744" x2="510" y2="744" class="conn-brand"/>
-  <text x="516" y="748" class="t-mini">工具调用主链路</text>
-</svg>
+<div class="widget arch-card" data-dynamic-ui-widget data-template="node-flow">
+  <h3 class="arch-title">mfish-nocode AI 能力架构</h3>
+  <p class="arch-sub">三支柱编排：Planner 规划 · Capability Engine 能力聚合 · Memory+LLM 上下文路由</p>
+  <svg viewBox="0 0 720 600" width="100%" height="auto" role="img" aria-label="AI能力架构图">
+    <defs>
+      <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
+        <path d="M1 1 L7 4 L1 7 Z" fill="#52525B"/>
+      </marker>
+      <marker id="arrow-brand" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
+        <path d="M1 1 L7 4 L1 7 Z" fill="#4B3FE3"/>
+      </marker>
+    </defs>
+    <!-- Tier 1: Entry Layer -->
+    <rect class="boundary" x="80" y="24" width="560" height="86" rx="12"/>
+    <text class="ts" x="360" y="44" text-anchor="middle">入口层 · Entry Points</text>
+    <rect class="node" x="100" y="54" width="160" height="46" rx="8"/>
+    <text class="tc" x="180" y="74" text-anchor="middle">/router</text>
+    <text class="ts" x="180" y="90" text-anchor="middle">路由聊天</text>
+    <rect class="node" x="280" y="54" width="160" height="46" rx="8"/>
+    <text class="tc" x="360" y="74" text-anchor="middle">/assist/chat</text>
+    <text class="ts" x="360" y="90" text-anchor="middle">垂直助手</text>
+    <rect class="node" x="460" y="54" width="160" height="46" rx="8"/>
+    <text class="tc" x="540" y="74" text-anchor="middle">/agent/chat</text>
+    <text class="ts" x="540" y="90" text-anchor="middle">自主规划</text>
+    <!-- Connector: Entry → AgentRuntime -->
+    <path class="arr-brand" d="M 360 110 L 360 140" marker-end="url(#arrow-brand)"/>
+    <!-- Tier 2: AgentRuntime (brand focal) -->
+    <rect class="node-brand" x="230" y="140" width="260" height="54" rx="8" fill="var(--brand-soft)"/>
+    <text class="th" x="360" y="163" text-anchor="middle" fill="var(--brand-text)">AgentRuntime 编排器</text>
+    <text class="ts" x="360" y="181" text-anchor="middle" fill="var(--brand)">Plan → Execute → Emit</text>
+    <!-- Connectors: AgentRuntime → 3 Pillars (junction at y=210) -->
+    <path class="arr" d="M 360 194 L 360 210 L 140 210 L 140 220" marker-end="url(#arrow)"/>
+    <path class="arr-brand" d="M 360 194 L 360 220" marker-end="url(#arrow-brand)"/>
+    <path class="arr" d="M 360 194 L 360 210 L 580 210 L 580 220" marker-end="url(#arrow)"/>
+    <!-- Pillar 1: Planner (neutral) -->
+    <rect class="boundary" x="40" y="220" width="200" height="170" rx="12"/>
+    <text class="ts" x="140" y="240" text-anchor="middle">Planner 柱 · 规划</text>
+    <rect class="node" x="60" y="250" width="160" height="32" rx="8"/>
+    <text class="t" x="140" y="270" text-anchor="middle">Planner 任务规划</text>
+    <rect class="node" x="60" y="294" width="160" height="32" rx="8"/>
+    <text class="t" x="140" y="314" text-anchor="middle">Executor 步骤执行</text>
+    <rect class="node" x="60" y="338" width="160" height="32" rx="8"/>
+    <text class="t" x="140" y="358" text-anchor="middle">EventBus 事件流</text>
+    <path class="arr" d="M 140 282 L 140 294" marker-end="url(#arrow)"/>
+    <path class="arr" d="M 140 326 L 140 338" marker-end="url(#arrow)"/>
+    <!-- Pillar 2: CapabilityEngine (brand focal) -->
+    <rect class="boundary-brand" x="260" y="220" width="200" height="170" rx="12"/>
+    <text class="ts" x="360" y="240" text-anchor="middle" fill="var(--brand)">Capability Engine · 能力聚合</text>
+    <rect class="node-brand" x="280" y="250" width="160" height="26" rx="8"/>
+    <text class="tc" x="360" y="267" text-anchor="middle">ToolCapability</text>
+    <rect class="node-brand" x="280" y="284" width="160" height="26" rx="8"/>
+    <text class="tc" x="360" y="301" text-anchor="middle">McpCapability</text>
+    <rect class="node-brand" x="280" y="318" width="160" height="26" rx="8"/>
+    <text class="tc" x="360" y="335" text-anchor="middle">SkillCapability</text>
+    <rect class="node-brand" x="280" y="352" width="160" height="26" rx="8"/>
+    <text class="tc" x="360" y="369" text-anchor="middle">WorkflowCapability</text>
+    <!-- Pillar 3: Memory + LLM (neutral) -->
+    <rect class="boundary" x="480" y="220" width="200" height="170" rx="12"/>
+    <text class="ts" x="580" y="240" text-anchor="middle">Memory + LLM 柱 · 上下文</text>
+    <rect class="node" x="500" y="258" width="160" height="44" rx="8"/>
+    <text class="t" x="580" y="278" text-anchor="middle">ChatMemory</text>
+    <text class="ts" x="580" y="294" text-anchor="middle">会话窗口策略</text>
+    <rect class="node" x="500" y="316" width="160" height="44" rx="8"/>
+    <text class="t" x="580" y="336" text-anchor="middle">LlmModelRouter</text>
+    <text class="ts" x="580" y="352" text-anchor="middle">多租户路由</text>
+    <!-- Connector: CapabilityEngine → External -->
+    <path class="arr-brand" d="M 360 390 L 360 424" marker-end="url(#arrow-brand)"/>
+    <!-- Tier 4: External Systems -->
+    <rect class="boundary" x="40" y="424" width="640" height="76" rx="12"/>
+    <text class="ts" x="360" y="444" text-anchor="middle">外部系统 · External Systems</text>
+    <rect class="node" x="60" y="456" width="140" height="34" rx="8"/>
+    <text class="t" x="130" y="478" text-anchor="middle">微服务 Feign+HTTP</text>
+    <rect class="node" x="220" y="456" width="140" height="34" rx="8"/>
+    <text class="t" x="290" y="478" text-anchor="middle">MCP 服务器</text>
+    <rect class="node" x="380" y="456" width="140" height="34" rx="8"/>
+    <text class="t" x="450" y="478" text-anchor="middle">skills/*.md</text>
+    <rect class="node" x="540" y="456" width="140" height="34" rx="8"/>
+    <text class="t" x="610" y="478" text-anchor="middle">Flowable 工作流</text>
+    <!-- Legend -->
+    <g transform="translate(40, 528)">
+      <rect class="boundary-brand" x="0" y="0" width="18" height="12" rx="3"/>
+      <text class="ts" x="24" y="10">核心引擎</text>
+      <rect class="boundary" x="100" y="0" width="18" height="12" rx="3"/>
+      <text class="ts" x="124" y="10">支撑层</text>
+      <line class="arr-brand" x1="200" y1="6" x2="224" y2="6"/>
+      <text class="ts" x="230" y="10">主调用链</text>
+      <line class="arr" x1="310" y1="6" x2="334" y2="6"/>
+      <text class="ts" x="340" y="10">编排流向</text>
+    </g>
+    <text class="ts" x="680" y="538" text-anchor="end">mf-common-ai · mf-ai</text>
+  </svg>
 </div>
 
 ### 智能网关路由

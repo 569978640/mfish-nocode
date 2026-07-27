@@ -7,6 +7,7 @@ import cn.com.mfish.common.ai.engine.ApiToolEngine;
 import cn.com.mfish.common.ai.entity.AiRequest;
 import cn.com.mfish.common.ai.entity.ChatResponseVo;
 import cn.com.mfish.common.ai.agent.ToolCapable;
+import cn.com.mfish.common.ai.capability.SkillCapabilityEngine;
 import cn.com.mfish.common.ai.memory.ConversationMemory;
 import cn.com.mfish.common.ai.memory.ConversationMemoryStore;
 import cn.com.mfish.common.core.constants.RPCConstants;
@@ -77,6 +78,21 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
      */
     @Autowired
     protected ConversationMemoryStore memoryStore;
+
+    /**
+     * Skill 能力引擎：用于查询 guide 类型 Skill 声明的依赖服务（requires）
+     * <p>
+     * chat 模式下，垂直助手通过 chatWithToolsAndExtensions 聚合主服务+扩展工具，
+     * 但扩展工具仅含 skill-* 和 mcp-*，不含 guide skill 引用的业务微服务（如 mf-demo）。
+     * 通过注入此引擎，读取扩展集合中 guide skill 的 requires 并合并到 serviceIds，
+     * 使 LLM 在垂直助手下也能调用指南引用的业务工具。
+     * </p>
+     * <p>
+     * required=false：避免在没有 SkillCapabilityEngine 的环境（如未启用 Skill）启动失败。
+     * </p>
+     */
+    @Autowired(required = false)
+    protected SkillCapabilityEngine skillCapabilityEngine;
 
     public BaseAssistant(ChatMemory chatMemory, LlmModelRouter llmModelRouter, ApiToolEngine apiToolEngine) {
         this.llmModelRouter = llmModelRouter;
@@ -191,7 +207,7 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
     }
 
     /**
-     * 带扩展工具的流式聊天模板方法（主服务 + MCP/Skill 扩展工具）
+     * 带扩展工具的流式聊天模板方法（主服务 + MCP/Skill 扩展工具 + guide 依赖业务服务）
      * <p>
      * 在垂直助手中使用：除了主服务（如 mf-sys）的 Feign 工具外，还聚合所有 MCP 工具和 Skill 工具，
      * 让用户在路由到垂直助手时也能调用 MCP 服务器和提示词级 Skill 能力。
@@ -199,6 +215,13 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
      * <p>
      * 扩展工具集合 = ApiToolEngine 中所有已注册 serviceId - 标准微服务ID（MfService.allServiceIds()），
      * 即排除 mf-* 后剩余的 MCP 服务器名和 skill-* 前缀的 serviceId。
+     * </p>
+     * <p>
+     * <b>guide 依赖合并</b>：扩展集合中可能包含 guide 类型 Skill（如 skill-leave-apply），
+     * 这类 Skill 在 frontmatter 中通过 requires 声明了依赖的业务服务（如 mf-demo）。
+     * 本方法会扫描扩展集合中的 skill-* 服务，读取其 requires 并合并到 serviceIds，
+     * 使 LLM 在调用 guide skill 获取指南后，能继续调用指南引用的业务工具完成实际操作。
+     * 此逻辑与 Planner.mergeGuideRequires 对齐，保证 chat 模式与 agent 模式工具可见性一致。
      * </p>
      *
      * @param sessionId      会话id
@@ -211,7 +234,46 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
         serviceIds.add(mainServiceId);
         // 聚合所有扩展工具（MCP + Skill），排除标准微服务ID
         serviceIds.addAll(apiToolEngine.getExtendedServiceIds(ServiceConstants.MfService.allServiceIds()));
+        // 合并 guide 类型 Skill 声明的依赖业务服务，使 LLM 能调用指南引用的业务工具
+        mergeGuideRequiresIntoServiceIds(serviceIds);
         return chatWithTools(sessionId, prompt, serviceIds);
+    }
+
+    /**
+     * 扫描 serviceIds 中的 skill-* 服务，读取 guide 类型 Skill 的 requires 并合并回 serviceIds
+     * <p>
+     * 与 Planner.mergeGuideRequires 逻辑对齐，保证 chat 模式下垂直助手也能看到
+     * guide skill 引用的业务工具（如 mf-demo 的 demoLeaveApply.add）。
+     * </p>
+     * <p>
+     * 当 skillCapabilityEngine 未注入或无 guide requires 时为空操作，不影响现有流程。
+     * </p>
+     */
+    private void mergeGuideRequiresIntoServiceIds(Set<String> serviceIds) {
+        if (skillCapabilityEngine == null || serviceIds == null || serviceIds.isEmpty()) {
+            return;
+        }
+        // 复制一份避免遍历时修改原集合
+        Set<String> skillServiceIds = new HashSet<>();
+        for (String sid : serviceIds) {
+            if (sid != null && sid.startsWith("skill-")) {
+                skillServiceIds.add(sid);
+            }
+        }
+        if (skillServiceIds.isEmpty()) {
+            return;
+        }
+        for (String skillServiceId : skillServiceIds) {
+            // skill-{code} → skill.{code}
+            String skillCode = skillServiceId.substring("skill-".length());
+            String actionName = "skill." + skillCode;
+            List<String> requires = skillCapabilityEngine.getGuideRequires(actionName);
+            if (requires != null && !requires.isEmpty()) {
+                serviceIds.addAll(requires);
+                log.info("[BaseAssistant] 合并 guide requires: skill={} requires={} -> serviceIds={}",
+                        skillCode, requires, serviceIds);
+            }
+        }
     }
 
     /**
