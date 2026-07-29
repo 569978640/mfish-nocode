@@ -4,6 +4,7 @@ import cn.com.mfish.ai.service.LlmModelRouter;
 import cn.com.mfish.common.ai.agent.TenantContext;
 import cn.com.mfish.common.ai.capability.ActionDefinition;
 import cn.com.mfish.common.ai.capability.CapabilityEngine;
+import cn.com.mfish.common.ai.capability.EngineType;
 import cn.com.mfish.common.ai.capability.SkillCapabilityEngine;
 import cn.com.mfish.common.ai.entity.AgentPlan;
 import cn.com.mfish.common.ai.entity.PlanStep;
@@ -256,25 +257,24 @@ public class Planner {
      * 此方法扫描每个步骤的 serviceIds，若发现 guide skill，将其 requires 合并进去。
      * </p>
      * <p>
-     * 同时在步骤描述中追加提示，告诉 Executor 这一步会调用 guide skill 获取操作指南，
-     * 拿到指南后必须按指南实际调用业务工具。
+     * 同时，为每个步骤自动注入所有已注册的 skill-* serviceId，确保 Executor 中的 LLM
+     * 能随时调用 skill 指南获取操作步骤（包括前端路由跳转等指令）。
      * </p>
      */
     private void mergeGuideRequires(AgentPlan plan) {
         if (plan == null || plan.getSteps() == null || plan.getSteps().isEmpty()) {
             return;
         }
+        // 获取所有已注册的 skill serviceId 列表（如 skill-leave-apply）
+        Set<String> allSkillServiceIds = collectAllSkillServiceIds();
         for (PlanStep step : plan.getSteps()) {
-            if (step.getServiceIds() == null || step.getServiceIds().isEmpty()) {
-                continue;
-            }
-            Set<String> merged = new LinkedHashSet<>(step.getServiceIds());
-            for (String serviceId : step.getServiceIds()) {
-                // 识别 skill 类型的 serviceId（格式为 skill-{code}）
-                if (serviceId == null || !serviceId.startsWith("skill-")) {
-                    continue;
-                }
-                // 转换为动作名 skill.{code}
+            Set<String> merged = step.getServiceIds() != null
+                    ? new LinkedHashSet<>(step.getServiceIds())
+                    : new LinkedHashSet<>();
+            // 自动注入所有 skill-* serviceId，确保 Executor 能调用 skill 指南
+            merged.addAll(allSkillServiceIds);
+            // 合并 guide skill 声明的 requires（如 mf-demo, frontend）
+            for (String serviceId : allSkillServiceIds) {
                 String skillCode = serviceId.substring("skill-".length());
                 String actionName = "skill." + skillCode;
                 List<String> requires = skillCapabilityEngine.getGuideRequires(actionName);
@@ -286,6 +286,26 @@ public class Planner {
             }
             step.setServiceIds(new ArrayList<>(merged));
         }
+    }
+
+    /**
+     * 收集所有已注册的 skill serviceId（格式为 skill-{code}）
+     */
+    private Set<String> collectAllSkillServiceIds() {
+        Set<String> skillServiceIds = new LinkedHashSet<>();
+        try {
+            List<ActionDefinition> actions = capabilityEngine.getAvailableActions(EngineType.SKILL);
+            if (actions != null) {
+                for (ActionDefinition action : actions) {
+                    if (action.getServiceId() != null && action.getServiceId().startsWith("skill-")) {
+                        skillServiceIds.add(action.getServiceId());
+                    }
+                }
+            }
+        } catch (Exception e) {
+            log.warn("[Planner] 收集 skill serviceId 列表失败", e);
+        }
+        return skillServiceIds;
     }
 
     /**

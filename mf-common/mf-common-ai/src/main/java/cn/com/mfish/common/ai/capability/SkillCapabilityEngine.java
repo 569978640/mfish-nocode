@@ -1,6 +1,7 @@
 package cn.com.mfish.common.ai.capability;
 
 import cn.com.mfish.common.ai.engine.ApiToolEngine;
+import cn.com.mfish.common.ai.tool.ToolOrderProvider;
 import cn.com.mfish.common.core.utils.StringUtils;
 import com.alibaba.fastjson2.JSON;
 import lombok.extern.slf4j.Slf4j;
@@ -14,8 +15,10 @@ import org.springframework.ai.tool.definition.ToolDefinition;
 
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicBoolean;
 
@@ -89,7 +92,7 @@ import java.util.concurrent.atomic.AtomicBoolean;
  * @date: 2026/07/22
  */
 @Slf4j
-public class SkillCapabilityEngine implements CapabilitySubEngine {
+public class SkillCapabilityEngine implements CapabilitySubEngine, ToolOrderProvider {
 
     /**
      * Skill 动作名前缀
@@ -178,6 +181,91 @@ public class SkillCapabilityEngine implements CapabilitySubEngine {
         }
         List<String> requires = skill.getRequires();
         return requires != null ? requires : Collections.emptyList();
+    }
+
+    /**
+     * 查询所有 guide 类型 Skill 声明的工具执行顺序（合并去重，保持先后顺序）
+     * <p>
+     * 供 {@link cn.com.mfish.common.ai.tool.FaultTolerantToolCallingManager} 在执行 tool calls 前调用：
+     * 当 LLM 在单次响应中返回多个 tool call 时，根据此顺序对 tool calls 排序，
+     * 确保工具按 skill 指定的顺序执行（如 navigate → add → submit → refresh）。
+     * </p>
+     * <p>
+     * 合并所有 guide 类型 Skill 的 toolOrder 列表，按声明顺序拼接去重。
+     * 例如 leave-apply 声明 {@code frontend.navigate,demoLeaveApply.add,demoLeaveApply.submit,frontend.refresh}，
+     * code-gen-guide 声明 {@code frontend.navigate,codeBuildController_add}，
+     * 合并后为 {@code frontend.navigate,demoLeaveApply.add,demoLeaveApply.submit,frontend.refresh,codeBuildController_add}。
+     * </p>
+     * <p>
+     * 未声明 toolOrder 的 Skill 不参与合并。无任何 Skill 声明 toolOrder 时返回空列表。
+     * </p>
+     *
+     * @return 工具执行顺序列表，可能为空
+     */
+    public List<String> getGuideToolOrder() {
+        if (actionRegistry.isEmpty()) {
+            return Collections.emptyList();
+        }
+        List<String> merged = new ArrayList<>();
+        for (SkillInfo skill : actionRegistry.values()) {
+            if (!"guide".equalsIgnoreCase(skill.getType())) {
+                continue;
+            }
+            List<String> order = skill.getToolOrder();
+            if (order == null || order.isEmpty()) {
+                continue;
+            }
+            for (String toolName : order) {
+                if (toolName != null && !toolName.isBlank() && !merged.contains(toolName)) {
+                    merged.add(toolName);
+                }
+            }
+        }
+        return merged;
+    }
+
+    /**
+     * {@link ToolOrderProvider} 接口实现：返回工具执行顺序
+     * <p>
+     * 委托给 {@link #getGuideToolOrder()}，供 {@link cn.com.mfish.common.ai.tool.FaultTolerantToolCallingManager}
+     * 通过接口注入调用，避免工具调用层直接依赖 Skill 能力引擎。
+     * </p>
+     */
+    @Override
+    public List<String> getToolOrder() {
+        return getGuideToolOrder();
+    }
+
+    /**
+     * 查询所有 guide 类型 Skill 声明的延迟工具列表（合并去重）
+     * <p>
+     * 供 {@link cn.com.mfish.common.ai.frontend.FrontendActionHolder} 判断哪些工具的操作
+     * 需要延迟到文本流完成后下发。例如 leave-apply.md 声明 {@code deferredTools: frontend.refresh}，
+     * 则 refresh 操作延迟到文本之后下发。
+     * </p>
+     *
+     * @return 延迟工具名列表，可能为空
+     */
+    public Set<String> getDeferredTools() {
+        if (actionRegistry.isEmpty()) {
+            return Collections.emptySet();
+        }
+        Set<String> merged = new LinkedHashSet<>();
+        for (SkillInfo skill : actionRegistry.values()) {
+            if (!"guide".equalsIgnoreCase(skill.getType())) {
+                continue;
+            }
+            List<String> deferred = skill.getDeferredTools();
+            if (deferred == null || deferred.isEmpty()) {
+                continue;
+            }
+            for (String toolName : deferred) {
+                if (toolName != null && !toolName.isBlank()) {
+                    merged.add(toolName);
+                }
+            }
+        }
+        return merged;
     }
 
     /**
@@ -290,7 +378,12 @@ public class SkillCapabilityEngine implements CapabilitySubEngine {
         }
 
         this.cachedActions = Collections.unmodifiableList(actions);
-        log.info("[SkillCapabilityEngine] 刷新完成，共加载 {} 个 Skill", actions.size());
+
+        // 同步延迟工具集合到 FrontendActionHolder
+        // Skill 声明的 deferredTools 决定哪些前端操作延迟到文本之后下发
+        Set<String> deferred = getDeferredTools();
+        cn.com.mfish.common.ai.frontend.FrontendActionHolder.setDeferredTools(deferred);
+        log.info("[SkillCapabilityEngine] 刷新完成，共加载 {} 个 Skill，延迟工具: {}", actions.size(), deferred);
     }
 
     /**
@@ -372,6 +465,8 @@ public class SkillCapabilityEngine implements CapabilitySubEngine {
         }
         actionRegistry.clear();
         cachedActions = Collections.emptyList();
+        // 清空延迟工具集合（refresh 正常流程会在重建后重新设置）
+        cn.com.mfish.common.ai.frontend.FrontendActionHolder.setDeferredTools(Collections.emptySet());
     }
 
     /**

@@ -339,6 +339,8 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
         Map<String, Object> toolContextMap = tenantContext != null
                 ? buildToolContext(tenantContext)
                 : buildToolContext();
+        // 注入 sessionId 到 ToolContext，供 FrontendActionTool 跨线程传递前端操作指令
+        toolContextMap.put(cn.com.mfish.common.ai.frontend.FrontendActionHolder.CTX_SESSION_ID, sessionId);
         // 按租户上下文构建 ChatClient，避免在异步线程调用 currentTenantId()
         String tenantId = tenantContext != null && tenantContext.getTenantId() != null
                 ? tenantContext.getTenantId()
@@ -365,6 +367,10 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
 
     /**
      * 构建工具使用提示词，帮助LLM理解可用工具，减少幻觉
+     * <p>
+     * 当检测到工具列表中同时包含 skill.* 和 frontend.* 工具时，追加特别提示，
+     * 强调调用 skill 获取指南后必须继续执行指南中的所有步骤（含前端操作）。
+     * </p>
      */
     private String buildToolUsageHint(ToolCallbackProvider toolProvider) {
         org.springframework.ai.tool.ToolCallback[] callbacks = toolProvider.getToolCallbacks();
@@ -373,9 +379,13 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
         }
         StringBuilder sb = new StringBuilder("## 工具使用规则\n");
         sb.append("你只能使用以下工具，不能虚构任何工具名：\n");
+        boolean hasSkill = false;
+        boolean hasFrontend = false;
         for (org.springframework.ai.tool.ToolCallback tc : callbacks) {
             String name = tc.getToolDefinition().name();
             String desc = tc.getToolDefinition().description();
+            if (name.startsWith("skill.")) hasSkill = true;
+            if (name.startsWith("frontend.")) hasFrontend = true;
             sb.append("- ").append(name);
             if (!desc.isEmpty()) {
                 sb.append(": ").append(desc);
@@ -387,6 +397,13 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
         sb.append("2. 只能使用上述列表中的工具名，不要构造新的工具名\n");
         sb.append("3. 如果没有合适的工具，直接用你的知识回答\n");
         sb.append("4. 工具调用失败时，根据返回的错误信息调整参数或选择其他工具\n");
+        // 当同时存在 skill 和 frontend 工具时，强调调用 skill 后必须继续执行指南步骤（含前端操作）
+        if (hasSkill && hasFrontend) {
+            sb.append("5. 【强制】如果工具列表中包含 skill.* 开头的工具，且用户需求属于该 skill 对应的领域（如请假、代码生成），\n");
+            sb.append("   必须优先调用 skill 工具获取操作指南。获取指南后，必须立即按指南中的步骤顺序逐个调用对应工具\n");
+            sb.append("   （包括 frontend.navigate 路由跳转、frontend.refresh 页面刷新等前端操作工具），\n");
+            sb.append("   严禁仅返回指南内容而不执行，严禁跳过任何前端操作步骤。\n");
+        }
         return sb.toString();
     }
 
@@ -433,12 +450,63 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
         }
 
         final String finalPrompt = prompt;
-        return chat(sessionId, finalPrompt)
-                .filter(resp -> "STOP".equals(Objects.requireNonNull(resp.getResult()).getMetadata().getFinishReason())
-                        || StringUtils.isNotEmpty(resp.getResult().getOutput().getText()))
-                .map(resp -> new ChatResponseVo().setId(aiRequest.getId())
-                        .setContent(Objects.requireNonNull(resp.getResult()).getOutput().getText())
-                        .setFinishReason(resp.getResult().getMetadata().getFinishReason())
-                );
+        final String messageId = aiRequest.getId();
+        // 清理上次请求可能残留的前端操作指令和 emitter
+        cn.com.mfish.common.ai.frontend.FrontendActionHolder.clear(sessionId);
+        cn.com.mfish.common.ai.frontend.FrontendActionHolder.unregisterEmitter(sessionId);
+
+        // 使用 Flux.create + emitter 回调实现 FRONTEND_ACTION 分通道下发：
+        // - navigate/click/fill/openModal：实时下发（工具调用时立即通过 emitter 发射）
+        // - refresh：延迟下发（存入 list，文本流完成后 drain 发射）
+        // 最终顺序：navigate → 业务工具 → 文本 → refresh → STOP
+        // 单一 Flux 源，不触发额外的 async dispatch，避免 Spring Security 异常
+        return Flux.<ChatResponseVo>create(sink -> {
+            // 注册 emitter：非 refresh 的操作实时发射到 sink
+            cn.com.mfish.common.ai.frontend.FrontendActionHolder.registerEmitter(sessionId, fa -> {
+                String json = com.alibaba.fastjson2.JSON.toJSONString(fa);
+                log.info("[BaseAssistant] 实时下发前端操作: {} {}", fa.getAction(), fa.getTarget());
+                sink.next(new ChatResponseVo()
+                        .setId(messageId)
+                        .setType(cn.com.mfish.common.ai.entity.EventType.FRONTEND_ACTION)
+                        .setContent(json));
+            });
+
+            chat(sessionId, finalPrompt)
+                    // 只保留有文本内容的响应（STOP 空响应在最后统一发射）
+                    .filter(resp -> StringUtils.isNotEmpty(
+                            Objects.requireNonNull(resp.getResult()).getOutput().getText()))
+                    .map(resp -> new ChatResponseVo().setId(messageId)
+                            .setContent(resp.getResult().getOutput().getText())
+                            .setFinishReason(resp.getResult().getMetadata().getFinishReason()))
+                    .subscribe(
+                            sink::next,
+                            sink::error,
+                            () -> {
+                                // 主流完成：注销 emitter
+                                cn.com.mfish.common.ai.frontend.FrontendActionHolder.unregisterEmitter(sessionId);
+                                // 下发延迟的 refresh 操作（文本之后、STOP 之前）
+                                List<cn.com.mfish.common.ai.entity.FrontendAction> deferredActions =
+                                        cn.com.mfish.common.ai.frontend.FrontendActionHolder.drain(sessionId);
+                                for (cn.com.mfish.common.ai.entity.FrontendAction fa : deferredActions) {
+                                    String json = com.alibaba.fastjson2.JSON.toJSONString(fa);
+                                    log.info("[BaseAssistant] 延迟下发前端操作: {} {}", fa.getAction(), fa.getTarget());
+                                    sink.next(new ChatResponseVo()
+                                            .setId(messageId)
+                                            .setType(cn.com.mfish.common.ai.entity.EventType.FRONTEND_ACTION)
+                                            .setContent(json));
+                                }
+                                // 发射 STOP 信号
+                                sink.next(new ChatResponseVo().setId(messageId).setFinishReason("STOP"));
+                                sink.complete();
+                            }
+                    );
+        }, reactor.core.publisher.FluxSink.OverflowStrategy.BUFFER)
+                .doFinally(signal -> {
+                    cn.com.mfish.common.ai.frontend.FrontendActionHolder.unregisterEmitter(sessionId);
+                    cn.com.mfish.common.ai.frontend.FrontendActionHolder.clear(sessionId);
+                    log.info("[BaseAssistant] 请求结束 sessionId={} signal={}", sessionId, signal);
+                });
     }
+
 }
+

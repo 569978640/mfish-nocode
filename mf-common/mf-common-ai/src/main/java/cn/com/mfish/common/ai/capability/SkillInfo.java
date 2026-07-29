@@ -59,6 +59,40 @@ public class SkillInfo {
     private List<String> requires;
 
     /**
+     * 工具执行顺序声明（来自 frontmatter 的 toolOrder 字段，逗号分隔）
+     * <p>
+     * guide 类型 Skill 声明其编排流程中工具的执行顺序，如：
+     * {@code frontend.navigate,demoLeaveApply.add,demoLeaveApply.submit,frontend.refresh}
+     * </p>
+     * <p>
+     * 当 LLM 在单次响应中返回多个 tool call 时，{@link cn.com.mfish.common.ai.tool.FaultTolerantToolCallingManager}
+     * 会根据此顺序对 tool calls 排序，确保工具按 skill 指定的顺序执行。
+     * 不在此列表中的工具保持 LLM 返回的原顺序，排到列表中已声明工具的后面。
+     * </p>
+     * <p>
+     * 未声明 toolOrder 的 Skill 不进行重排序，按 LLM 返回顺序执行。
+     * </p>
+     */
+    private List<String> toolOrder;
+
+    /**
+     * 延迟到文本之后下发的工具列表（来自 frontmatter 的 deferredTools 字段，逗号分隔）
+     * <p>
+     * guide 类型 Skill 声明哪些工具的操作结果需要延迟到 LLM 文本流完成后才下发。
+     * Spring AI 机制下，LLM 调用工具后才会生成最终文本，所有工具调用都在文本之前。
+     * 但某些操作（如 frontend.refresh 页面刷新）语义上应在文本反馈之后执行，
+     * 通过此字段声明后，{@link cn.com.mfish.common.ai.frontend.FrontendActionHolder}
+     * 会将这些工具的操作存入延迟通道，等文本流完成后再下发。
+     * </p>
+     * <p>
+     * 例如 leave-apply.md 声明 {@code deferredTools: frontend.refresh}，
+     * 则 refresh 操作会延迟到文本之后下发，实现：
+     * navigate → add → submit → 文本 → refresh → STOP
+     * </p>
+     */
+    private List<String> deferredTools;
+
+    /**
      * 动作描述（来自 frontmatter 的 description 字段，供 LLM 理解用途）
      */
     private String description;

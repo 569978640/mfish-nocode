@@ -1,9 +1,11 @@
 package cn.com.mfish.common.ai.engine;
 
 import cn.com.mfish.common.ai.feign.FeignToolProvider;
+import cn.com.mfish.common.ai.frontend.FrontendActionTool;
 import cn.com.mfish.common.ai.http.HttpToolProvider;
 import cn.com.mfish.common.ai.provider.ToolProvider;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.ai.tool.ToolCallback;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -75,6 +77,12 @@ public class ApiToolAutoConfiguration {
             log.info("[ApiToolAutoConfiguration] 发现 {} 个 ToolProvider: {}", toolProviders.size(),
                     toolProviders.stream().map(ToolProvider::getType).toList());
             apiToolEngine.initialize(toolProviders);
+            // 注册前端操作工具（navigate/click/fill/refresh/openModal）到 frontend serviceId
+            // 这些工具让 LLM 能通过工具调用驱动前端 UI 操作
+            List<ToolCallback> frontendTools = FrontendActionTool.createAll();
+            apiToolEngine.register(FrontendActionTool.FRONTEND_SERVICE_ID, frontendTools);
+            log.info("[ApiToolAutoConfiguration] 注册前端操作工具 service={} 工具数={}",
+                    FrontendActionTool.FRONTEND_SERVICE_ID, frontendTools.size());
         };
     }
 }

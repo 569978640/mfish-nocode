@@ -6,6 +6,7 @@ import cn.com.mfish.common.core.utils.StringUtils;
 import cn.com.mfish.common.core.utils.TreeUtils;
 import cn.com.mfish.common.core.web.Result;
 import cn.com.mfish.common.oauth.api.entity.UserRole;
+import cn.com.mfish.common.oauth.api.vo.MenuRouteVo;
 import cn.com.mfish.common.oauth.common.OauthUtils;
 import cn.com.mfish.oauth.cache.common.ClearCache;
 import cn.com.mfish.common.oauth.api.entity.SsoMenu;
@@ -20,7 +21,9 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.Resource;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.concurrent.CompletableFuture;
 import java.util.stream.Collectors;
 
@@ -172,6 +175,69 @@ public class SsoMenuServiceImpl extends ServiceImpl<SsoMenuMapper, SsoMenu> impl
             return Result.ok(true, "路由地址已存在");
         }
         return Result.fail(false, "路由地址不存在");
+    }
+
+    @Override
+    public Result<List<MenuRouteVo>> queryRoutePaths() {
+        // 查询所有目录和菜单（排除按钮 menuType=2），按钮无路由地址
+        List<SsoMenu> menus = baseMapper.selectList(new LambdaQueryWrapper<SsoMenu>()
+                .lt(SsoMenu::getMenuType, 2)
+                .isNotNull(SsoMenu::getRoutePath));
+        // 以 id 为 key 构建 map，便于通过 parentId 查找父菜单
+        Map<String, SsoMenu> menuMap = new LinkedHashMap<>();
+        for (SsoMenu menu : menus) {
+            menuMap.put(menu.getId(), menu);
+        }
+        // 递归拼接完整路由地址，子菜单路由拼接父菜单路由
+        // 例如：父 /demo + 子 /demo-leave-apply → /demo/demo-leave-apply
+        List<MenuRouteVo> routePaths = new ArrayList<>();
+        for (SsoMenu menu : menus) {
+            String fullPath = buildFullPath(menu, menuMap);
+            if (StringUtils.isNotEmpty(fullPath)) {
+                routePaths.add(new MenuRouteVo(menu.getMenuName(), fullPath));
+            }
+        }
+        return Result.ok(routePaths, "路由地址查询成功");
+    }
+
+    /**
+     * 递归构建菜单的完整路由地址（子路由拼接父路由）
+     * <p>
+     * 示例：父菜单 /system → 子菜单 /menu → 完整路径 /system/menu
+     * 顶层菜单（parentId 为空）直接返回自身 routePath。
+     * </p>
+     *
+     * @param menu    当前菜单
+     * @param menuMap 菜单 id → 菜单对象 映射
+     * @return 完整路由地址，无路由时返回空字符串
+     */
+    private String buildFullPath(SsoMenu menu, Map<String, SsoMenu> menuMap) {
+        if (menu == null || StringUtils.isEmpty(menu.getRoutePath())) {
+            return "";
+        }
+        String parentId = menu.getParentId();
+        if (StringUtils.isEmpty(parentId)) {
+            // 顶层菜单，直接返回路由
+            return menu.getRoutePath();
+        }
+        SsoMenu parent = menuMap.get(parentId);
+        if (parent == null) {
+            // 父菜单不存在（可能被删除或权限不足），返回自身路由
+            return menu.getRoutePath();
+        }
+        String parentPath = buildFullPath(parent, menuMap);
+        if (StringUtils.isEmpty(parentPath)) {
+            return menu.getRoutePath();
+        }
+        // 拼接：父路径 + 子路径（处理重复的斜杠）
+        String childPath = menu.getRoutePath();
+        if (parentPath.endsWith("/") && childPath.startsWith("/")) {
+            return parentPath + childPath.substring(1);
+        }
+        if (!parentPath.endsWith("/") && !childPath.startsWith("/")) {
+            return parentPath + "/" + childPath;
+        }
+        return parentPath + childPath;
     }
 
     /**

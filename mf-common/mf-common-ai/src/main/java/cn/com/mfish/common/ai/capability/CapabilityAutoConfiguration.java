@@ -1,6 +1,7 @@
 package cn.com.mfish.common.ai.capability;
 
 import cn.com.mfish.common.ai.engine.ApiToolEngine;
+import cn.com.mfish.common.ai.tool.FaultTolerantToolCallingManager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.SmartInitializingSingleton;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
@@ -151,14 +152,36 @@ public class CapabilityAutoConfiguration {
      * 这样 Spring Boot 启动不被外部依赖耗时阻塞，其他子引擎（ToolEngine 等）立即可用。
      * MCP/Skill 工具在初始化完成前不可调用（{@code execute()} 返回友好提示）。
      * </p>
+     * <p>
+     * <b>ToolOrderProvider setter 注入</b>：
+     * 此处在所有 Bean 就绪后，将 SkillCapabilityEngine（实现了 ToolOrderProvider 接口）
+     * 通过 setter 注入到 FaultTolerantToolCallingManager。这样规避了构造器注入形成的循环依赖：
+     * {@code llmModelRouter → openAiChatModel → toolCallingManager → skillCapabilityEngine
+     * → skillChatClientProviderImpl → llmModelRouter}。
+     * SmartInitializingSingleton 在所有单例 Bean 创建完成后才执行，此时依赖链已全部解析。
+     * </p>
      */
     @Bean
     public SmartInitializingSingleton capabilityEngineInitializer(CapabilityEngine capabilityEngine,
-                                                                    List<CapabilitySubEngine> subEngines) {
+                                                                    List<CapabilitySubEngine> subEngines,
+                                                                    org.springframework.beans.factory.ObjectProvider<FaultTolerantToolCallingManager> toolCallingManagerProvider) {
         return () -> {
             log.info("[CapabilityAutoConfiguration] 发现 {} 个 CapabilitySubEngine: {}",
                     subEngines.size(),
                     subEngines.stream().map(e -> e.getEngineType().name()).toList());
+
+            // 0. 将 SkillCapabilityEngine 作为 ToolOrderProvider 注入到 FaultTolerantToolCallingManager
+            //    （setter 注入规避循环依赖，此时所有 Bean 已创建完成）
+            FaultTolerantToolCallingManager toolCallingManager = toolCallingManagerProvider.getIfAvailable();
+            if (toolCallingManager != null) {
+                for (CapabilitySubEngine engine : subEngines) {
+                    if (engine instanceof SkillCapabilityEngine skillEngine) {
+                        toolCallingManager.setToolOrderProvider(skillEngine);
+                        log.info("[CapabilityAutoConfiguration] SkillCapabilityEngine 已注入为 ToolOrderProvider");
+                        break;
+                    }
+                }
+            }
 
             // 1. 先注册所有子引擎（MCP/Skill 引擎此时 actions 为空，立即注册不阻塞）
             capabilityEngine.registerSubEngines(subEngines);

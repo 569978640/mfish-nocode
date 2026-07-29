@@ -233,6 +233,8 @@ public class SkillFileLoader {
                 .setDescription(meta.getOrDefault("description", skillCode))
                 .setType(meta.getOrDefault("type", "prompt"))
                 .setRequires(parseRequires(meta.get("requires")))
+                .setToolOrder(parseRequires(meta.get("toolOrder")))
+                .setDeferredTools(parseRequires(meta.get("deferredTools")))
                 .setPromptTemplate(promptBody)
                 .setModelName(meta.get("model"))
                 .setParams(params)
