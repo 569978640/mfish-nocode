@@ -6,7 +6,7 @@ import cn.com.mfish.common.ai.agent.ToolCapable;
 import cn.com.mfish.common.ai.entity.AgentPlan;
 import cn.com.mfish.common.ai.entity.EventType;
 import cn.com.mfish.common.ai.entity.PlanStep;
-import cn.com.mfish.common.ai.frontend.FrontendActionTool;
+import cn.com.mfish.ai.runtime.ToolRuntime;
 import cn.com.mfish.common.core.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.model.ChatResponse;
@@ -42,9 +42,11 @@ import java.util.Set;
 public class Executor {
 
     private final ToolCapable toolCapable;
+    private final ToolRuntime toolRuntime;
 
-    public Executor(@Qualifier("agentAssistant") ToolCapable toolCapable) {
+    public Executor(@Qualifier("agentAssistant") ToolCapable toolCapable, ToolRuntime toolRuntime) {
         this.toolCapable = toolCapable;
+        this.toolRuntime = toolRuntime;
     }
 
     /**
@@ -64,12 +66,11 @@ public class Executor {
         step.setStatus("RUNNING");
         eventBus.emit(EventType.STEP_STARTED, stepIndex, step.getDescription());
         // 清理上一步可能残留的前端操作指令和 emitter
-        cn.com.mfish.common.ai.frontend.FrontendActionHolder.clear(sessionId);
-        cn.com.mfish.common.ai.frontend.FrontendActionHolder.unregisterEmitter(sessionId);
+        toolRuntime.resetFrontendActions(sessionId);
 
         // 注册 emitter：工具调用时通过 EventBus 实时下发 FRONTEND_ACTION 事件
         // 使 navigate/refresh 等操作在 LLM 调用工具时立即下发，与 token 流按实际执行顺序交织
-        cn.com.mfish.common.ai.frontend.FrontendActionHolder.registerEmitter(sessionId, fa -> {
+        toolRuntime.registerFrontendEmitter(sessionId, fa -> {
             String json = com.alibaba.fastjson2.JSON.toJSONString(fa);
             eventBus.emit(cn.com.mfish.common.ai.entity.EventType.FRONTEND_ACTION, stepIndex, json);
             log.info("[Executor] 步骤{} 实时下发前端操作: {} {}", stepIndex, fa.getAction(), fa.getTarget());
@@ -81,11 +82,7 @@ public class Executor {
         StringBuilder resultBuilder = new StringBuilder();
 
         // serviceIds 可能为 null，做兜底
-        Set<String> serviceIdSet = step.getServiceIds() != null
-                ? new HashSet<>(step.getServiceIds())
-                : new HashSet<>();
-        // 始终注入 frontend serviceId，确保 LLM 能调用 frontend.navigate/refresh 等前端操作工具
-        serviceIdSet.add(FrontendActionTool.FRONTEND_SERVICE_ID);
+        Set<String> serviceIdSet = toolRuntime.resolveStepServiceIds(step.getServiceIds());
 
         // 传入租户上下文，避免异步线程拿不到 RequestAttributes
         return toolCapable.chatWithTools(sessionId, prompt, serviceIdSet, tenantContext)
@@ -121,8 +118,8 @@ public class Executor {
                 }))
                 .doFinally(signal -> {
                     // 注销 emitter，防止内存泄漏
-                    cn.com.mfish.common.ai.frontend.FrontendActionHolder.unregisterEmitter(sessionId);
-                    cn.com.mfish.common.ai.frontend.FrontendActionHolder.clear(sessionId);
+                    toolRuntime.unregisterFrontendEmitter(sessionId);
+                    toolRuntime.clearFrontendActions(sessionId);
                 })
                 .onErrorResume(ex -> {
                     log.error("[Executor] 步骤{}执行失败", stepIndex, ex);
@@ -205,7 +202,7 @@ public class Executor {
      */
     private void emitDeferredFrontendActions(EventBus eventBus, int stepIndex, String sessionId) {
         List<cn.com.mfish.common.ai.entity.FrontendAction> deferred =
-                cn.com.mfish.common.ai.frontend.FrontendActionHolder.drain(sessionId);
+                toolRuntime.drainFrontendActions(sessionId);
         for (cn.com.mfish.common.ai.entity.FrontendAction fa : deferred) {
             String json = com.alibaba.fastjson2.JSON.toJSONString(fa);
             log.info("[Executor] 步骤{} 延迟下发前端操作: {} {}", stepIndex, fa.getAction(), fa.getTarget());

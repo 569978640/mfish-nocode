@@ -2,6 +2,7 @@ package cn.com.mfish.ai.agent;
 
 import cn.com.mfish.ai.service.FileParseService;
 import cn.com.mfish.ai.service.LlmModelRouter;
+import cn.com.mfish.ai.runtime.ToolRuntime;
 import cn.com.mfish.common.ai.client.IClientAssistant;
 import cn.com.mfish.common.ai.engine.ApiToolEngine;
 import cn.com.mfish.common.ai.entity.AiRequest;
@@ -93,6 +94,9 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
      */
     @Autowired(required = false)
     protected SkillCapabilityEngine skillCapabilityEngine;
+
+    @Autowired
+    protected ToolRuntime toolRuntime;
 
     public BaseAssistant(ChatMemory chatMemory, LlmModelRouter llmModelRouter, ApiToolEngine apiToolEngine) {
         this.llmModelRouter = llmModelRouter;
@@ -230,13 +234,7 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
      * @return 流式聊天响应
      */
     protected Flux<ChatResponse> chatWithToolsAndExtensions(String sessionId, String prompt, String mainServiceId) {
-        Set<String> serviceIds = new HashSet<>();
-        serviceIds.add(mainServiceId);
-        // 聚合所有扩展工具（MCP + Skill），排除标准微服务ID
-        serviceIds.addAll(apiToolEngine.getExtendedServiceIds(ServiceConstants.MfService.allServiceIds()));
-        // 合并 guide 类型 Skill 声明的依赖业务服务，使 LLM 能调用指南引用的业务工具
-        mergeGuideRequiresIntoServiceIds(serviceIds);
-        return chatWithTools(sessionId, prompt, serviceIds);
+        return chatWithTools(sessionId, prompt, toolRuntime.resolveAssistantServiceIds(mainServiceId));
     }
 
     /**
@@ -324,7 +322,7 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
     @Override
     public Flux<ChatResponse> chatWithTools(String sessionId, String prompt, Set<String> serviceIds,
                                             cn.com.mfish.common.ai.agent.TenantContext tenantContext) {
-        ToolCallbackProvider toolProvider = apiToolEngine.getToolCallbackProvider(serviceIds);
+        ToolCallbackProvider toolProvider = toolRuntime.getToolCallbackProvider(serviceIds);
         // 诊断日志：输出当前步骤注入的工具数量和名称，便于排查 LLM "无法调用工具" 问题
         org.springframework.ai.tool.ToolCallback[] diagnosticCallbacks = toolProvider.getToolCallbacks();
         if (log.isInfoEnabled()) {
@@ -336,18 +334,14 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
             log.info("[BaseAssistant] chatWithTools sessionId={} serviceIds={} toolCount={} tools=[{}]",
                     sessionId, serviceIds, diagnosticCallbacks.length, toolNames);
         }
-        Map<String, Object> toolContextMap = tenantContext != null
-                ? buildToolContext(tenantContext)
-                : buildToolContext();
-        // 注入 sessionId 到 ToolContext，供 FrontendActionTool 跨线程传递前端操作指令
-        toolContextMap.put(cn.com.mfish.common.ai.frontend.FrontendActionHolder.CTX_SESSION_ID, sessionId);
+        Map<String, Object> toolContextMap = toolRuntime.buildToolContext(sessionId, tenantContext);
         // 按租户上下文构建 ChatClient，避免在异步线程调用 currentTenantId()
         String tenantId = tenantContext != null && tenantContext.getTenantId() != null
                 ? tenantContext.getTenantId()
                 : llmModelRouter.currentTenantId();
         ChatClient chatClient = getChatClient(tenantId);
         // 构建工具使用提示词，减少LLM幻觉
-        String toolHint = buildToolUsageHint(toolProvider);
+        String toolHint = toolRuntime.buildToolUsageHint(toolProvider);
         ChatClient.ChatClientRequestSpec requestSpec = chatClient.prompt()
                 .system(getSystemPrompt() + "\n\n" + toolHint)
                 .user(prompt)
@@ -452,8 +446,7 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
         final String finalPrompt = prompt;
         final String messageId = aiRequest.getId();
         // 清理上次请求可能残留的前端操作指令和 emitter
-        cn.com.mfish.common.ai.frontend.FrontendActionHolder.clear(sessionId);
-        cn.com.mfish.common.ai.frontend.FrontendActionHolder.unregisterEmitter(sessionId);
+        toolRuntime.resetFrontendActions(sessionId);
 
         // 使用 Flux.create + emitter 回调实现 FRONTEND_ACTION 分通道下发：
         // - navigate/click/fill/openModal：实时下发（工具调用时立即通过 emitter 发射）
@@ -462,7 +455,7 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
         // 单一 Flux 源，不触发额外的 async dispatch，避免 Spring Security 异常
         return Flux.<ChatResponseVo>create(sink -> {
             // 注册 emitter：非 refresh 的操作实时发射到 sink
-            cn.com.mfish.common.ai.frontend.FrontendActionHolder.registerEmitter(sessionId, fa -> {
+            toolRuntime.registerFrontendEmitter(sessionId, fa -> {
                 String json = com.alibaba.fastjson2.JSON.toJSONString(fa);
                 log.info("[BaseAssistant] 实时下发前端操作: {} {}", fa.getAction(), fa.getTarget());
                 sink.next(new ChatResponseVo()
@@ -483,10 +476,10 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
                             sink::error,
                             () -> {
                                 // 主流完成：注销 emitter
-                                cn.com.mfish.common.ai.frontend.FrontendActionHolder.unregisterEmitter(sessionId);
+                                toolRuntime.unregisterFrontendEmitter(sessionId);
                                 // 下发延迟的 refresh 操作（文本之后、STOP 之前）
                                 List<cn.com.mfish.common.ai.entity.FrontendAction> deferredActions =
-                                        cn.com.mfish.common.ai.frontend.FrontendActionHolder.drain(sessionId);
+                                        toolRuntime.drainFrontendActions(sessionId);
                                 for (cn.com.mfish.common.ai.entity.FrontendAction fa : deferredActions) {
                                     String json = com.alibaba.fastjson2.JSON.toJSONString(fa);
                                     log.info("[BaseAssistant] 延迟下发前端操作: {} {}", fa.getAction(), fa.getTarget());
@@ -502,8 +495,8 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
                     );
         }, reactor.core.publisher.FluxSink.OverflowStrategy.BUFFER)
                 .doFinally(signal -> {
-                    cn.com.mfish.common.ai.frontend.FrontendActionHolder.unregisterEmitter(sessionId);
-                    cn.com.mfish.common.ai.frontend.FrontendActionHolder.clear(sessionId);
+                    toolRuntime.unregisterFrontendEmitter(sessionId);
+                    toolRuntime.clearFrontendActions(sessionId);
                     log.info("[BaseAssistant] 请求结束 sessionId={} signal={}", sessionId, signal);
                 });
     }

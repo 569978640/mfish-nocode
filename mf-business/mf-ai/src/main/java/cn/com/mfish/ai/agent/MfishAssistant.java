@@ -112,7 +112,7 @@ public class MfishAssistant extends BaseAssistant {
             prompt = DEFAULT_PROMPT;
         }
         // 获取所有已注册工具的 serviceId（含 skill-* 和 mf-*），让 LLM 能看到全部工具
-        Set<String> allServiceIds = apiToolEngine.getAllServiceIds();
+        Set<String> allServiceIds = toolRuntime.getAllServiceIds();
         if (allServiceIds.isEmpty()) {
             // 无工具注册时退化为纯对话（如启动初期工具尚未发现）
             return this.getChatClient().prompt().user(prompt)

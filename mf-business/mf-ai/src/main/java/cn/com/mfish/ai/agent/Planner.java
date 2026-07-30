@@ -1,11 +1,10 @@
 package cn.com.mfish.ai.agent;
 
 import cn.com.mfish.ai.service.LlmModelRouter;
+import cn.com.mfish.ai.runtime.ToolRuntime;
 import cn.com.mfish.common.ai.agent.TenantContext;
 import cn.com.mfish.common.ai.capability.ActionDefinition;
 import cn.com.mfish.common.ai.capability.CapabilityEngine;
-import cn.com.mfish.common.ai.capability.EngineType;
-import cn.com.mfish.common.ai.capability.SkillCapabilityEngine;
 import cn.com.mfish.common.ai.entity.AgentPlan;
 import cn.com.mfish.common.ai.entity.PlanStep;
 import cn.com.mfish.common.ai.memory.ConversationMemory;
@@ -68,16 +67,16 @@ public class Planner {
     private final LlmModelRouter llmModelRouter;
     private final CapabilityEngine capabilityEngine;
     private final ConversationMemoryStore memoryStore;
-    private final SkillCapabilityEngine skillCapabilityEngine;
+    private final ToolRuntime toolRuntime;
 
     public Planner(ChatMemory chatMemory, LlmModelRouter llmModelRouter,
                    CapabilityEngine capabilityEngine, ConversationMemoryStore memoryStore,
-                   SkillCapabilityEngine skillCapabilityEngine) {
+                   ToolRuntime toolRuntime) {
         this.chatMemory = chatMemory;
         this.llmModelRouter = llmModelRouter;
         this.capabilityEngine = capabilityEngine;
         this.memoryStore = memoryStore;
-        this.skillCapabilityEngine = skillCapabilityEngine;
+        this.toolRuntime = toolRuntime;
     }
 
     /**
@@ -130,7 +129,7 @@ public class Planner {
                     AgentPlan plan = Objects.requireNonNullElseGet(responseEntity.entity(), () -> fallbackPlan(finalPrompt));
                     plan.setOriginalPrompt(prompt);
                     // 合并 guide 类型 Skill 声明的 requires 到各步骤的 serviceIds
-                    mergeGuideRequires(plan);
+                    toolRuntime.enrichPlanServiceIds(plan);
                     log.info("[Planner] 规划完成, 步骤数={}, summary={}",
                             plan.getSteps() != null ? plan.getSteps().size() : 0, plan.getSummary());
                     return plan;
@@ -277,7 +276,7 @@ public class Planner {
             for (String serviceId : allSkillServiceIds) {
                 String skillCode = serviceId.substring("skill-".length());
                 String actionName = "skill." + skillCode;
-                List<String> requires = skillCapabilityEngine.getGuideRequires(actionName);
+                List<String> requires = List.of();
                 if (!requires.isEmpty()) {
                     merged.addAll(requires);
                     log.info("[Planner] 步骤合并 guide requires: skill={} requires={} -> serviceIds={}",
@@ -294,7 +293,7 @@ public class Planner {
     private Set<String> collectAllSkillServiceIds() {
         Set<String> skillServiceIds = new LinkedHashSet<>();
         try {
-            List<ActionDefinition> actions = capabilityEngine.getAvailableActions(EngineType.SKILL);
+            List<ActionDefinition> actions = List.of();
             if (actions != null) {
                 for (ActionDefinition action : actions) {
                     if (action.getServiceId() != null && action.getServiceId().startsWith("skill-")) {
