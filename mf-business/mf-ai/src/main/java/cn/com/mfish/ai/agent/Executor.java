@@ -144,8 +144,8 @@ public class Executor {
         return "原始需求：" + plan.getOriginalPrompt() + "\n\n" +
                 "当前是第 " + (stepIndex + 1) + " 步，共 " + plan.getSteps().size() + " 步。\n" +
                 "这一步的任务：" + step.getDescription() + "\n\n" +
-                "当前日期：今天=" + today + "，明天=" + tomorrow + "，后天=" + dayAfter +
-                "（用户提到相对日期时请转换为具体日期，格式 yyyy-MM-dd HH:mm:ss）\n\n" +
+                "【当前真实日期】今天=" + today + "，明天=" + tomorrow + "，后天=" + dayAfter
+                + "（必须使用这些日期，严禁使用训练数据中的日期；用户提到相对日期时转换为具体日期，格式 yyyy-MM-dd HH:mm:ss）\n\n" +
                 """
                 # 执行要求（必须严格遵守）
                 1. **必须实际调用工具**：你已被注入了完成本步骤所需的全部工具，工具列表已在上方列出。必须从中选择匹配的工具并实际调用，不得仅描述"建议调用"或"需要调用"而不执行。

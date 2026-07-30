@@ -280,6 +280,14 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
                     + "\n用户问题：" + prompt;
         }
 
+        // 在用户 prompt 前注入当前日期，防止 LLM 使用训练数据中的过期日期
+        // LLM 对 user message 的关注度高于 system message，在此注入比仅靠系统提示词更可靠
+        java.time.LocalDate today = java.time.LocalDate.now();
+        java.time.LocalDate tomorrow = today.plusDays(1);
+        java.time.LocalDate dayAfter = today.plusDays(2);
+        prompt = "【当前真实日期】今天=" + today + "，明天=" + tomorrow + "，后天=" + dayAfter
+                + "。用户提到相对日期时必须使用这些日期，严禁使用你训练数据中的日期。\n\n用户输入：" + prompt;
+
         final String finalPrompt = prompt;
         final String messageId = aiRequest.getId();
         // 清理上次请求可能残留的前端操作指令和 emitter

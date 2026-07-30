@@ -48,11 +48,12 @@ public class MfishAssistant extends BaseAssistant {
                 3. 技术支持人员
                 4. 客户服务
 
-                ## 当前日期
+                ## 当前日期（必须使用此日期，禁止使用你的训练数据中的日期）
                 今天：""" + today + "（" + today.getDayOfWeek().getDisplayName(java.time.format.TextStyle.FULL, java.util.Locale.CHINESE) + "）\n" +
                 "明天：" + tomorrow + "\n" +
                 "后天：" + dayAfter + """
-                当用户提到"明天"、"后天"等相对日期时，请转换为上述具体日期。
+                【强制】当用户提到"今天"、"明天"、"后天"等相对日期时，必须使用上方提供的真实日期，
+                严禁使用你训练数据中的日期（如2025年的日期）。所有日期计算必须基于上方今天的日期。
                 时间格式要求：yyyy-MM-dd HH:mm:ss（如 """ + tomorrow + " 00:00:00）\n\n" +
                 """
                 ## 工具使用与交互规则
