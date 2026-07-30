@@ -19,9 +19,7 @@ import org.springframework.stereotype.Component;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -249,65 +247,6 @@ public class Planner {
     }
 
     /**
-     * 合并 guide 类型 Skill 声明的 requires 到各步骤的 serviceIds
-     * <p>
-     * Planner 生成的步骤可能只包含 skill-{code} 的 serviceId，但 guide 类型 Skill
-     * 在执行时需要调用被指南引用的业务工具（如 mf-demo 的 add/submit）。
-     * 此方法扫描每个步骤的 serviceIds，若发现 guide skill，将其 requires 合并进去。
-     * </p>
-     * <p>
-     * 同时，为每个步骤自动注入所有已注册的 skill-* serviceId，确保 Executor 中的 LLM
-     * 能随时调用 skill 指南获取操作步骤（包括前端路由跳转等指令）。
-     * </p>
-     */
-    private void mergeGuideRequires(AgentPlan plan) {
-        if (plan == null || plan.getSteps() == null || plan.getSteps().isEmpty()) {
-            return;
-        }
-        // 获取所有已注册的 skill serviceId 列表（如 skill-leave-apply）
-        Set<String> allSkillServiceIds = collectAllSkillServiceIds();
-        for (PlanStep step : plan.getSteps()) {
-            Set<String> merged = step.getServiceIds() != null
-                    ? new LinkedHashSet<>(step.getServiceIds())
-                    : new LinkedHashSet<>();
-            // 自动注入所有 skill-* serviceId，确保 Executor 能调用 skill 指南
-            merged.addAll(allSkillServiceIds);
-            // 合并 guide skill 声明的 requires（如 mf-demo, frontend）
-            for (String serviceId : allSkillServiceIds) {
-                String skillCode = serviceId.substring("skill-".length());
-                String actionName = "skill." + skillCode;
-                List<String> requires = List.of();
-                if (!requires.isEmpty()) {
-                    merged.addAll(requires);
-                    log.info("[Planner] 步骤合并 guide requires: skill={} requires={} -> serviceIds={}",
-                            skillCode, requires, merged);
-                }
-            }
-            step.setServiceIds(new ArrayList<>(merged));
-        }
-    }
-
-    /**
-     * 收集所有已注册的 skill serviceId（格式为 skill-{code}）
-     */
-    private Set<String> collectAllSkillServiceIds() {
-        Set<String> skillServiceIds = new LinkedHashSet<>();
-        try {
-            List<ActionDefinition> actions = List.of();
-            if (actions != null) {
-                for (ActionDefinition action : actions) {
-                    if (action.getServiceId() != null && action.getServiceId().startsWith("skill-")) {
-                        skillServiceIds.add(action.getServiceId());
-                    }
-                }
-            }
-        } catch (Exception e) {
-            log.warn("[Planner] 收集 skill serviceId 列表失败", e);
-        }
-        return skillServiceIds;
-    }
-
-    /**
      * 将动作列表按 serviceId 分组（保持注册顺序）
      */
     private Map<String, List<ActionDefinition>> groupActionsByService(List<ActionDefinition> actions) {
@@ -346,13 +285,16 @@ public class Planner {
 
     /**
      * 按指定租户ID构建 ChatClient
+     * <p>
+     * 不设置 defaultSystem，因为 {@link #plan} 方法中通过 {@code .system(systemPrompt)}
+     * 显式设置规划提示词，会覆盖 defaultSystem。
+     * </p>
      *
      * @param tenantId 租户ID
      * @return 该租户对应的 ChatClient
      */
     private ChatClient getChatClient(String tenantId) {
         return ChatClient.builder(llmModelRouter.getChatModel(tenantId))
-                .defaultSystem(buildPlannerPrompt())
                 .defaultAdvisors(new SimpleLoggerAdvisor(),
                         MessageChatMemoryAdvisor.builder(chatMemory).build())
                 .build();

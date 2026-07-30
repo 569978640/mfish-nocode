@@ -32,7 +32,7 @@ import java.util.Map;
  * <b>工作原理</b>：
  * <ol>
  *   <li>LLM 调用工具，传入 action/target/params 参数</li>
- *   <li>工具构建 {@link FrontendAction} 对象，存入 {@link FrontendActionHolder}（ThreadLocal）</li>
+ *   <li>工具构建 {@link FrontendAction} 对象，存入 {@link FrontendActionHolder}（基于 sessionId 的 ConcurrentHashMap）</li>
  *   <li>工具返回 JSON 字符串告知 LLM 操作已下发</li>
  *   <li>{@code BaseAssistant.chat()} 在流式响应结束后，
  *       从 {@link FrontendActionHolder} 取出累积的 action 列表，
@@ -40,10 +40,11 @@ import java.util.Map;
  * </ol>
  * </p>
  * <p>
- * <b>ThreadLocal 通道设计</b>：
- * Spring AI 的 ToolCallingManager 在请求线程内同步调用 {@code ToolCallback.call()}，
- * 而 {@code BaseAssistant.chatWithTools()} 的 Flux 流式响应也在同一请求上下文构建。
- * 使用 ThreadLocal 可在工具调用与流式响应之间传递 action，无需修改 Spring AI 内部机制。
+ * <b>sessionId 通道设计</b>：
+ * Spring AI 的 ToolCallingManager 在工具执行线程调用 {@code ToolCallback.call()}，
+ * 而流式响应在 reactive 链路处理，两者可能跨线程。
+ * 使用基于 sessionId 的 {@link ConcurrentHashMap} 替代 ThreadLocal，
+ * 在工具调用与流式响应之间传递 action，解决响应式编程中线程切换丢失数据的问题。
  * </p>
  *
  * @author: mfish

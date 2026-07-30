@@ -8,13 +8,8 @@ import cn.com.mfish.common.ai.engine.ApiToolEngine;
 import cn.com.mfish.common.ai.entity.AiRequest;
 import cn.com.mfish.common.ai.entity.ChatResponseVo;
 import cn.com.mfish.common.ai.agent.ToolCapable;
-import cn.com.mfish.common.ai.capability.SkillCapabilityEngine;
 import cn.com.mfish.common.ai.memory.ConversationMemory;
 import cn.com.mfish.common.ai.memory.ConversationMemoryStore;
-import cn.com.mfish.common.core.constants.RPCConstants;
-import cn.com.mfish.common.core.constants.ServiceConstants;
-import cn.com.mfish.common.core.utils.AuthInfoUtils;
-import cn.com.mfish.common.core.utils.ServletUtils;
 import cn.com.mfish.common.core.utils.StringUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;
@@ -24,16 +19,11 @@ import org.springframework.ai.chat.memory.ChatMemory;
 import org.springframework.ai.chat.model.ChatResponse;
 import org.springframework.ai.tool.ToolCallbackProvider;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.context.request.RequestAttributes;
-import org.springframework.web.context.request.RequestContextHolder;
-import org.springframework.web.server.ServerWebExchange;
 import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
 import java.util.Collections;
-import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -80,21 +70,6 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
     @Autowired
     protected ConversationMemoryStore memoryStore;
 
-    /**
-     * Skill 能力引擎：用于查询 guide 类型 Skill 声明的依赖服务（requires）
-     * <p>
-     * chat 模式下，垂直助手通过 chatWithToolsAndExtensions 聚合主服务+扩展工具，
-     * 但扩展工具仅含 skill-* 和 mcp-*，不含 guide skill 引用的业务微服务（如 mf-demo）。
-     * 通过注入此引擎，读取扩展集合中 guide skill 的 requires 并合并到 serviceIds，
-     * 使 LLM 在垂直助手下也能调用指南引用的业务工具。
-     * </p>
-     * <p>
-     * required=false：避免在没有 SkillCapabilityEngine 的环境（如未启用 Skill）启动失败。
-     * </p>
-     */
-    @Autowired(required = false)
-    protected SkillCapabilityEngine skillCapabilityEngine;
-
     @Autowired
     protected ToolRuntime toolRuntime;
 
@@ -137,65 +112,6 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
     }
 
     /**
-     * 构建工具上下文：捕获当前请求的认证信息和请求上下文（双栈兼容 Servlet + WebFlux）
-     * <p>
-     * 供FeignToolCallback在工具执行线程恢复请求上下文，使BearerTokenInterceptor和AuthInfoUtils正常工作。
-     *
-     * @return 工具上下文Map
-     */
-    protected Map<String, Object> buildToolContext() {
-        String userId = AuthInfoUtils.getCurrentUserId();
-        String tenantId = AuthInfoUtils.getCurrentTenantId();
-        // 在请求线程捕获 token，供 HttpToolCallback/FeignToolCallback 在工具执行线程复用
-        // token 不带 "Bearer " 前缀，由各 ToolCallback 在注入 header 时按需添加
-        String accessToken = AuthInfoUtils.getAccessToken();
-        RequestAttributes requestAttributes = RequestContextHolder.getRequestAttributes();
-        ServerWebExchange serverWebExchange = ServletUtils.getExchange();
-        return buildToolContextFromSnapshot(tenantId, userId, accessToken,
-                requestAttributes, serverWebExchange);
-    }
-
-    /**
-     * 从预捕获的租户上下文快照构建工具上下文
-     * <p>
-     * 用于异步编排场景：请求线程先捕获 {@link cn.com.mfish.common.ai.agent.TenantContext}，
-     * 异步线程调用此方法构建 ToolContext，避免直接调用 AuthInfoUtils。
-     * </p>
-     *
-     * @param ctx 租户上下文快照
-     * @return 工具上下文Map
-     */
-    protected Map<String, Object> buildToolContext(cn.com.mfish.common.ai.agent.TenantContext ctx) {
-        String tenantId = ctx != null ? ctx.getTenantId() : null;
-        String userId = ctx != null ? ctx.getUserId() : null;
-        String accessToken = ctx != null ? ctx.getAccessToken() : null;
-        Object reqAttr = ctx != null ? ctx.getRequestAttributes() : null;
-        Object exchange = ctx != null ? ctx.getServerWebExchange() : null;
-        return buildToolContextFromSnapshot(tenantId, userId, accessToken, reqAttr, exchange);
-    }
-
-    /**
-     * 从快照字段组装工具上下文 Map
-     */
-    private Map<String, Object> buildToolContextFromSnapshot(String tenantId, String userId, String accessToken,
-                                                             Object requestAttributes, Object serverWebExchange) {
-        Map<String, Object> toolContextMap = new HashMap<>();
-        toolContextMap.put(RPCConstants.REQ_USER_ID, userId != null ? userId : "");
-        toolContextMap.put(RPCConstants.REQ_TENANT_ID, tenantId != null ? tenantId : AuthInfoUtils.SUPER_TENANT_ID);
-        toolContextMap.put(RPCConstants.REQ_ORIGIN, RPCConstants.AI);
-        if (accessToken != null && !accessToken.isEmpty()) {
-            toolContextMap.put(RPCConstants.REQ_TOKEN, accessToken);
-        }
-        if (requestAttributes instanceof RequestAttributes ra) {
-            toolContextMap.put(RPCConstants.REQ_REQUEST_ATTRIBUTES, ra);
-        }
-        if (serverWebExchange instanceof ServerWebExchange swe) {
-            toolContextMap.put(RPCConstants.REQ_SERVER_WEB_EXCHANGE, swe);
-        }
-        return toolContextMap;
-    }
-
-    /**
      * 基于工具的流式聊天模板方法（单服务重载）
      * <p>
      * 子类常用入口：传入单个 serviceId，内部委托给 {@link #chatWithTools(String, String, Set)}。
@@ -235,43 +151,6 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
      */
     protected Flux<ChatResponse> chatWithToolsAndExtensions(String sessionId, String prompt, String mainServiceId) {
         return chatWithTools(sessionId, prompt, toolRuntime.resolveAssistantServiceIds(mainServiceId));
-    }
-
-    /**
-     * 扫描 serviceIds 中的 skill-* 服务，读取 guide 类型 Skill 的 requires 并合并回 serviceIds
-     * <p>
-     * 与 Planner.mergeGuideRequires 逻辑对齐，保证 chat 模式下垂直助手也能看到
-     * guide skill 引用的业务工具（如 mf-demo 的 demoLeaveApply.add）。
-     * </p>
-     * <p>
-     * 当 skillCapabilityEngine 未注入或无 guide requires 时为空操作，不影响现有流程。
-     * </p>
-     */
-    private void mergeGuideRequiresIntoServiceIds(Set<String> serviceIds) {
-        if (skillCapabilityEngine == null || serviceIds == null || serviceIds.isEmpty()) {
-            return;
-        }
-        // 复制一份避免遍历时修改原集合
-        Set<String> skillServiceIds = new HashSet<>();
-        for (String sid : serviceIds) {
-            if (sid != null && sid.startsWith("skill-")) {
-                skillServiceIds.add(sid);
-            }
-        }
-        if (skillServiceIds.isEmpty()) {
-            return;
-        }
-        for (String skillServiceId : skillServiceIds) {
-            // skill-{code} → skill.{code}
-            String skillCode = skillServiceId.substring("skill-".length());
-            String actionName = "skill." + skillCode;
-            List<String> requires = skillCapabilityEngine.getGuideRequires(actionName);
-            if (requires != null && !requires.isEmpty()) {
-                serviceIds.addAll(requires);
-                log.info("[BaseAssistant] 合并 guide requires: skill={} requires={} -> serviceIds={}",
-                        skillCode, requires, serviceIds);
-            }
-        }
     }
 
     /**
@@ -357,48 +236,6 @@ public abstract class BaseAssistant implements IClientAssistant, ToolCapable {
                             .subscribeOn(Schedulers.boundedElastic())
                             .flux();
                 });
-    }
-
-    /**
-     * 构建工具使用提示词，帮助LLM理解可用工具，减少幻觉
-     * <p>
-     * 当检测到工具列表中同时包含 skill.* 和 frontend.* 工具时，追加特别提示，
-     * 强调调用 skill 获取指南后必须继续执行指南中的所有步骤（含前端操作）。
-     * </p>
-     */
-    private String buildToolUsageHint(ToolCallbackProvider toolProvider) {
-        org.springframework.ai.tool.ToolCallback[] callbacks = toolProvider.getToolCallbacks();
-        if (callbacks.length == 0) {
-            return "## 工具使用规则\n当前没有可用的工具，请直接根据你的知识回答用户问题。";
-        }
-        StringBuilder sb = new StringBuilder("## 工具使用规则\n");
-        sb.append("你只能使用以下工具，不能虚构任何工具名：\n");
-        boolean hasSkill = false;
-        boolean hasFrontend = false;
-        for (org.springframework.ai.tool.ToolCallback tc : callbacks) {
-            String name = tc.getToolDefinition().name();
-            String desc = tc.getToolDefinition().description();
-            if (name.startsWith("skill.")) hasSkill = true;
-            if (name.startsWith("frontend.")) hasFrontend = true;
-            sb.append("- ").append(name);
-            if (!desc.isEmpty()) {
-                sb.append(": ").append(desc);
-            }
-            sb.append("\n");
-        }
-        sb.append("\n调用规则：\n");
-        sb.append("1. 先分析用户意图，从上述工具列表中选择最合适的一个\n");
-        sb.append("2. 只能使用上述列表中的工具名，不要构造新的工具名\n");
-        sb.append("3. 如果没有合适的工具，直接用你的知识回答\n");
-        sb.append("4. 工具调用失败时，根据返回的错误信息调整参数或选择其他工具\n");
-        // 当同时存在 skill 和 frontend 工具时，强调调用 skill 后必须继续执行指南步骤（含前端操作）
-        if (hasSkill && hasFrontend) {
-            sb.append("5. 【强制】如果工具列表中包含 skill.* 开头的工具，且用户需求属于该 skill 对应的领域（如请假、代码生成），\n");
-            sb.append("   必须优先调用 skill 工具获取操作指南。获取指南后，必须立即按指南中的步骤顺序逐个调用对应工具\n");
-            sb.append("   （包括 frontend.navigate 路由跳转、frontend.refresh 页面刷新等前端操作工具），\n");
-            sb.append("   严禁仅返回指南内容而不执行，严禁跳过任何前端操作步骤。\n");
-        }
-        return sb.toString();
     }
 
     /**
