@@ -28,9 +28,10 @@ public interface SsoMenuService extends IService<SsoMenu> {
     Result<Boolean> routeExist(String routePath, String parentId);
 
     /**
-     * 查询所有菜单的完整路由地址（子菜单路由拼接父菜单路由）
+     * 查询菜单的完整路由地址（子菜单路由拼接父菜单路由）
      *
+     * @param keyword 菜单名称关键词（可选，为空返回全部）
      * @return 路由地址列表（含菜单名称）
      */
-    Result<List<MenuRouteVo>> queryRoutePaths();
+    Result<List<MenuRouteVo>> queryRoutePaths(String keyword);
 }

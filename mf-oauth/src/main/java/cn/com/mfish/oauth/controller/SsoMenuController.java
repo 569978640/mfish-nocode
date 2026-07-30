@@ -153,10 +153,11 @@ public class SsoMenuController {
      *
      * @return 路由地址列表
      */
-    @Operation(summary = "获取所有路由地址", description = "查询所有菜单的完整路由地址（含菜单名称），子菜单路由拼接父菜单路由")
+    @Operation(summary = "获取路由地址", description = "查询菜单的完整路由地址（含菜单名称），子菜单路由拼接父菜单路由。支持多个关键词（逗号分隔，OR 匹配），keyword 为空返回全部。供 AI 导航工具查询可用路由使用")
     @GetMapping("/routePaths")
-    @InnerUser
-    public Result<List<MenuRouteVo>> queryRoutePaths() {
-        return ssoMenuService.queryRoutePaths();
+    public Result<List<MenuRouteVo>> queryRoutePaths(
+            @Parameter(description = "菜单名称关键词（可选，支持逗号分隔的多关键词 OR 匹配，如 '大屏,可视化,screen'，为空返回全部）", example = "大屏,可视化")
+            @RequestParam(required = false) String keyword) {
+        return ssoMenuService.queryRoutePaths(keyword);
     }
 }

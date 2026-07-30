@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 import jakarta.annotation.Resource;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -178,7 +179,7 @@ public class SsoMenuServiceImpl extends ServiceImpl<SsoMenuMapper, SsoMenu> impl
     }
 
     @Override
-    public Result<List<MenuRouteVo>> queryRoutePaths() {
+    public Result<List<MenuRouteVo>> queryRoutePaths(String keyword) {
         // 查询所有目录和菜单（排除按钮 menuType=2），按钮无路由地址
         List<SsoMenu> menus = baseMapper.selectList(new LambdaQueryWrapper<SsoMenu>()
                 .lt(SsoMenu::getMenuType, 2)
@@ -196,6 +197,21 @@ public class SsoMenuServiceImpl extends ServiceImpl<SsoMenuMapper, SsoMenu> impl
             if (StringUtils.isNotEmpty(fullPath)) {
                 routePaths.add(new MenuRouteVo(menu.getMenuName(), fullPath));
             }
+        }
+        // 关键词过滤：支持逗号分隔的多个关键词（OR 匹配，忽略大小写）
+        // 例如 keyword="大屏,可视化,screen" → 菜单名称包含任一关键词即匹配
+        if (StringUtils.isNotEmpty(keyword)) {
+            String[] keywords = keyword.split("[,，]");
+            List<String> lowerKeywords = Arrays.stream(keywords)
+                    .map(String::trim)
+                    .filter(k -> !k.isEmpty())
+                    .map(String::toLowerCase)
+                    .collect(Collectors.toList());
+            routePaths = routePaths.stream()
+                    .filter(vo -> vo.getMenuName() != null
+                            && lowerKeywords.stream()
+                                    .anyMatch(kw -> vo.getMenuName().toLowerCase().contains(kw)))
+                    .collect(Collectors.toList());
         }
         return Result.ok(routePaths, "路由地址查询成功");
     }

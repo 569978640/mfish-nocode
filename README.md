@@ -50,8 +50,6 @@
   --chart-series-1: #3C2ECA;
   --chart-series-2: #A9AEFF;
   --chart-series-3: #6F6FFF;
-  --chart-series-4: #22A5F7;
-  --chart-other: #D3D4DA;
   --accent: #27D2BF;
   --accent-soft: #EAFBF8;
   --accent-text: #0F766E;
@@ -65,7 +63,6 @@
   --spacer-20: 20px;
   --spacer-24: 24px;
   --font-sans: "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
-  --font-metric: "Inter", "SF Pro Text", "PingFang SC", system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, "SF Mono", Menlo, Consolas, monospace;
   --weight-regular: 400;
   --weight-medium: 500;
@@ -86,136 +83,135 @@
   --brand-soft: #1A1759;
   --brand-soft-strong: #3C2ECA;
   --brand-text: #CFD8FF;
-  --chart-series-1: #4B3FE3;
-  --accent-soft: #123F3C;
-  --accent-text: #CCFBF1;
 }
-.widget {
-  color: var(--text);
-  background: transparent;
-  font: var(--weight-regular) var(--text-body) var(--font-sans);
-}
-.arch-card {
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-card);
-  padding: var(--spacer-20);
-}
-.arch-title {
-  font: var(--weight-medium) var(--text-title) var(--font-sans);
-  color: var(--text);
-  margin: 0 0 var(--spacer-4) 0;
-}
-.arch-sub {
-  font: var(--weight-regular) var(--text-caption) var(--font-sans);
-  color: var(--text-muted);
-  margin: 0 0 var(--spacer-16) 0;
-}
+.widget { color: var(--text); background: white; font: var(--weight-regular) var(--text-body) var(--font-sans); }
 .t { fill: var(--text); font: var(--weight-regular) var(--text-body) var(--font-sans); }
 .th { fill: var(--text); font: var(--weight-medium) var(--text-body) var(--font-sans); }
 .ts { fill: var(--text-muted); font: var(--weight-regular) var(--text-caption) var(--font-sans); }
-.tc { fill: var(--text); font: var(--weight-medium) var(--text-code) var(--font-mono); }
+.tcode { fill: var(--text-muted); font: var(--weight-regular) var(--text-code) var(--font-mono); }
 .arr { stroke: var(--text-muted); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
-.arr-brand { stroke: var(--brand); stroke-width: 1.5; stroke-linecap: round; stroke-linejoin: round; fill: none; }
-.boundary { fill: var(--surface-muted); stroke: var(--border); stroke-dasharray: 4 4; }
-.boundary-brand { fill: var(--brand-soft); stroke: var(--brand); stroke-dasharray: 4 4; }
-.node { fill: var(--surface); stroke: var(--border); }
-.node-brand { fill: var(--surface); stroke: var(--brand); }
-.legend-row { display: flex; align-items: center; gap: var(--spacer-8); font: var(--weight-regular) var(--text-caption) var(--font-sans); color: var(--text-muted); }
-.legend-swatch { width: 14px; height: 10px; border-radius: 3px; flex-shrink: 0; }
-.legend-line { width: 18px; height: 2px; flex-shrink: 0; }
+.arr-brand { stroke: var(--brand); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; fill: none; }
+.boundary { fill: none; stroke: var(--border); stroke-width: 1.2; stroke-dasharray: 5 4; rx: 12; }
+.boundary-brand { fill: none; stroke: var(--brand); stroke-width: 1.4; stroke-dasharray: 5 4; rx: 12; opacity: 0.7; }
+.chip { fill: var(--surface-muted); stroke: var(--border); stroke-width: 1; rx: 6; }
+.chip-brand { fill: var(--brand-soft); stroke: var(--brand); stroke-width: 1; rx: 6; }
+rect.c-neutral { fill: var(--surface); stroke: var(--border); stroke-width: 1.2; rx: 8; }
+rect.c-brand { fill: var(--brand-soft); stroke: var(--brand); stroke-width: 1.6; rx: 8; }
+rect.c-accent { fill: var(--accent-soft); stroke: var(--accent); stroke-width: 1.2; rx: 8; }
+.c-brand ~ .th, .c-brand ~ .t { fill: var(--brand-text); }
 </style>
-<div class="widget arch-card" data-dynamic-ui-widget data-template="node-flow">
-  <h3 class="arch-title">mfish-nocode AI 能力架构</h3>
-  <p class="arch-sub">三支柱编排：Planner 规划 · Capability Engine 能力聚合 · Memory+LLM 上下文路由</p>
-  <svg viewBox="0 0 720 600" width="100%" height="auto" role="img" aria-label="AI能力架构图">
-    <defs>
-      <marker id="arrow" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
-        <path d="M1 1 L7 4 L1 7 Z" fill="#52525B"/>
-      </marker>
-      <marker id="arrow-brand" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
-        <path d="M1 1 L7 4 L1 7 Z" fill="#4B3FE3"/>
-      </marker>
-    </defs>
-    <!-- Tier 1: Entry Layer -->
-    <rect class="boundary" x="80" y="24" width="560" height="86" rx="12"/>
-    <text class="ts" x="360" y="44" text-anchor="middle">入口层 · Entry Points</text>
-    <rect class="node" x="100" y="54" width="160" height="46" rx="8"/>
-    <text class="tc" x="180" y="74" text-anchor="middle">/router</text>
-    <text class="ts" x="180" y="90" text-anchor="middle">路由聊天</text>
-    <rect class="node" x="280" y="54" width="160" height="46" rx="8"/>
-    <text class="tc" x="360" y="74" text-anchor="middle">/assist/chat</text>
-    <text class="ts" x="360" y="90" text-anchor="middle">垂直助手</text>
-    <rect class="node" x="460" y="54" width="160" height="46" rx="8"/>
-    <text class="tc" x="540" y="74" text-anchor="middle">/agent/chat</text>
-    <text class="ts" x="540" y="90" text-anchor="middle">自主规划</text>
-    <!-- Connector: Entry → AgentRuntime -->
-    <path class="arr-brand" d="M 360 110 L 360 140" marker-end="url(#arrow-brand)"/>
-    <!-- Tier 2: AgentRuntime (brand focal) -->
-    <rect class="node-brand" x="230" y="140" width="260" height="54" rx="8" fill="var(--brand-soft)"/>
-    <text class="th" x="360" y="163" text-anchor="middle" fill="var(--brand-text)">AgentRuntime 编排器</text>
-    <text class="ts" x="360" y="181" text-anchor="middle" fill="var(--brand)">Plan → Execute → Emit</text>
-    <!-- Connectors: AgentRuntime → 3 Pillars (junction at y=210) -->
-    <path class="arr" d="M 360 194 L 360 210 L 140 210 L 140 220" marker-end="url(#arrow)"/>
-    <path class="arr-brand" d="M 360 194 L 360 220" marker-end="url(#arrow-brand)"/>
-    <path class="arr" d="M 360 194 L 360 210 L 580 210 L 580 220" marker-end="url(#arrow)"/>
-    <!-- Pillar 1: Planner (neutral) -->
-    <rect class="boundary" x="40" y="220" width="200" height="170" rx="12"/>
-    <text class="ts" x="140" y="240" text-anchor="middle">Planner 柱 · 规划</text>
-    <rect class="node" x="60" y="250" width="160" height="32" rx="8"/>
-    <text class="t" x="140" y="270" text-anchor="middle">Planner 任务规划</text>
-    <rect class="node" x="60" y="294" width="160" height="32" rx="8"/>
-    <text class="t" x="140" y="314" text-anchor="middle">Executor 步骤执行</text>
-    <rect class="node" x="60" y="338" width="160" height="32" rx="8"/>
-    <text class="t" x="140" y="358" text-anchor="middle">EventBus 事件流</text>
-    <path class="arr" d="M 140 282 L 140 294" marker-end="url(#arrow)"/>
-    <path class="arr" d="M 140 326 L 140 338" marker-end="url(#arrow)"/>
-    <!-- Pillar 2: CapabilityEngine (brand focal) -->
-    <rect class="boundary-brand" x="260" y="220" width="200" height="170" rx="12"/>
-    <text class="ts" x="360" y="240" text-anchor="middle" fill="var(--brand)">Capability Engine · 能力聚合</text>
-    <rect class="node-brand" x="280" y="250" width="160" height="26" rx="8"/>
-    <text class="tc" x="360" y="267" text-anchor="middle">ToolCapability</text>
-    <rect class="node-brand" x="280" y="284" width="160" height="26" rx="8"/>
-    <text class="tc" x="360" y="301" text-anchor="middle">McpCapability</text>
-    <rect class="node-brand" x="280" y="318" width="160" height="26" rx="8"/>
-    <text class="tc" x="360" y="335" text-anchor="middle">SkillCapability</text>
-    <rect class="node-brand" x="280" y="352" width="160" height="26" rx="8"/>
-    <text class="tc" x="360" y="369" text-anchor="middle">WorkflowCapability</text>
-    <!-- Pillar 3: Memory + LLM (neutral) -->
-    <rect class="boundary" x="480" y="220" width="200" height="170" rx="12"/>
-    <text class="ts" x="580" y="240" text-anchor="middle">Memory + LLM 柱 · 上下文</text>
-    <rect class="node" x="500" y="258" width="160" height="44" rx="8"/>
-    <text class="t" x="580" y="278" text-anchor="middle">ChatMemory</text>
-    <text class="ts" x="580" y="294" text-anchor="middle">会话窗口策略</text>
-    <rect class="node" x="500" y="316" width="160" height="44" rx="8"/>
-    <text class="t" x="580" y="336" text-anchor="middle">LlmModelRouter</text>
-    <text class="ts" x="580" y="352" text-anchor="middle">多租户路由</text>
-    <!-- Connector: CapabilityEngine → External -->
-    <path class="arr-brand" d="M 360 390 L 360 424" marker-end="url(#arrow-brand)"/>
-    <!-- Tier 4: External Systems -->
-    <rect class="boundary" x="40" y="424" width="640" height="76" rx="12"/>
-    <text class="ts" x="360" y="444" text-anchor="middle">外部系统 · External Systems</text>
-    <rect class="node" x="60" y="456" width="140" height="34" rx="8"/>
-    <text class="t" x="130" y="478" text-anchor="middle">微服务 Feign+HTTP</text>
-    <rect class="node" x="220" y="456" width="140" height="34" rx="8"/>
-    <text class="t" x="290" y="478" text-anchor="middle">MCP 服务器</text>
-    <rect class="node" x="380" y="456" width="140" height="34" rx="8"/>
-    <text class="t" x="450" y="478" text-anchor="middle">skills/*.md</text>
-    <rect class="node" x="540" y="456" width="140" height="34" rx="8"/>
-    <text class="t" x="610" y="478" text-anchor="middle">Flowable 工作流</text>
-    <!-- Legend -->
-    <g transform="translate(40, 528)">
-      <rect class="boundary-brand" x="0" y="0" width="18" height="12" rx="3"/>
-      <text class="ts" x="24" y="10">核心引擎</text>
-      <rect class="boundary" x="100" y="0" width="18" height="12" rx="3"/>
-      <text class="ts" x="124" y="10">支撑层</text>
-      <line class="arr-brand" x1="200" y1="6" x2="224" y2="6"/>
-      <text class="ts" x="230" y="10">主调用链</text>
-      <line class="arr" x1="310" y1="6" x2="334" y2="6"/>
-      <text class="ts" x="340" y="10">编排流向</text>
-    </g>
-    <text class="ts" x="680" y="538" text-anchor="end">mf-common-ai · mf-ai</text>
-  </svg>
+
+<div class="widget" data-dynamic-ui-widget data-template="node-flow" data-mounted="true" style="padding:4px">
+<svg viewBox="0 0 720 820" width="100%" height="auto" role="img" aria-label="AI 服务架构图">
+  <defs>
+    <marker id="ah" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1 1 L7 4 L1 7 Z" fill="var(--text-muted)"/>
+    </marker>
+    <marker id="ahb" viewBox="0 0 8 8" refX="7" refY="4" markerWidth="8" markerHeight="8" markerUnits="userSpaceOnUse" orient="auto">
+      <path d="M1 1 L7 4 L1 7 Z" fill="var(--brand)"/>
+    </marker>
+  </defs>
+
+<text x="360" y="28" text-anchor="middle" class="th" style="font-size:15px">AI 服务架构图（重构后）</text>
+
+  <!-- L1 Entry -->
+  <rect class="boundary" x="40" y="50" width="640" height="100"/>
+  <rect class="chip" x="52" y="42" width="120" height="20"/>
+  <text x="112" y="56" text-anchor="middle" class="ts">入口层 Entry</text>
+  <rect class="c-neutral" x="60" y="82" width="186" height="52"/>
+  <text x="153" y="104" text-anchor="middle" class="th">Chat 入口</text>
+  <text x="153" y="122" text-anchor="middle" class="tcode">AiController</text>
+  <rect class="c-neutral" x="267" y="82" width="186" height="52"/>
+  <text x="360" y="104" text-anchor="middle" class="th">Router 路由</text>
+  <text x="360" y="122" text-anchor="middle" class="tcode">RouterController</text>
+  <rect class="c-neutral" x="474" y="82" width="186" height="52"/>
+  <text x="567" y="104" text-anchor="middle" class="th">Agent 智能体</text>
+  <text x="567" y="122" text-anchor="middle" class="tcode">AgentController</text>
+
+  <!-- arrow L1->L2 -->
+  <path class="arr" d="M360 150 L360 172" marker-end="url(#ah)"/>
+
+  <!-- L2 Assistant -->
+  <rect class="boundary" x="40" y="175" width="640" height="92"/>
+  <rect class="chip" x="52" y="167" width="150" height="20"/>
+  <text x="127" y="181" text-anchor="middle" class="ts">Assistant 层（模板方法）</text>
+  <rect class="c-neutral" x="60" y="205" width="600" height="50"/>
+  <text x="360" y="227" text-anchor="middle" class="th">BaseAssistant · 按租户实时构建 ChatClient</text>
+  <text x="360" y="245" text-anchor="middle" class="tcode">MfishAssistant / SysAssistant / AgentAssistant …</text>
+
+  <!-- arrow L2->L3 (brand) -->
+  <path class="arr-brand" d="M360 267 L360 289" marker-end="url(#ahb)"/>
+
+  <!-- L3 Runtime (BRAND focal) -->
+  <rect class="boundary-brand" x="40" y="292" width="640" height="110"/>
+  <rect class="chip-brand" x="52" y="284" width="210" height="20"/>
+  <text x="157" y="298" text-anchor="middle" class="ts" style="fill:var(--brand)">运行时边界 Runtime（新）</text>
+  <rect class="c-brand" x="60" y="322" width="290" height="62"/>
+  <text x="205" y="345" text-anchor="middle" class="th">ToolRuntime</text>
+  <text x="205" y="363" text-anchor="middle" class="ts" style="fill:var(--brand)">工具聚合·上下文·提示词·前端通道</text>
+  <text x="205" y="378" text-anchor="middle" class="tcode" style="fill:var(--brand)">resolveServiceIds / buildToolContext</text>
+  <rect class="c-brand" x="370" y="322" width="290" height="62"/>
+  <text x="515" y="345" text-anchor="middle" class="th">AgentOrchestrator</text>
+  <text x="515" y="363" text-anchor="middle" class="ts" style="fill:var(--brand)">Agent 模式编排（规划+执行）</text>
+  <text x="515" y="378" text-anchor="middle" class="tcode" style="fill:var(--brand)">Planner · Executor</text>
+
+  <!-- arrow L3->L4 -->
+  <path class="arr-brand" d="M360 402 L360 424" marker-end="url(#ahb)"/>
+
+  <!-- L4 Tool Aggregation -->
+  <rect class="boundary" x="40" y="427" width="640" height="110"/>
+  <rect class="chip" x="52" y="419" width="150" height="20"/>
+  <text x="127" y="433" text-anchor="middle" class="ts">工具聚合层</text>
+  <rect class="c-neutral" x="60" y="457" width="290" height="62"/>
+  <text x="205" y="480" text-anchor="middle" class="th">ApiToolEngine</text>
+  <text x="205" y="498" text-anchor="middle" class="ts">按 serviceId 合并工具</text>
+  <text x="205" y="513" text-anchor="middle" class="tcode">register / replace</text>
+  <rect class="c-neutral" x="370" y="457" width="290" height="62"/>
+  <text x="515" y="480" text-anchor="middle" class="th">CapabilityEngine</text>
+  <text x="515" y="498" text-anchor="middle" class="ts">四子引擎异步注册</text>
+  <text x="515" y="513" text-anchor="middle" class="tcode">Tool / MCP / Skill / Workflow</text>
+
+  <!-- arrow L4->L5 -->
+  <path class="arr" d="M360 537 L360 559" marker-end="url(#ah)"/>
+
+  <!-- L5 Fault Tolerance -->
+  <rect class="boundary" x="40" y="562" width="640" height="92"/>
+  <rect class="chip" x="52" y="554" width="120" height="20"/>
+  <text x="112" y="568" text-anchor="middle" class="ts">容错层</text>
+  <rect class="c-accent" x="60" y="592" width="600" height="50"/>
+  <text x="360" y="614" text-anchor="middle" class="th">FaultTolerantToolCallingManager</text>
+  <text x="360" y="632" text-anchor="middle" class="ts" style="fill:var(--accent-text)">无效工具容错 + 按 Skill toolOrder 排序（setter 注入 ToolOrderProvider）</text>
+
+  <!-- arrow L5->L6 -->
+  <path class="arr" d="M360 642 L360 664" marker-end="url(#ah)"/>
+
+  <!-- L6 Cross-cutting -->
+  <rect class="boundary" x="40" y="667" width="640" height="100"/>
+  <rect class="chip" x="52" y="659" width="120" height="20"/>
+  <text x="112" y="673" text-anchor="middle" class="ts">横切层</text>
+  <rect class="c-neutral" x="60" y="699" width="186" height="52"/>
+  <text x="153" y="721" text-anchor="middle" class="th">模型路由</text>
+  <text x="153" y="739" text-anchor="middle" class="tcode">LlmModelRouter</text>
+  <rect class="c-neutral" x="267" y="699" width="186" height="52"/>
+  <text x="360" y="721" text-anchor="middle" class="th">会话记忆</text>
+  <text x="360" y="739" text-anchor="middle" class="tcode">ConversationMemoryStore</text>
+  <rect class="c-neutral" x="474" y="699" width="186" height="52"/>
+  <text x="567" y="721" text-anchor="middle" class="th">前端双通道</text>
+  <text x="567" y="739" text-anchor="middle" class="tcode">FrontendActionHolder</text>
+
+  <!-- Legend -->
+  <rect class="chip" x="40" y="785" width="640" height="24"/>
+  <circle cx="58" cy="797" r="5" fill="var(--brand-soft)" stroke="var(--brand)" stroke-width="1.4"/>
+  <text x="70" y="801" class="ts">新边界（ToolRuntime）</text>
+  <circle cx="210" cy="797" r="5" fill="var(--surface)" stroke="var(--border)" stroke-width="1.2"/>
+  <text x="222" y="801" class="ts">标准模块</text>
+  <circle cx="300" cy="797" r="5" fill="var(--accent-soft)" stroke="var(--accent)" stroke-width="1.2"/>
+  <text x="312" y="801" class="ts">容错/排序</text>
+  <line x1="380" y1="797" x2="408" y2="797" class="arr-brand"/>
+  <text x="416" y="801" class="ts">主数据流</text>
+  <line x1="480" y1="797" x2="508" y2="797" class="arr"/>
+  <text x="516" y="801" class="ts">调用/依赖</text>
+</svg>
 </div>
 
 ### 智能网关路由
