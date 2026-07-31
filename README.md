@@ -34,7 +34,7 @@
 
 ## 🤖AI能力
 
-<img src="https://pic.mfish.qzz.io/AI%E6%9E%B6%E6%9E%84%E5%9B%BE.png" />
+<img src="https://oscimg.oschina.net//AiCreationDetail/up-0dd939c382b1018b87bc70420ffbb8ee.png" />
 
 ### 智能网关路由
 
