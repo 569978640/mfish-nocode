@@ -51,7 +51,7 @@ public class NoCodeAssistant extends BaseAssistant {
         if (StringUtils.isEmpty(prompt.trim())) {
             prompt = DEFAULT_PROMPT;
         }
-        return chatWithTools(sessionId, prompt, ServiceConstants.NOCODE_SERVICE);
+        return chatWithToolsAndExtensions(sessionId, prompt, ServiceConstants.NOCODE_SERVICE);
     }
 
     @Override

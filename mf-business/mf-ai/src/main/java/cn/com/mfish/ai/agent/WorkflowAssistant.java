@@ -52,7 +52,7 @@ public class WorkflowAssistant extends BaseAssistant {
         if (StringUtils.isEmpty(prompt.trim())) {
             prompt = DEFAULT_PROMPT;
         }
-        return chatWithTools(sessionId, prompt, ServiceConstants.WORKFLOW_SERVICE);
+        return chatWithToolsAndExtensions(sessionId, prompt, ServiceConstants.WORKFLOW_SERVICE);
     }
 
     @Override

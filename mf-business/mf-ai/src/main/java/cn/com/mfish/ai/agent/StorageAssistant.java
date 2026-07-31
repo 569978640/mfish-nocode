@@ -52,7 +52,7 @@ public class StorageAssistant extends BaseAssistant {
         if (StringUtils.isEmpty(prompt.trim())) {
             prompt = DEFAULT_PROMPT;
         }
-        return chatWithTools(sessionId, prompt, ServiceConstants.STORAGE_SERVICE);
+        return chatWithToolsAndExtensions(sessionId, prompt, ServiceConstants.STORAGE_SERVICE);
     }
 
     @Override

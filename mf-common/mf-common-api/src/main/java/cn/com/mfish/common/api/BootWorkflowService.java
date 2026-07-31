@@ -122,4 +122,9 @@ public class BootWorkflowService implements RemoteWorkflowService {
     public Result<List<String>> getActiveDefinitionKeys(String origin, String processInstanceId) {
         return Result.ok(flowableService.getActiveDefinitionKeys(processInstanceId), "查询流程实例当前活动节点成功");
     }
+
+    @Override
+    public Result<List<FlowManage>> getActiveFlows(String origin) {
+        return Result.ok(flowableService.getActiveFlows(), "查询已发布流程列表成功");
+    }
 }

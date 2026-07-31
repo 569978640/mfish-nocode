@@ -1,5 +1,6 @@
 package cn.com.mfish.ai.service;
 
+import cn.com.mfish.common.ai.memory.DocumentChunk;
 import cn.com.mfish.common.core.constants.RPCConstants;
 import cn.com.mfish.common.core.utils.StringUtils;
 import cn.com.mfish.common.storage.api.entity.StorageInfo;
@@ -14,9 +15,11 @@ import org.springframework.stereotype.Service;
 
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.Set;
+import java.util.UUID;
 
 /**
  * 文件解析服务
@@ -111,6 +114,9 @@ public class FileParseService {
      * <p>
      * 遍历fileKey列表，逐个获取文件元数据与内容，将文本/Office文档内容拼接到StringBuilder。
      * 单个文件读取失败不影响其他文件，异常会被记录日志并跳过。
+     * <p>
+     * 旧版接口，保留向后兼容。新调用方建议使用 {@link #loadAsChunks} 获取结构化的
+     * {@link DocumentChunk} 列表，再注入到 Memory 模块。
      *
      * @param fileIds 文件fileKey列表
      * @return 拼接好的文件内容提示词片段；列表为空或全部失败时返回空字符串
@@ -139,6 +145,45 @@ public class FileParseService {
             return "";
         }
         return sb.toString();
+    }
+
+    /**
+     * 加载文件并解析为 {@link DocumentChunk} 列表
+     * <p>
+     * 与 {@link #loadFileContents} 的区别：返回结构化的文档块列表，便于 Memory 模块
+     * 按 chunk 维度管理文档上下文，支持后续按相关性检索（RAG）、按 token 上限分片注入等扩展。
+     * </p>
+     * <p>
+     * 当前实现：每个文件产出 1 个 Chunk（小文件场景），未来可扩展为按段落/页码/字符数分片。
+     * Chunk 内容已截断到 {@link #MAX_CONTENT_CHARS}，可直接注入 LLM 上下文。
+     * </p>
+     * <p>
+     * 必须在请求线程调用：内部通过 Feign 调用 mf-storage，BearerTokenInterceptor 依赖
+     * RequestContextHolder 中继令牌。
+     * </p>
+     *
+     * @param fileIds 文件fileKey列表
+     * @return 文档块列表；列表为空或全部失败时返回空列表（不会返回 null）
+     */
+    public List<DocumentChunk> loadAsChunks(List<String> fileIds) {
+        if (fileIds == null || fileIds.isEmpty()) {
+            return List.of();
+        }
+        List<DocumentChunk> chunks = new ArrayList<>(fileIds.size());
+        for (String fileKey : fileIds) {
+            if (StringUtils.isEmpty(fileKey)) {
+                continue;
+            }
+            try {
+                DocumentChunk chunk = loadOneFileAsChunk(fileKey);
+                if (chunk != null && StringUtils.isNotEmpty(chunk.getContent())) {
+                    chunks.add(chunk);
+                }
+            } catch (Exception e) {
+                log.warn("加载文件块失败 fileKey={} reason={}", fileKey, e.getMessage());
+            }
+        }
+        return chunks;
     }
 
     /**
@@ -174,6 +219,47 @@ public class FileParseService {
             return content == null ? buildReadFailureHint(fileName) : buildTextFileSegment(fileName, truncate(content));
         }
         return buildBinaryFileHint(fileName, fileType, storageInfo.getFileSize());
+    }
+
+    /**
+     * 加载单个文件并构建为 {@link DocumentChunk}
+     * <p>
+     * 与 {@link #loadOneFile} 共享文件元数据查询和解析路径，但返回结构化 Chunk 而非拼接文本。
+     * 二进制文件（无法解析内容的）返回 null 而非提示片段，避免无效 Chunk 进入 Memory。
+     * </p>
+     *
+     * @param fileKey 文件key
+     * @return 文档块；文件不存在或无法解析返回 null
+     */
+    private DocumentChunk loadOneFileAsChunk(String fileKey) {
+        Result<StorageInfo> infoResult = remoteStorageService.queryByKey(RPCConstants.INNER, fileKey);
+        if (infoResult == null || !infoResult.isSuccess() || infoResult.getData() == null) {
+            log.warn("文件信息查询失败 fileKey={} msg={}", fileKey,
+                    infoResult == null ? "result is null" : infoResult.getMsg());
+            return null;
+        }
+        StorageInfo storageInfo = infoResult.getData();
+        String fileName = StringUtils.isEmpty(storageInfo.getFileName()) ? fileKey : storageInfo.getFileName();
+        String fileType = storageInfo.getFileType();
+
+        String content = null;
+        if (isTextFile(fileType, fileName)) {
+            content = readFileText(fileKey);
+        } else if (isOfficeDocument(fileType, fileName)) {
+            content = extractOfficeText(fileKey, fileName);
+        }
+        if (content == null || content.isEmpty()) {
+            return null;
+        }
+        String truncated = truncate(content);
+        return new DocumentChunk()
+                .setChunkId(UUID.randomUUID().toString())
+                .setFileKey(fileKey)
+                .setFileName(fileName)
+                .setFileType(fileType)
+                .setContent(truncated)
+                .setChunkIndex(0)
+                .setLength(truncated.length());
     }
 
     /**

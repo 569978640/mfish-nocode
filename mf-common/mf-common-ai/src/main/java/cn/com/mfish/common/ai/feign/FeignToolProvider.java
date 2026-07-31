@@ -93,7 +93,7 @@ public class FeignToolProvider implements ToolProvider, SmartInitializingSinglet
                     continue;
                 }
                 try {
-                    FeignToolCallback callback = new FeignToolCallback(feignProxy, method);
+                    FeignToolCallback callback = new FeignToolCallback(feignProxy, method, serviceId, feignInterface);
                     callbacks.add(callback);
                     log.debug("[Feign工具扫描] 生成工具: {}#{} -> {}",
                             feignInterface.getSimpleName(), method.getName(), serviceId);

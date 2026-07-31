@@ -79,7 +79,8 @@ public class OpenApiDocParser {
                 if (operation == null) continue;
 
                 try {
-                    HttpToolCallback callback = parseOperation(path, method, operation, schemas, webClient, serviceId);
+                    // 微服务模式无服务前缀，controllerName 直接从路径首段提取
+                    HttpToolCallback callback = parseOperation(path, method, operation, schemas, webClient, serviceId, null);
                     callbacks.add(callback);
                     log.debug("[OpenAPI解析] service={} 生成工具: {} {} {}",
                             serviceId, method.toUpperCase(), path, callback.getToolName());
@@ -133,8 +134,17 @@ public class OpenApiDocParser {
             String path = entry.getKey();
             if (shouldSkipPath(path)) continue;
 
-            // 根据路径前缀找到对应的 serviceId
-            String serviceId = resolveServiceId(path, sortedMappings);
+            // 根据路径前缀找到对应的 serviceId 和匹配的前缀（用于剥离后提取 controllerName）
+            String serviceId = null;
+            String matchedPrefix = null;
+            for (Map.Entry<String, String> mapping : sortedMappings) {
+                String prefix = mapping.getKey();
+                if (path.equals(prefix) || path.startsWith(prefix + "/")) {
+                    serviceId = mapping.getValue();
+                    matchedPrefix = prefix;
+                    break;
+                }
+            }
             if (serviceId == null) {
                 log.debug("[OpenAPI解析] 单实例模式 路径 {} 无匹配的服务前缀，跳过", path);
                 continue;
@@ -146,7 +156,7 @@ public class OpenApiDocParser {
                 if (operation == null) continue;
 
                 try {
-                    HttpToolCallback callback = parseOperation(path, method, operation, schemas, webClient, serviceId);
+                    HttpToolCallback callback = parseOperation(path, method, operation, schemas, webClient, serviceId, matchedPrefix);
                     result.computeIfAbsent(serviceId, k -> new ArrayList<>()).add(callback);
                     log.debug("[OpenAPI解析] 单实例 service={} 生成工具: {} {} {}",
                             serviceId, method.toUpperCase(), path, callback.getToolName());
@@ -165,33 +175,31 @@ public class OpenApiDocParser {
     }
 
     /**
-     * 根据路径前缀匹配 serviceId
-     * <p>
-     * 路径如 /sys/dict 匹配前缀 /sys，返回对应的 serviceId mf-sys。
-     * 已按前缀长度降序排列，确保最长前缀优先匹配。
-     * </p>
-     */
-    private String resolveServiceId(String path, List<Map.Entry<String, String>> sortedMappings) {
-        for (Map.Entry<String, String> mapping : sortedMappings) {
-            String prefix = mapping.getKey();
-            // 精确匹配或前缀匹配（前缀后跟 / 或刚好等于前缀）
-            if (path.equals(prefix) || path.startsWith(prefix + "/")) {
-                return mapping.getValue();
-            }
-        }
-        return null;
-    }
-
-    /**
      * 解析单个 operation，生成 HttpToolCallback
+     * <p>
+     * 工具名采用 {@code controllerName.operationId} 格式（如 {@code demoLeaveApply.add}），
+     * 从路径首段提取 controllerName（单实例模式需先剥离服务前缀），
+     * 避免跨服务同名 operationId 冲突，同时与 skill 指南中声明的工具名保持一致。
+     * </p>
+     *
+     * @param path             OpenAPI 路径（如 /demoLeaveApply 或 /demo/demoLeaveApply/submit/{id}）
+     * @param method           HTTP 方法
+     * @param operation        OpenAPI operation 对象
+     * @param schemas          components.schemas 全集（用于 $ref 解析）
+     * @param webClient        已配置 baseUrl 的 WebClient
+     * @param serviceId        服务ID（用于工具描述）
+     * @param servicePathPrefix 服务路径前缀（单实例模式如 /demo，微服务模式为 null）
      */
     private HttpToolCallback parseOperation(String path, String method, JSONObject operation,
-                                            JSONObject schemas, WebClient webClient, String serviceId) {
-        // 1. 工具名：优先用 operationId，否则用 method+path 生成
+                                            JSONObject schemas, WebClient webClient, String serviceId,
+                                            String servicePathPrefix) {
+        // 1. 工具名：controllerName.operationId
         String operationId = operation.getString("operationId");
         if (operationId == null || operationId.isEmpty()) {
             operationId = method + path.replaceAll("[{}:/]", "_");
         }
+        String controllerName = extractControllerName(path, servicePathPrefix);
+        String toolName = controllerName + "." + operationId;
 
         // 2. 工具描述：summary + description
         String summary = operation.getString("summary");
@@ -243,7 +251,33 @@ public class OpenApiDocParser {
             }
         }
 
-        return new HttpToolCallback(webClient, operationId, toolDescription, method, path, paramInfos);
+        return new HttpToolCallback(webClient, toolName, toolDescription, method, path, paramInfos);
+    }
+
+    /**
+     * 从路径中提取 controllerName 作为工具名前缀
+     * <p>
+     * 微服务模式：path=/demoLeaveApply/submit/{id} → 首段 demoLeaveApply
+     * 单实例模式：path=/demo/demoLeaveApply/submit/{id}，servicePathPrefix=/demo
+     *   → 剥离 /demo → /demoLeaveApply/submit/{id} → 首段 demoLeaveApply
+     * </p>
+     * <p>
+     * 跳过 {pathVar} 形式的路径变量段；无可用段时返回 "default"。
+     * </p>
+     */
+    private String extractControllerName(String path, String servicePathPrefix) {
+        String remaining = path;
+        if (servicePathPrefix != null && !servicePathPrefix.isEmpty()
+                && path.startsWith(servicePathPrefix + "/")) {
+            remaining = path.substring(servicePathPrefix.length());
+        }
+        String[] segments = remaining.split("/");
+        for (String seg : segments) {
+            if (!seg.isEmpty() && !seg.startsWith("{")) {
+                return seg;
+            }
+        }
+        return "default";
     }
 
     /**

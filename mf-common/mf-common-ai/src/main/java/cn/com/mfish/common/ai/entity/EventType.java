@@ -26,5 +26,13 @@ public enum EventType {
     /** 整个计划执行完成，携带最终汇总 */
     PLAN_COMPLETED,
     /** 执行过程发生错误，携带错误信息 */
-    ERROR
+    ERROR,
+    /**
+     * 前端操作指令，携带 FrontendAction JSON
+     * <p>
+     * 当 LLM 调用 FrontendActionTool（navigate/click/fill/refresh 等）时触发，
+     * 前端 SSE 消费器识别此事件类型后执行对应的 UI 操作。
+     * </p>
+     */
+    FRONTEND_ACTION
 }
