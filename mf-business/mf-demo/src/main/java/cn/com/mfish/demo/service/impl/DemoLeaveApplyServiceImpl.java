@@ -281,8 +281,8 @@ public class DemoLeaveApplyServiceImpl extends ServiceImpl<DemoLeaveApplyMapper,
         Result<String> result = remoteWorkflowService.startProcess(RPCConstants.INNER, new FlowableParam<String>()
                 .setKey(FlowKey.请假申请发布.toString()).setParam(param)
                 .setId(demoLeaveApply.getId())
-                .setPrefix("demoLeaveApply")
-                .setCallback("cn.com.mfish.demo.api.remote.RemoteDemoLeaveApplyService"));
+                .setPrefix(FlowKey.请假申请发布.getPrefix())
+                .setCallback(FlowKey.请假申请发布.getCallback()));
         if (!result.isSuccess()) {
             throw new MyRuntimeException(result.getMsg());
         }

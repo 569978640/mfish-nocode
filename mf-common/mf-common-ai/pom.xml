@@ -67,5 +67,16 @@
             <groupId>com.baomidou</groupId>
             <artifactId>mybatis-plus-spring</artifactId>
         </dependency>
+        <!--
+            MCP 客户端（WebFlux Transport）：McpCapabilityEngine 使用，支持 stdio + SSE 两种 Transport。
+            通过 Spring AI 2.0.0 的 starter 引入，版本由 spring-ai-bom 统一管理。
+            starter 传递依赖 mcp-core:2.0.0 + mcp-spring-webflux:2.0.0（由 Spring AI 重打包为 org.springframework.ai groupId）。
+            McpCapabilityEngine 手动创建 McpSyncClient（支持从数据库动态加载配置 + refresh()），
+            不依赖 Spring AI 的 McpClientAutoConfiguration（该配置面向 application.yml 静态配置）。
+        -->
+        <dependency>
+            <groupId>org.springframework.ai</groupId>
+            <artifactId>spring-ai-starter-mcp-client-webflux</artifactId>
+        </dependency>
     </dependencies>
 </project>

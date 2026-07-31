@@ -204,4 +204,11 @@ public interface FlowableService {
      */
     FlowManage queryFlowManage(String processInstanceId);
 
+    /**
+     * 查询所有已发布的流程定义列表
+     *
+     * @return 已发布流程列表
+     */
+    List<FlowManage> getActiveFlows();
+
 }

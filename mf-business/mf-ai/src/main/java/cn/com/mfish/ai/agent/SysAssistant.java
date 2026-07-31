@@ -53,7 +53,7 @@ public class SysAssistant extends BaseAssistant {
         if (StringUtils.isEmpty(prompt.trim())) {
             prompt = DEFAULT_PROMPT;
         }
-        return chatWithTools(sessionId, prompt, ServiceConstants.SYS_SERVICE);
+        return chatWithToolsAndExtensions(sessionId, prompt, ServiceConstants.SYS_SERVICE);
     }
 
     @Override

@@ -7,6 +7,7 @@ import cn.com.mfish.common.core.web.Result;
 import cn.com.mfish.common.log.annotation.Log;
 import cn.com.mfish.common.oauth.annotation.RequiresPermissions;
 import cn.com.mfish.common.workflow.api.entity.FlowManage;
+import cn.com.mfish.common.workflow.service.FlowableService;
 import cn.com.mfish.workflow.req.ReqFlowManage;
 import cn.com.mfish.workflow.service.FlowManageService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,6 +18,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
+import java.util.List;
 
 /**
  * @description: 流程管理
@@ -31,6 +33,8 @@ import java.io.IOException;
 public class FlowManageController {
     @Resource
     private FlowManageService flowManageService;
+    @Resource
+    private FlowableService flowableService;
 
     /**
      * 分页列表查询
@@ -141,5 +145,16 @@ public class FlowManageController {
     @RequiresPermissions("workflow:flowManage:update")
     public Result<Boolean> unpublish(@Parameter(name = "id", description = "唯一性ID") @PathVariable String id) {
         return flowManageService.unpublish(id);
+    }
+
+    /**
+     * 查询所有已发布的流程定义列表（供 AI 工作流引擎发现可用流程）
+     *
+     * @return 已发布流程列表
+     */
+    @Operation(summary = "查询已发布流程列表")
+    @GetMapping("/activeFlows")
+    public Result<List<FlowManage>> getActiveFlows() {
+        return Result.ok(flowableService.getActiveFlows(), "查询已发布流程列表成功");
     }
 }

@@ -34,10 +34,15 @@ public class CompleteCallbackHandler implements ExecutionListener {
     @Override
     public void notify(DelegateExecution execution) {
         FlowableParam param = (FlowableParam) runtimeService.getVariable(execution.getId(), Constants.WORKFLOW_PARAM);
+        if (param == null) {
+            log.warn("任务{}：任务id{}，无 FlowableParam，跳过回调",
+                    execution.getEventName(), execution.getId());
+            return;
+        }
         AuditOperator auditOperator = AuditOperator.of(execution.getVariable(Constants.AUDIT_TYPE).toString());
-        if (param == null || auditOperator == null) {
-            log.error("任务{}：任务id{},参数异常", execution.getEventName(), execution.getId());
-            throw new MyRuntimeException("错误：回调异常，参数或审批操作为空");
+        if (auditOperator == null) {
+            log.warn("任务{}：任务id{}，auditType 为空，跳过回调", execution.getEventName(), execution.getId());
+            return;
         }
         log.info("{}任务{}：任务id{}", FlowKey.getByKey(param.getKey()).name(), auditOperator.name(), execution.getId());
         String comment = (String) execution.getVariable(Constants.AUDIT_COMMENT);

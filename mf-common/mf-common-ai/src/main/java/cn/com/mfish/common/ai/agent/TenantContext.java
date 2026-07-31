@@ -1,5 +1,7 @@
 package cn.com.mfish.common.ai.agent;
 
+import lombok.Getter;
+
 /**
  * 租户上下文快照
  * <p>
@@ -21,6 +23,7 @@ package cn.com.mfish.common.ai.agent;
  * @author: mfish
  * @date: 2026/07/17
  */
+@Getter
 public class TenantContext {
 
     private final String tenantId;
@@ -38,9 +41,4 @@ public class TenantContext {
         this.serverWebExchange = serverWebExchange;
     }
 
-    public String getTenantId() { return tenantId; }
-    public String getUserId() { return userId; }
-    public String getAccessToken() { return accessToken; }
-    public Object getRequestAttributes() { return requestAttributes; }
-    public Object getServerWebExchange() { return serverWebExchange; }
 }

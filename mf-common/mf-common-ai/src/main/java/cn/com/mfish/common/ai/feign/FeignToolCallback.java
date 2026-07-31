@@ -17,8 +17,13 @@ import org.springframework.ai.tool.ToolCallback;
 import org.springframework.ai.tool.definition.DefaultToolDefinition;
 import org.springframework.ai.tool.definition.ToolDefinition;
 import org.springframework.ai.tool.metadata.ToolMetadata;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -67,11 +72,18 @@ public class FeignToolCallback implements ToolCallback {
                              String autoFillKey, String description) {
     }
 
-    public FeignToolCallback(Object feignProxy, Method method) {
+    /**
+     * @param feignProxy    Feign 代理对象
+     * @param method        接口方法
+     * @param serviceId     所属服务ID（如 mf-sys），用于工具名前缀和描述归属
+     * @param feignInterface Feign 接口类，用于提取接口名作为工具描述上下文
+     */
+    public FeignToolCallback(Object feignProxy, Method method, String serviceId, Class<?> feignInterface) {
         this.feignProxy = feignProxy;
         this.method = method;
-        this.toolName = method.getName();
-        this.toolDescription = buildDescription(method);
+        // 工具名加服务前缀（如 sys.queryById），避免跨服务同名方法歧义
+        this.toolName = buildToolName(serviceId, method);
+        this.toolDescription = buildDescription(method, serviceId, feignInterface);
         this.paramInfos = analyzeParameters();
         this.toolDefinition = DefaultToolDefinition.builder()
                 .name(toolName)
@@ -80,17 +92,69 @@ public class FeignToolCallback implements ToolCallback {
                 .build();
     }
 
-    private String buildDescription(Method method) {
+    /**
+     * 构建带服务前缀的工具名：{serviceId前缀}.{methodName}
+     * <p>
+     * serviceId 为 mf-sys → 前缀 sys；mf-oauth → 前缀 oauth。
+     * 这样 LLM 看到的是 sys.queryById / oauth.queryById，而非裸 queryById，避免歧义。
+     * </p>
+     */
+    private String buildToolName(String serviceId, Method method) {
+        String prefix = extractServicePrefix(serviceId);
+        return prefix + "." + method.getName();
+    }
+
+    /**
+     * 从 serviceId 提取前缀：mf-sys → sys，mf-oauth → oauth，mf-nocode → nocode。
+     * 若 serviceId 不符合 mf-xxx 格式则原样返回（去中划线）。
+     */
+    private String extractServicePrefix(String serviceId) {
+        if (serviceId == null || serviceId.isEmpty()) {
+            return "api";
+        }
+        if (serviceId.startsWith("mf-")) {
+            return serviceId.substring(3);
+        }
+        return serviceId.replace("-", "_");
+    }
+
+    private String buildDescription(Method method, String serviceId, Class<?> feignInterface) {
         // 优先从方法上的 Swagger @Operation 注解提取描述
         io.swagger.v3.oas.annotations.Operation op = method.getAnnotation(io.swagger.v3.oas.annotations.Operation.class);
-        if (op != null && !op.summary().isEmpty()) {
-            return op.summary();
+        String summary = (op != null && !op.summary().isEmpty()) ? op.summary() : null;
+        String desc = (op != null && !op.description().isEmpty()) ? op.description() : null;
+        if (summary != null) {
+            // 有 @Operation 注解时，补充服务归属信息，便于 LLM 区分
+            return "[" + serviceId + "] " + summary + (desc != null ? " - " + desc : "");
         }
-        if (op != null && !op.description().isEmpty()) {
-            return op.description();
+        if (desc != null) {
+            return "[" + serviceId + "] " + desc;
         }
-        // 兜底：方法名转可读描述（如 queryMenuTree → query menu tree）
-        return method.getName() + " (调用远程接口)";
+        // 兜底：拼接 服务ID + Feign接口名 + 方法名 + HTTP路径，给 LLM 足够的上下文区分
+        String httpPath = extractHttpPath(method);
+        String interfaceName = feignInterface != null ? feignInterface.getSimpleName() : "UnknownApi";
+        return "[" + serviceId + "] " + interfaceName + "#" + method.getName()
+                + (httpPath != null ? " (" + httpPath + ")" : " (调用远程接口)");
+    }
+
+    /**
+     * 从方法的 @GetMapping/@PostMapping 等注解提取 HTTP 路径
+     */
+    private String extractHttpPath(Method method) {
+        GetMapping get = method.getAnnotation(GetMapping.class);
+        if (get != null && get.value().length > 0) return "GET " + get.value()[0];
+        PostMapping post = method.getAnnotation(PostMapping.class);
+        if (post != null && post.value().length > 0) return "POST " + post.value()[0];
+        PutMapping put = method.getAnnotation(PutMapping.class);
+        if (put != null && put.value().length > 0) return "PUT " + put.value()[0];
+        DeleteMapping del = method.getAnnotation(DeleteMapping.class);
+        if (del != null && del.value().length > 0) return "DELETE " + del.value()[0];
+        RequestMapping req = method.getAnnotation(RequestMapping.class);
+        if (req != null && req.value().length > 0) {
+            String methodStr = req.method().length > 0 ? req.method()[0].name() : "REQUEST";
+            return methodStr + " " + req.value()[0];
+        }
+        return null;
     }
 
     /**

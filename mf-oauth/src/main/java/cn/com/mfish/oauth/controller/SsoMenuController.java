@@ -8,6 +8,7 @@ import cn.com.mfish.common.log.annotation.Log;
 import cn.com.mfish.common.oauth.annotation.RequiresPermissions;
 import cn.com.mfish.common.oauth.api.entity.SsoMenu;
 import cn.com.mfish.common.oauth.api.req.ReqSsoMenu;
+import cn.com.mfish.common.oauth.api.vo.MenuRouteVo;
 import cn.com.mfish.common.oauth.service.SsoMenuService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -137,5 +138,26 @@ public class SsoMenuController {
     @Parameter(name = "路由地址", required = true)
     public Result<Boolean> routeExist(@RequestParam String routePath, @RequestParam String parentId) {
         return ssoMenuService.routeExist(routePath, parentId);
+    }
+
+    /**
+     * 获取所有菜单的完整路由地址（子菜单路由拼接父菜单路由）
+     * <p>
+     * 查询所有目录和菜单（排除按钮），子菜单的 routePath 会拼接父菜单的 routePath，
+     * 形成完整的路由地址。例如：父菜单 /system + 子菜单 /menu → /system/menu。
+     * </p>
+     * <p>
+     * 主要供 AI 前端操作工具（frontend.navigate）查询可用路由列表使用，
+     * 也可用于前端路由校验等场景。
+     * </p>
+     *
+     * @return 路由地址列表
+     */
+    @Operation(summary = "获取路由地址", description = "查询菜单的完整路由地址（含菜单名称），子菜单路由拼接父菜单路由。支持多个关键词（逗号分隔，OR 匹配），keyword 为空返回全部。供 AI 导航工具查询可用路由使用")
+    @GetMapping("/routePaths")
+    public Result<List<MenuRouteVo>> queryRoutePaths(
+            @Parameter(description = "菜单名称关键词（可选，支持逗号分隔的多关键词 OR 匹配，如 '大屏,可视化,screen'，为空返回全部）", example = "大屏,可视化")
+            @RequestParam(required = false) String keyword) {
+        return ssoMenuService.queryRoutePaths(keyword);
     }
 }
