@@ -277,6 +277,7 @@ INSERT INTO `sys_dict_item` VALUES ('e100aa3c678f2bf6a4e1e24a9feee89f', 'cd33855
 INSERT INTO `sys_dict_item` VALUES ('cac0983d1430c0a7dce98bd8c01cc19c', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'ollama', 'ollama', 0, 2, '', 'blue', 0, NULL, 'admin', '2026-07-10 16:58:34', '', NULL);
 INSERT INTO `sys_dict_item` VALUES ('64a2906317754ac19c779e04ddc155de', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'deepseek', 'deepseek', 0, 3, NULL, 'cyan', 0, NULL, 'admin', '2026-07-10 16:58:49', '', NULL);
 INSERT INTO `sys_dict_item` VALUES ('76faf36cc4e459171c273fa833e79ff4', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'anthropic', 'anthropic', 0, 4, NULL, 'pink', 0, NULL, 'admin', '2026-07-10 16:59:22', '', NULL);
+INSERT INTO `sys_dict_item` VALUES ('9f3c1a7d2e5b4a8c6f0d1e2a3b4c5d6e', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'orcarouter', 'orcarouter', 0, 5, NULL, 'gold', 0, 'OrcaRouter 路由网关', 'admin', '2026-08-15 00:00:00', '', NULL);
 
 -- ----------------------------
 -- Table structure for sys_log

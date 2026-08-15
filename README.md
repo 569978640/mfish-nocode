@@ -42,7 +42,7 @@
 
 ### 多租户大模型管理
 
-- 按租户隔离 AI 模型配置，不同租户可使用不同的 LLM 提供商（OpenAI / Ollama / 智谱等）
+- 按租户隔离 AI 模型配置，不同租户可使用不同的 LLM 提供商（OpenAI / Ollama / 智谱 / [OrcaRouter](https://www.orcarouter.ai) 等）
 - ChatModel 按配置签名缓存共享，不随租户增长
 - 提供 OpenAI 兼容的 `/v1/chat/completions` 统一代理接口，流式/非流式自动切换
 
