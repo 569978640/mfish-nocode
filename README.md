@@ -8,7 +8,9 @@
 [![GitHub forks](https://img.shields.io/github/forks/mfish-qf/mfish-nocode.svg?style=social&label=Fork)](https://github.com/mfish-qf/mfish-nocode)
 [![star](https://gitee.com/qiufeng9862/mfish-nocode/badge/star.svg?theme=white)](https://gitee.com/qiufeng9862/mfish-nocode/stargazers)
 [![fork](https://gitee.com/qiufeng9862/mfish-nocode/badge/fork.svg?theme=white)](https://gitee.com/qiufeng9862/mfish-nocode/members)
+[![AtomGit](https://atomgit.com/mfish-qf/mfish-nocode/star/badge.svg)](https://atomgit.com/mfish-qf/mfish-nocode)
 
+[![AtomGit](https://atomgit.com/mfish-qf/mfish-nocode/star/new_badge.svg)](https://atomgit.com/mfish-qf/mfish-nocode)
 ## 🧱架构图
 
 ![](http://oscimg.oschina.net/AiCreationDetail/up-49fe6faf5fa60eefe9a5c2e0fa65c797.png)
