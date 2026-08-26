@@ -30,14 +30,14 @@ public class AiModelConfig extends BaseEntity<String> {
     @ExcelProperty("租户ID")
     @Schema(description = "租户ID")
     private String tenantId;
-    @ExcelProperty("提供者: openai/ollama/deepseek/zhipuai/anthropic等")
-    @Schema(description = "提供者: openai/ollama/deepseek/zhipuai/anthropic等")
+    @ExcelProperty("提供者: openai/ollama/deepseek/zhipuai/anthropic/orcarouter等")
+    @Schema(description = "提供者: openai/ollama/deepseek/zhipuai/anthropic/orcarouter等")
     private String provider;
     @ExcelProperty("模型名称: gpt-4o, qwen3:8b, deepseek-v3 等")
     @Schema(description = "模型名称: gpt-4o, qwen3:8b, deepseek-v3 等")
     private String modelName;
-    @ExcelProperty("接入协议: openai/ollama/deepseek/anthropic")
-    @Schema(description = "接入协议: openai/ollama/deepseek/anthropic")
+    @ExcelProperty("接入协议: openai/ollama/deepseek/anthropic/orcarouter")
+    @Schema(description = "接入协议: openai/ollama/deepseek/anthropic/orcarouter")
     private String protocol;
     @ExcelProperty("API密钥(加密存储)")
     @Schema(description = "API密钥(加密存储)")

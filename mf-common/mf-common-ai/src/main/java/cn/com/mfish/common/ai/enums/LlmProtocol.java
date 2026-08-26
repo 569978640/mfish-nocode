@@ -81,6 +81,21 @@ public enum LlmProtocol {
                             .build())
                     .build();
         }
+    },
+    ORCA_ROUTER("orcarouter") {
+        @Override
+        public ChatModel create(String apiKey, String baseUrl, String model, Integer maxTokens, Double temperature) {
+            // OrcaRouter 是 OpenAI 兼容的 LLM 路由网关（https://www.orcarouter.ai）
+            return OpenAiChatModel.builder()
+                    .options(OpenAiChatOptions.builder()
+                            .apiKey(apiKey)
+                            .model(model)
+                            .temperature(temperature)
+                            .maxTokens(maxTokens)
+                            .baseUrl(baseUrl)
+                            .build())
+                    .build();
+        }
     };
 
     private final String value;
