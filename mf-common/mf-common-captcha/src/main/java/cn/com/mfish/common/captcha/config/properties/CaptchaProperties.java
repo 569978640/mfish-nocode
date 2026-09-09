@@ -18,7 +18,7 @@ public class CaptchaProperties {
     /**
      * 验证码开关
      */
-    private Boolean enabled = true;
+    private Boolean enabled = false;
 
     /**
      * 验证码类型（math 数组计算 char 字符）

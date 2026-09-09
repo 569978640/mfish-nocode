@@ -1,6 +1,7 @@
 package cn.com.mfish.gateway.filter;
 
 import cn.com.mfish.common.captcha.common.CaptchaConstant;
+import cn.com.mfish.common.captcha.config.properties.CaptchaProperties;
 import cn.com.mfish.common.captcha.service.CheckCodeService;
 import cn.com.mfish.common.core.exception.CaptchaException;
 import cn.com.mfish.gateway.common.GatewayUtils;
@@ -36,6 +37,8 @@ public class CheckCodeFilter extends AbstractGatewayFilterFactory<CheckCodeFilte
 
     @Resource
     private CheckCodeService checkCodeService;
+    @Resource
+    private CaptchaProperties captchaProperties;
 
     /**
      * 构造函数，初始化校验过滤器配置类
@@ -93,6 +96,10 @@ public class CheckCodeFilter extends AbstractGatewayFilterFactory<CheckCodeFilte
          */
         @Override
         public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+            // 开关关闭时直接放行，与业务层 AccessTokenController 保持一致的关停行为
+            if (!Boolean.TRUE.equals(captchaProperties.getEnabled())) {
+                return chain.filter(exchange);
+            }
             ServerHttpRequest request = exchange.getRequest();
             // 优先从 query 参数读取，兼容 GET 请求；
             // POST 表单读取需要订阅 body，会破坏流式处理，因此网关层仅校验 query 中传入的验证码
