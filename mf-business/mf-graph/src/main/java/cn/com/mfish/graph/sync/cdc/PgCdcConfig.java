@@ -23,4 +23,9 @@ public class PgCdcConfig {
     private String redisAddress;
     private String redisPassword;
     private Integer redisDatabase;
+    /**
+     * Debezium Embedded 内部使用 Kafka Connect 框架，需要 bootstrap.servers 才能完成 WorkerConfig 初始化。
+     * 实际数据通过 RocketMQ 转发，Kafka 仅作为占位地址，不会真正消费。
+     */
+    private String bootstrapServers;
 }

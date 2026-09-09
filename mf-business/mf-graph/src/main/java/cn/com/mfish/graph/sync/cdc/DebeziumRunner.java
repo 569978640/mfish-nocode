@@ -49,6 +49,7 @@ public class DebeziumRunner {
     public void start() {
         log.info("启动 Debezium Embedded...");
         log.info("Redis 配置: address={}, database={}", pgCdcConfig.getRedisAddress(), pgCdcConfig.getRedisDatabase());
+        log.info("Kafka 占位地址: {}", pgCdcConfig.getBootstrapServers());
 
         String tableList = String.join(",", pgCdcConfig.getTables());
         log.info("table.include.list = {}", tableList);
@@ -56,6 +57,11 @@ public class DebeziumRunner {
         Configuration config = Configuration.create()
                 .with("name", "plm-cdc-connector")
                 .with("connector.class", "io.debezium.connector.postgresql.PostgresConnector")
+
+                // ====================== Kafka Connect 框架占位配置 ======================
+                // Debezium Embedded 底层基于 Kafka Connect，WorkerConfig 初始化时该参数必填。
+                // 实际数据通过 RocketMQ 转发，Kafka 不会真正消费。
+                .with("bootstrap.servers", pgCdcConfig.getBootstrapServers())
 
                 // ====================== 核心：Redis 存储偏移量 ======================
                 .with("offset.storage", "io.debezium.storage.redis.offset.RedisOffsetBackingStore")
