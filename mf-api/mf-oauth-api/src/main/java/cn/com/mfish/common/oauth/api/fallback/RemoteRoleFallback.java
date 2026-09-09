@@ -1,5 +1,6 @@
 package cn.com.mfish.common.oauth.api.fallback;
 
+import cn.com.mfish.common.core.utils.FeignFallbackHelper;
 import cn.com.mfish.common.core.web.Result;
 import cn.com.mfish.common.oauth.api.remote.RemoteRoleService;
 import lombok.extern.slf4j.Slf4j;
@@ -16,18 +17,24 @@ import java.util.List;
 @Slf4j
 @Component
 public class RemoteRoleFallback implements FallbackFactory<RemoteRoleService> {
+    /**
+     * 创建角色服务降级实例
+     *
+     * @param cause 导致降级的异常原因
+     * @return 降级后的角色服务实例
+     */
     @Override
     public RemoteRoleService create(Throwable cause) {
         log.error("角色服务调用失败:{}", cause.getMessage());
         return new RemoteRoleService() {
             @Override
             public Result<List<String>> getRoleIdsByCode(String origin, String tenantId, String codes) {
-                return Result.fail("错误:获取角色id失败" + cause.getMessage());
+                return Result.fail(FeignFallbackHelper.resolveErrorMsg(cause, "错误:获取角色id失败"));
             }
 
             @Override
             public Result<List<String>> getRoleUsers(String origin, String tenantId, String codes) {
-                return Result.fail("错误:获取用户id失败" + cause.getMessage());
+                return Result.fail(FeignFallbackHelper.resolveErrorMsg(cause, "错误:获取用户id失败"));
             }
         };
     }

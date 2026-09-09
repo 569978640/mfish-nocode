@@ -1,7 +1,7 @@
 package cn.com.mfish.oauth.mapper;
 
 import cn.com.mfish.common.oauth.api.entity.SsoMenu;
-import cn.com.mfish.common.oauth.req.ReqSsoMenu;
+import cn.com.mfish.common.oauth.api.req.ReqSsoMenu;
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
 import org.apache.ibatis.annotations.Delete;
 import org.apache.ibatis.annotations.Param;
@@ -12,7 +12,7 @@ import java.util.List;
  * @Description: 菜单权限表
  * @Author: mfish
  * @date: 2022-09-21
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 public interface SsoMenuMapper extends BaseMapper<SsoMenu> {
     int insertMenu(SsoMenu ssoMenu);

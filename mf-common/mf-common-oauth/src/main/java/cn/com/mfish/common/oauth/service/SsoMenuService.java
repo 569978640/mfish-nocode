@@ -2,7 +2,8 @@ package cn.com.mfish.common.oauth.service;
 
 import cn.com.mfish.common.core.web.Result;
 import cn.com.mfish.common.oauth.api.entity.SsoMenu;
-import cn.com.mfish.common.oauth.req.ReqSsoMenu;
+import cn.com.mfish.common.oauth.api.req.ReqSsoMenu;
+import cn.com.mfish.common.oauth.api.vo.MenuRouteVo;
 import com.baomidou.mybatisplus.extension.service.IService;
 
 import java.util.List;
@@ -11,7 +12,7 @@ import java.util.List;
  * @Description: 菜单权限表
  * @Author: mfish
  * @date: 2022-09-21
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 public interface SsoMenuService extends IService<SsoMenu> {
     Result<SsoMenu> insertMenu(SsoMenu ssoMenu);
@@ -25,4 +26,12 @@ public interface SsoMenuService extends IService<SsoMenu> {
     Result<Boolean> deleteMenu(String menuId);
 
     Result<Boolean> routeExist(String routePath, String parentId);
+
+    /**
+     * 查询菜单的完整路由地址（子菜单路由拼接父菜单路由）
+     *
+     * @param keyword 菜单名称关键词（可选，为空返回全部）
+     * @return 路由地址列表（含菜单名称）
+     */
+    Result<List<MenuRouteVo>> queryRoutePaths(String keyword);
 }

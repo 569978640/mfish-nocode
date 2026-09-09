@@ -32,7 +32,7 @@ import java.util.List;
  * @description: 流程管理
  * @author: mfish
  * @date: 2026-03-30
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 @Slf4j
 @Service
@@ -108,10 +108,13 @@ public class FlowManageServiceImpl extends ServiceImpl<FlowManageMapper, FlowMan
         if (dbFlowManage == null) {
             return Result.fail(flowManage, "错误：流程不存在");
         }
+        if (!dbFlowManage.getFlowKey().equals(flowManage.getFlowKey())) {
+            return Result.fail(flowManage, "错误：流程key不允许修改");
+        }
         FlowJson flowJson = JSON.parseObject(flowManage.getFlowConfig(), FlowJson.class);
         String hex = DigestUtils.sha256Hex(JSON.toJSONString(flowJson));
         // 3. 判断流程配置是否修改，如果未修改则执行更新操作
-        if (hex.equals(dbFlowManage.getHex())) {
+        if (hex.equals(dbFlowManage.getHex()) || dbFlowManage.getVersion() == null) {
             if (updateById(flowManage)) {
                 return Result.ok(flowManage, "流程管理-编辑成功!");
             }

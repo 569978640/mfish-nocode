@@ -10,6 +10,7 @@ import cn.com.mfish.gateway.common.GatewayUtils;
 import cn.com.mfish.gateway.config.properties.IgnoreWhiteProperties;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.jspecify.annotations.NonNull;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
 import org.springframework.core.Ordered;
@@ -33,8 +34,15 @@ public class AuthFilter implements GlobalFilter, Ordered {
     @Resource
     private TokenValidator tokenValidator;
 
+    /**
+     * 认证过滤核心方法，校验请求中的Token信息并根据白名单策略决定是否放行
+     *
+     * @param exchange 服务端Web交换对象
+     * @param chain    网关过滤器链
+     * @return 过滤结果
+     */
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    public @NonNull Mono<Void> filter(ServerWebExchange exchange, @NonNull GatewayFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String url = request.getURI().getPath();
         ServerHttpRequest.Builder mutate = request.mutate();
@@ -92,6 +100,11 @@ public class AuthFilter implements GlobalFilter, Ordered {
         return GatewayUtils.webFluxResponseWriter(exchange.getResponse(), HttpStatus.UNAUTHORIZED, msg);
     }
 
+    /**
+     * 获取过滤器执行顺序，值为-1
+     *
+     * @return 过滤器顺序值
+     */
     @Override
     public int getOrder() {
         return -1;

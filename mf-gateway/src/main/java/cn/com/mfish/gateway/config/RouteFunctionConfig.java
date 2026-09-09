@@ -1,10 +1,9 @@
 package cn.com.mfish.gateway.config;
 
-import cn.com.mfish.common.ai.agent.GatewayAssistant;
-import cn.com.mfish.common.ai.entity.AiRouterVo;
 import cn.com.mfish.common.captcha.service.CheckCodeService;
-import cn.com.mfish.common.core.web.Result;
 import jakarta.annotation.Resource;
+import org.springframework.cloud.gateway.route.RouteLocator;
+import org.springframework.cloud.gateway.route.builder.RouteLocatorBuilder;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.MediaType;
@@ -26,29 +25,29 @@ import static org.springframework.web.reactive.function.server.RequestPredicates
 public class RouteFunctionConfig {
     @Resource
     CheckCodeService checkCodeService;
-    @Resource
-    private GatewayAssistant gatewayAssistant;
 
+    /**
+     * LLM代理路由，将/v1开头的请求路由到mf-ai微服务
+     * LLM慢速长连接由mf-ai处理，避免占用网关资源
+     */
+    @Bean
+    public RouteLocator llmProxyRoute(RouteLocatorBuilder builder) {
+        return builder.routes()
+                .route("llm-proxy", r -> r.path("/v1/**").uri("lb://mf-ai"))
+                .build();
+    }
+
+    /**
+     * 验证码生成路由，通过GET方式访问/captcha获取验证码
+     *
+     * @return 验证码路由函数
+     */
     @Bean
     public RouterFunction<?> captcha() {
         return RouterFunctions.route(GET("/captcha")
                 .and(RequestPredicates.accept(MediaType.TEXT_PLAIN)), request -> {
             try {
                 return ServerResponse.ok().body(BodyInserters.fromValue(checkCodeService.createCaptcha()));
-            } catch (Exception ex) {
-                return Mono.error(ex);
-            }
-        });
-    }
-
-    @Bean
-    public RouterFunction<ServerResponse> aiRouter() {
-        return RouterFunctions.route(GET("/ai/router"), request -> {
-            String prompt = request.queryParam("prompt").orElse("介绍下WindFlow");
-            try {
-                Mono<Result<AiRouterVo>> result = gatewayAssistant.chat(prompt);
-                return ServerResponse.ok()
-                        .body(result, Result.class);
             } catch (Exception ex) {
                 return Mono.error(ex);
             }

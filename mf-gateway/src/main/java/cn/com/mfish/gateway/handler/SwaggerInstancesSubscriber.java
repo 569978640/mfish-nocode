@@ -39,12 +39,20 @@ public class SwaggerInstancesSubscriber extends Subscriber<InstancesChangeEvent>
     @Value("#{'${swagger.ignoreServers:mf-gateway}'.split(',')}")
     private Set<String> ignoreServers;
 
+    /**
+     * 注册到Nacos通知中心，监听服务实例变更事件
+     */
     @PostConstruct
     public void registerToNotifyCenter() {
         // 注册监听事件
         NotifyCenter.registerSubscriber((this));
     }
 
+    /**
+     * 处理Nacos服务实例变更事件，根据路由定义动态更新Swagger文档配置
+     *
+     * @param instancesChangeEvent 服务实例变更事件
+     */
     @Override
     public void onEvent(InstancesChangeEvent instancesChangeEvent) {
         log.info("接收到 InstancesChangeEvent 订阅事件：{}", JSON.toJSONString(instancesChangeEvent));
@@ -52,11 +60,18 @@ public class SwaggerInstancesSubscriber extends Subscriber<InstancesChangeEvent>
         if (routeList == null || routeList.isEmpty()) {
             return;
         }
-        Map<String, String> map = routeList.stream().filter(route -> !route.getId().startsWith(ID_PREFIX))
-                .collect(Collectors.toMap((route) -> route.getUri().getHost(), RouteDefinition::getId));
+        Map<String, String> map = routeList.stream().filter(route -> {
+                    assert route.getId() != null;
+                    return !route.getId().startsWith(ID_PREFIX);
+                })
+                .collect(Collectors.toMap((route) -> {
+                    assert route.getUri() != null;
+                    return route.getUri().getHost();
+                }, RouteDefinition::getId));
         Set<AbstractSwaggerUiConfigProperties.SwaggerUrl> set = new HashSet<>(routeList.size());
         for (RouteDefinition route : routeList) {
             if (!route.getMetadata().isEmpty()) {
+                assert route.getId() != null;
                 String name = route.getId().replace(ID_PREFIX, "");
                 if (ignoreServers.contains(name)) {
                     continue;
@@ -67,6 +82,11 @@ public class SwaggerInstancesSubscriber extends Subscriber<InstancesChangeEvent>
         swaggerUiConfigProperties.setUrls(set);
     }
 
+    /**
+     * 返回订阅的事件类型为服务实例变更事件
+     *
+     * @return 订阅的事件类型
+     */
     @Override
     public Class<? extends Event> subscribeType() {
         return InstancesChangeEvent.class;

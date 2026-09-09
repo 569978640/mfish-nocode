@@ -1,6 +1,6 @@
-/**
-  单实例启动需要初始化的表（如果采用单实例启动，只需要创建这个数据库，其他微服务相关数据库无需创建）
- */
+-- ----------------------------------------
+--  单实例启动需要初始化的表（如果采用单实例启动，只需要创建这个数据库，其他微服务相关数据库无需创建）
+-- ----------------------------------------
 DROP DATABASE IF EXISTS `mfish_nocode`;
 CREATE DATABASE  `mfish_nocode` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 SET NAMES utf8mb4;
@@ -453,6 +453,12 @@ INSERT INTO `sso_menu` VALUES ('a7d3a7b61fa52964c5c9db477e3b1962', '8ae3ea763294
 INSERT INTO `sso_menu` VALUES ('ad5b361ff34235e8ec85cd613a59bf6e', '8ae3ea76329402ee495cccfaa4c4c38d', '000140000300001', 3, '查询', '#', 1, 2, '', NULL, 'workflow:flowManage:query', 0, 1, NULL, NULL, '', 'admin', '2026-03-30 19:43:52', '', NULL);
 INSERT INTO `sso_menu` VALUES ('c5309ca3ba545da9950278637c90e674', '8ae3ea76329402ee495cccfaa4c4c38d', '000140000300002', 3, '新增', '#', 2, 2, '', NULL, 'workflow:flowManage:query,workflow:flowManage:insert', 0, 1, NULL, NULL, '', 'admin', '2026-03-30 19:43:52', '', NULL);
 INSERT INTO `sso_menu` VALUES ('e92728a6d996d4b7cb3acb0fc031d183', '8ae3ea76329402ee495cccfaa4c4c38d', '000140000300004', 3, '删除', '#', 4, 2, '', NULL, 'workflow:flowManage:query,workflow:flowManage:delete', 0, 1, NULL, NULL, '', 'admin', '2026-03-30 19:43:52', '', NULL);
+INSERT INTO `sso_menu` VALUES ('c0adefdb601f6e41f82a06ff6513613e', '53e8eaceee36c1d54e43319fdd60811b', '0001300008', 2, '工作流样例', 'ant-design:fork-outlined', 11, 1, '/demo-leave-apply', '/demo/demo-leave-apply/index.vue', NULL, 0, 1, NULL, 1, '', 'admin', '2026-04-20 17:05:36', 'admin', '2026-04-20 20:05:50');
+INSERT INTO `sso_menu` VALUES ('3993e903efe9406aca08697bf80a4140', 'f65cc0cfee8cced9bf0613def2d04b42', '000020001500004', 3, '删除', '#', 4, 2, '', NULL, 'ai:aiModelConfig:query,ai:aiModelConfig:delete', 0, 1, NULL, NULL, '', 'admin', '2026-07-06 21:35:04', '', NULL);
+INSERT INTO `sso_menu` VALUES ('417074a416446e7b6382691e0750bdad', 'f65cc0cfee8cced9bf0613def2d04b42', '000020001500001', 3, '查询', '#', 1, 2, '', NULL, 'ai:aiModelConfig:query', 0, 1, NULL, NULL, '', 'admin', '2026-07-06 21:35:04', '', NULL);
+INSERT INTO `sso_menu` VALUES ('4ee0d5036b299c5efb7674c9ccf1d647', 'f65cc0cfee8cced9bf0613def2d04b42', '000020001500002', 3, '新增', '#', 2, 2, '', NULL, 'ai:aiModelConfig:query,ai:aiModelConfig:insert', 0, 1, NULL, NULL, '', 'admin', '2026-07-06 21:35:04', '', NULL);
+INSERT INTO `sso_menu` VALUES ('567c06fabc1f6c429aec3e6b1c7fa511', 'f65cc0cfee8cced9bf0613def2d04b42', '000020001500003', 3, '修改', '#', 3, 2, '', NULL, 'ai:aiModelConfig:query,ai:aiModelConfig:update', 0, 1, NULL, NULL, '', 'admin', '2026-07-06 21:35:04', '', NULL);
+INSERT INTO `sso_menu` VALUES ('f65cc0cfee8cced9bf0613def2d04b42', '2a4e024fdc76063da32926c63ca9ead2', '0000200015', 2, '模型配置', 'ant-design:open-a-i-outlined', 13, 1, '/ai-model-config', '/ai/ai-model-config/index.vue', NULL, 0, 1, NULL, 1, '', 'admin', '2026-07-06 21:35:04', 'admin', '2026-07-06 21:40:34');
 
 -- ----------------------------
 -- Table structure for sso_org
@@ -990,6 +996,7 @@ INSERT INTO `sys_dict` VALUES ('b0f0a03f9e879c2ce3b7722a3cd01061', 'HTTP请求�
 INSERT INTO `sys_dict` VALUES ('4a9914bd42939163ceb9c5b4002cfa66', 'HTTP请求方式', 'http_request_method', 0, NULL, 'admin', '2025-07-22 14:30:25', 'admin', '2025-07-22 14:30:25');
 INSERT INTO `sys_dict` VALUES ('220bbd3b1dd32fd37d0abbd279a14774', '工作流任务状态', 'workflow_task_status', 0, '工作流任务状态字典', 'admin', '2025-10-10 16:27:01', 'admin', '2025-10-10 16:27:01');
 INSERT INTO `sys_dict` VALUES ('eeb27772c310addeae7c12d296521399', '工作流审批类型', 'workflow_process_key', 0, '工作流流程定义key，例如大屏发布审批是screen_release', 'admin', '2025-10-15 16:34:32', 'admin', '2025-10-15 16:34:32');
+INSERT INTO `sys_dict` VALUES ('cd338555eccf73e26e9243837d6c711e', '模型接入协议', 'ai_model_protocol', 0, 'AI模型接入的协议，比如openai协议', 'admin', '2026-07-10 16:56:59', '', NULL);
 
 -- ----------------------------
 -- Table structure for sys_dict_item
@@ -1138,6 +1145,11 @@ INSERT INTO `sys_dict_item` VALUES ('2cdf5389b1d6a35e52c14486e04a3a57', '220bbd3
 INSERT INTO `sys_dict_item` VALUES ('261f489024bb90163e49ee85498df47e', '220bbd3b1dd32fd37d0abbd279a14774', 'workflow_task_status', '已审批', 'completed', 0, 2, NULL, 'green', 0, NULL, 'admin', '2025-10-10 16:28:02', 'admin', '2025-10-10 16:28:08');
 INSERT INTO `sys_dict_item` VALUES ('07582f8cb8443cd3de3f5ab150386690', '220bbd3b1dd32fd37d0abbd279a14774', 'workflow_task_status', '已取消', 'terminated', 0, 3, '', 'red', 0, NULL, 'admin', '2025-10-10 16:29:10', 'admin', '2025-10-10 16:29:14');
 INSERT INTO `sys_dict_item` VALUES ('4e14582f0b59762f2ca1cfda04539202', 'eeb27772c310addeae7c12d296521399', 'workflow_process_key', '大屏发布', 'screen_release', 0, 1, 'ant-design:fund-projection-screen-outlined', '', 0, NULL, 'admin', '2025-10-15 16:35:15', 'admin', '2025-10-16 11:04:43');
+INSERT INTO `sys_dict_item` VALUES ('581a7e287feec3be8771175bdc5dab9b', 'eeb27772c310addeae7c12d296521399', 'workflow_process_key', '工作流样例审批', 'demo_leave_apply_release', 0, 2, 'ant-design:fork-outlined', 'blue', 0, '工作流试用样例', 'admin', '2026-04-08 20:08:42', 'admin', '2026-04-20 21:38:45');
+INSERT INTO `sys_dict_item` VALUES ('e100aa3c678f2bf6a4e1e24a9feee89f', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'openai', 'openai', 0, 1, 'ant-design:open-a-i-outlined', 'green', 0, NULL, 'admin', '2026-07-10 16:57:27', 'admin', '2026-07-10 16:57:37');
+INSERT INTO `sys_dict_item` VALUES ('cac0983d1430c0a7dce98bd8c01cc19c', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'ollama', 'ollama', 0, 2, '', 'blue', 0, NULL, 'admin', '2026-07-10 16:58:34', '', NULL);
+INSERT INTO `sys_dict_item` VALUES ('64a2906317754ac19c779e04ddc155de', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'deepseek', 'deepseek', 0, 3, NULL, 'cyan', 0, NULL, 'admin', '2026-07-10 16:58:49', '', NULL);
+INSERT INTO `sys_dict_item` VALUES ('76faf36cc4e459171c273fa833e79ff4', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'anthropic', 'anthropic', 0, 4, NULL, 'pink', 0, NULL, 'admin', '2026-07-10 16:59:22', '', NULL);
 
 -- ----------------------------
 -- Table structure for sys_log
@@ -1271,6 +1283,7 @@ INSERT INTO `sys_dict_category` VALUES ('fb8d6852d275309854125a152f56e40b', 'fe7
 INSERT INTO `sys_dict_category` VALUES ('fc74625ae4c3a53cbea0eb7bdd994a9a', '4d544061656fca47a6dca3896a9f94fb', NULL, '输入框', '000040000200004', 3, 'ant-design:edit-outlined', NULL, 3, 'admin', '2025-07-08 16:03:04', NULL, NULL);
 INSERT INTO `sys_dict_category` VALUES ('fe72c08cf082f8f1c6efef9d28119c45', 'da6694b2d969e270122ad2ee1847ba5d', NULL, '装饰', '0000400004', 2, 'carbon:color-palette', NULL, 3, 'admin', '2024-11-18 17:15:41', 'admin', '2024-11-18 17:15:52');
 INSERT INTO `sys_dict_category` VALUES ('ff8792113848c4a2b03ea98d78381d7a', 'aaf0612479eaffe56b8c3b2af7d3cb8f', NULL, '所有', '000040000500001', 3, 'ant-design:ellipsis-outlined', NULL, 0, 'admin', '2025-03-17 14:42:03', 'admin', '2025-03-17 14:42:19');
+INSERT INTO `sys_dict_category` VALUES ('eb166b740e08373871fc720dc8c62dfe', 'eeaab687ec80b493ab4725977ea975b9', NULL, '列表', '000040000300003', 3, 'ant-design:ordered-list-outlined', NULL, 2, 'admin', '2026-06-04 22:58:26', 'admin', '2026-06-04 22:58:47');
 
 -- ----------------------------
 -- Table structure for demo_data_scope
@@ -1513,6 +1526,26 @@ INSERT INTO `demo_order_detail` VALUES ('e319c6ae4efd11eb820300163e11f4a0', 'O16
 INSERT INTO `demo_order_detail` VALUES ('e319c6b94efd11eb820300163e11f4a0', 'O16098137908580001', '【8折】皇冠丹麦曲奇饼干特别礼盒装 1.01kg/盒', 'https://www.ecishan.com.cn/storage/file16087791143760001.png', 126.60, 126.60, 2, NULL, NULL, 0.00, 253.20, 0.00, '', NULL, '', NULL);
 INSERT INTO `demo_order_detail` VALUES ('f36c3a074b0911eb820300163e11f4a0', 'O16093791675560001', '雕牌超效加酶无磷洗衣粉2.68千克/袋', 'https://www.ecishan.com.cn/storage/714991-1.png', 24.30, 24.30, 2, NULL, NULL, 0.00, 48.60, 0.00, '', NULL, '', NULL);
 INSERT INTO `demo_order_detail` VALUES ('f36c3a2f4b0911eb820300163e11f4a0', 'O16093791675560001', '福临门苏软香 10kg/袋', 'https://www.ecishan.com.cn/storage/file16049116832980001.png', 59.90, 59.90, 2, NULL, NULL, 0.00, 119.80, 0.00, '', NULL, '', NULL);
+
+-- ----------------------------
+-- Table structure for demo_leave_apply
+-- ----------------------------
+DROP TABLE IF EXISTS `demo_leave_apply`;
+CREATE TABLE `demo_leave_apply`  (
+                                     `id` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '唯一ID',
+                                     `title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '申请标题',
+                                     `leave_type` tinyint NULL DEFAULT NULL COMMENT '请假类型 1事假 2病假 3年假',
+                                     `start_time` datetime NULL DEFAULT NULL COMMENT '开始时间',
+                                     `end_time` datetime NULL DEFAULT NULL COMMENT '结束时间',
+                                     `leave_days` decimal(5, 1) NULL DEFAULT NULL COMMENT '请假天数',
+                                     `reason` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '请假事由',
+                                     `audit_state` tinyint NULL DEFAULT NULL COMMENT '审核状态 null未提交 0审核中 1已通过 2未通过',
+                                     `create_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '创建者',
+                                     `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
+                                     `update_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '更新者',
+                                     `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
+                                     PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '请假申请审批Demo' ROW_FORMAT = DYNAMIC;
 
 -- ----------------------------
 -- Table structure for mf_api
@@ -1924,5 +1957,57 @@ CREATE TABLE `flw_mf_manage`  (
                                   `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
                                   PRIMARY KEY (`id`) USING BTREE
 ) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '流程管理' ROW_FORMAT = DYNAMIC;
+
+INSERT INTO `flw_mf_manage` VALUES ('b686750cc7edd180d4f5c4ac8d5299fa', 'demo_leave_apply_release', '工作流样例审批', '工作流试用样例', 1, 1, '{\"nodes\":[{\"id\":\"node_start_1\",\"type\":\"custom\",\"draggable\":true,\"initialized\":false,\"position\":{\"x\":250,\"y\":50},\"data\":{\"type\":\"start\",\"label\":\"开始\",\"icon\":\"Play\"},\"label\":\"开始\"},{\"id\":\"node_approval_1776677052658\",\"type\":\"custom\",\"draggable\":true,\"initialized\":false,\"position\":{\"x\":550,\"y\":50},\"data\":{\"type\":\"approval\",\"label\":\"审批\",\"approvalType\":\"OR\",\"userIds\":[\"c51fde3955594074bb4db31e654a4483\"],\"userNames\":[\"mfish\"]},\"label\":\"审批\"},{\"id\":\"node_approval_1776677060910\",\"type\":\"custom\",\"draggable\":true,\"initialized\":false,\"position\":{\"x\":981.25,\"y\":47.5},\"data\":{\"type\":\"approval\",\"label\":\"审批\",\"approvalType\":\"OR\",\"roleIds\":[\"4b423f7b1ac0ed0b46a8e5ec3389ac14\"],\"roleNames\":[\"管理\"]},\"label\":\"审批\"},{\"id\":\"node_end_1776677072235\",\"type\":\"custom\",\"draggable\":true,\"initialized\":false,\"position\":{\"x\":1360,\"y\":221.24999999999997},\"data\":{\"type\":\"end\",\"label\":\"结束\",\"executionListeners\":[{\"event\":\"start\",\"type\":\"class\",\"value\":\"cn.com.mfish.workflow.handler.CompleteCallbackHandler\"}]},\"label\":\"结束\"}],\"edges\":[{\"id\":\"e-node_start_1-right-node_approval_1776677052658-left\",\"type\":\"custom\",\"source\":\"node_start_1\",\"target\":\"node_approval_1776677052658\",\"sourceHandle\":\"right\",\"targetHandle\":\"left\",\"data\":{\"showArrow\":true,\"pathType\":\"default\",\"condition\":null},\"label\":\"\",\"animated\":true,\"style\":{\"stroke\":\"#EE4F12\",\"strokeWidth\":2},\"markerEnd\":{\"type\":\"arrowclosed\",\"color\":\"#EE4F12\"},\"sourceX\":492.5,\"sourceY\":80.66667175292969,\"targetX\":547.5,\"targetY\":110.66665649414062},{\"id\":\"e-node_approval_1776677052658-right-node_approval_1776677060910-left\",\"type\":\"custom\",\"source\":\"node_approval_1776677052658\",\"target\":\"node_approval_1776677060910\",\"sourceHandle\":\"right\",\"targetHandle\":\"left\",\"data\":{\"showArrow\":true,\"pathType\":\"default\",\"condition\":\"approved\"},\"label\":\"\",\"animated\":true,\"style\":{\"stroke\":\"#EE4F12\",\"strokeWidth\":2},\"markerEnd\":{\"type\":\"arrowclosed\",\"color\":\"#EE4F12\"},\"sourceX\":792.5,\"sourceY\":110.66665649414062,\"targetX\":978.75,\"targetY\":108.16665649414062},{\"id\":\"e-node_approval_1776677060910-top-source-node_approval_1776677052658-top-source\",\"type\":\"custom\",\"source\":\"node_approval_1776677060910\",\"target\":\"node_approval_1776677052658\",\"sourceHandle\":\"top-source\",\"targetHandle\":\"top-source\",\"data\":{\"showArrow\":true,\"pathType\":\"default\",\"condition\":\"rejected\"},\"label\":\"\",\"animated\":true,\"style\":{\"stroke\":\"#EE4F12\",\"strokeWidth\":2},\"markerEnd\":{\"type\":\"arrowclosed\",\"color\":\"#EE4F12\"},\"sourceX\":1101.25,\"sourceY\":45,\"targetX\":670,\"targetY\":47.5},{\"id\":\"e-node_approval_1776677060910-right-node_end_1776677072235-left\",\"type\":\"custom\",\"source\":\"node_approval_1776677060910\",\"target\":\"node_end_1776677072235\",\"sourceHandle\":\"right\",\"targetHandle\":\"left\",\"data\":{\"showArrow\":true,\"pathType\":\"default\",\"condition\":\"approved\"},\"label\":\"\",\"animated\":true,\"style\":{\"stroke\":\"#EE4F12\",\"strokeWidth\":2},\"markerEnd\":{\"type\":\"arrowclosed\",\"color\":\"#EE4F12\"},\"sourceX\":1223.75,\"sourceY\":108.16665649414062,\"targetX\":1357.5,\"targetY\":251.9166564941406},{\"id\":\"e-node_approval_1776677052658-bottom-node_end_1776677072235-left\",\"type\":\"custom\",\"source\":\"node_approval_1776677052658\",\"target\":\"node_end_1776677072235\",\"sourceHandle\":\"bottom\",\"targetHandle\":\"left\",\"data\":{\"showArrow\":true,\"pathType\":\"smoothstep\",\"condition\":\"rejected\"},\"label\":\"\",\"animated\":true,\"style\":{\"stroke\":\"#EE4F12\",\"strokeWidth\":2},\"markerEnd\":{\"type\":\"arrowclosed\",\"color\":\"#EE4F12\"},\"sourceX\":670,\"sourceY\":173.83331298828125,\"targetX\":1357.5,\"targetY\":251.9166564941406}],\"position\":[-27.5,349.1],\"zoom\":0.8,\"viewport\":{\"x\":-27.5,\"y\":349.1,\"zoom\":0.8}}', 0, 'ca50d1785a07f71abbec0da4af6b0632d8d51f54c84ca5050debf1c46f529291', 'admin', '2026-04-20 17:25:00', 'admin', '2026-04-20 17:25:05');
+
+-- ----------------------------
+-- Table structure for ai_model_config
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_model_config`;
+CREATE TABLE `ai_model_config`  (
+                                    `id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '主键',
+                                    `tenant_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '租户ID',
+                                    `provider` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '提供者: openai/ollama/deepseek/zhipuai/anthropic等',
+                                    `model_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '模型名称: gpt-4o, qwen3:8b, deepseek-v3 等',
+                                    `protocol` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '接入协议:openai/ollama/deepseek/anthropic',
+                                    `api_key` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT 'API密钥(加密存储)',
+                                    `base_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT 'API基础地址',
+                                    `max_tokens` int NULL DEFAULT 4096 COMMENT '最大token数',
+                                    `temperature` double NULL DEFAULT 0.7 COMMENT '温度参数',
+                                    `top_p` double NULL DEFAULT NULL COMMENT 'top_p参数',
+                                    `completions_path` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '补全项路径',
+                                    `enabled` tinyint NULL DEFAULT 1 COMMENT '是否启用 1启用 0禁用',
+                                    `sort_order` int NULL DEFAULT 0 COMMENT '排序(决定fallback优先级)',
+                                    `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '备注',
+                                    `create_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '创建人',
+                                    `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
+                                    `update_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '修改人',
+                                    `update_time` datetime NULL DEFAULT NULL COMMENT '修改时间',
+                                    PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = 'AI模型配置信息' ROW_FORMAT = Dynamic;
+
+-- ----------------------------
+-- Table structure for ai_mcp_server_config
+-- ----------------------------
+DROP TABLE IF EXISTS `ai_mcp_server_config`;
+CREATE TABLE `ai_mcp_server_config`  (
+                                         `id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '主键',
+                                         `server_name` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT 'MCP服务器名称',
+                                         `transport_type` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '传输类型: stdio/sse/streamable',
+                                         `command` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT 'stdio模式启动命令(如node/python)',
+                                         `args` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT 'stdio模式参数(JSON数组,如["server.js","--port","3000"])',
+                                         `env` text CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL COMMENT 'stdio模式环境变量(JSON对象)',
+                                         `sse_url` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '远程服务基础URL(sse/streamable通用,如https://mcp.example.com)',
+                                         `sse_endpoint` varchar(200) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '远程服务端点路径(sse/streamable通用,如/sse或/mcp)',
+                                         `auth_token` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '认证Token(Bearer)',
+                                         `status` tinyint NOT NULL DEFAULT 0 COMMENT '状态 0正常 1停用',
+                                         `remark` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '备注',
+                                         `create_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '创建人',
+                                         `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
+                                         `update_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '修改人',
+                                         `update_time` datetime NULL DEFAULT NULL COMMENT '修改时间',
+                                         PRIMARY KEY (`id`) USING BTREE,
+                                         UNIQUE INDEX `server_name_index`(`server_name`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = 'MCP服务器配置表' ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;

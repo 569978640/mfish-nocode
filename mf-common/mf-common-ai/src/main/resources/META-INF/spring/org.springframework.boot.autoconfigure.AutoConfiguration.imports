@@ -1,3 +1,3 @@
-cn.com.mfish.common.ai.agent.GatewayAssistant
-cn.com.mfish.common.ai.config.AiConfig
-cn.com.mfish.common.ai.config.OpenAiConfigLogger
+cn.com.mfish.common.ai.engine.ApiToolAutoConfiguration
+cn.com.mfish.common.ai.memory.MemoryAutoConfiguration
+cn.com.mfish.common.ai.capability.CapabilityAutoConfiguration

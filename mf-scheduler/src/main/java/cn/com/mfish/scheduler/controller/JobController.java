@@ -28,7 +28,7 @@ import java.util.stream.Collectors;
  * @description: 定时调度任务
  * @author: mfish
  * @date: 2023-02-03
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 @Slf4j
 @Tag(name = "定时调度任务")
@@ -94,6 +94,14 @@ public class JobController {
         return jobService.updateJob(job);
     }
 
+    /**
+     * 设置定时任务状态（启动/暂停）
+     *
+     * @param job 定时调度任务对象（包含任务ID和状态）
+     * @return 返回状态设置结果
+     * @throws SchedulerException    调度器异常
+     * @throws ClassNotFoundException 类未找到异常
+     */
     @Log(title = "定时调度任务-设置状态", operateType = OperateType.UPDATE)
     @Operation(summary = "定时调度任务-设置状态", description = "定时调度任务-设置状态")
     @PutMapping("/status")
@@ -102,6 +110,12 @@ public class JobController {
         return jobService.setStatus(job);
     }
 
+    /**
+     * 立即执行一次定时任务
+     *
+     * @param job 定时调度任务对象（包含任务ID）
+     * @return 返回执行结果
+     */
     @Log(title = "立即执行", operateType = OperateType.UPDATE)
     @Operation(summary = "立即执行", description = "定时调度任务-设置状态")
     @PutMapping("/execute")

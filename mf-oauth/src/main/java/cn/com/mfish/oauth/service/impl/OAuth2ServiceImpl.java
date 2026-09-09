@@ -19,12 +19,12 @@ import cn.com.mfish.oauth.oltu.as.request.OAuthTokenRequest;
 import cn.com.mfish.oauth.oltu.common.OAuth;
 import cn.com.mfish.oauth.service.OAuth2Service;
 import jakarta.annotation.Resource;
-import org.apache.shiro.SecurityUtils;
-import org.apache.shiro.subject.Subject;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.cloud.context.config.annotation.RefreshScope;
 import org.springframework.data.redis.core.RedisTemplate;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -32,6 +32,7 @@ import java.util.Objects;
 import java.util.concurrent.TimeUnit;
 
 /**
+ * @description: OAuth2服务实现类，基于Redis实现授权码管理和访问令牌的构建、刷新等核心OAuth2流程
  * @author: mfish
  * @date: 2020/2/15 16:07
  */
@@ -55,6 +56,12 @@ public class OAuth2ServiceImpl implements OAuth2Service {
     @Value("${oauth2.expire.refreshToken}")
     private long reTokenExpire = 604800;
 
+    /**
+     * 构建授权码，生成唯一code并存储到Redis
+     *
+     * @param request OAuth2授权请求对象
+     * @return 授权码对象
+     */
     @Override
     public AuthorizationCode buildCode(OAuthAuthzRequest request) {
         AuthorizationCode code = setProperty(request);
@@ -75,36 +82,52 @@ public class OAuth2ServiceImpl implements OAuth2Service {
     private AuthorizationCode setProperty(OAuthRequest request) {
         AuthorizationCode code = new AuthorizationCode();
         code.setClientId(request.getClientId());
-        Subject subject = SecurityUtils.getSubject();
-        code.setUserId((String) subject.getPrincipal());
-        SsoUser user = ssoUserService.getUserById(code.getUserId());
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String userId = (String) authentication.getPrincipal();
+        code.setUserId(userId);
+        SsoUser user = ssoUserService.getUserById(userId);
         if (user == null) {
-            userTokenCache.delUserTokenCache(DeviceType.Web, subject.getSession().getId().toString(), code.getUserId());
+            userTokenCache.delUserTokenCache(DeviceType.Web, request.getRequest().getSession().getId(), userId);
             throw new MyRuntimeException("错误:未获取到用户信息");
         }
-        List<TenantVo> tenants = ssoUserService.getUserTenants(code.getUserId());
+        List<TenantVo> tenants = ssoUserService.getUserTenants(userId);
         if (tenants != null && !tenants.isEmpty()) {
-            //设置第一个为默认登录租户
             code.setTenantId(tenants.getFirst().getId());
         }
         code.setAccount(user.getAccount());
-        code.setCodeSessionId(subject.getSession().getId().toString());
+        code.setCodeSessionId(request.getRequest().getSession().getId());
         code.setScope(StringUtils.join(request.getScopes().iterator(), ","));
         code.setRedirectUri(request.getRedirectURI());
         code.setParentToken(request.getParam(OAuth.OAUTH_ACCESS_TOKEN));
         return code;
     }
 
+    /**
+     * 保存授权码到Redis缓存，设置过期时间
+     *
+     * @param code 授权码对象
+     */
     @Override
     public void setCode(AuthorizationCode code) {
         redisTemplate.opsForValue().set(RedisPrefix.buildAuthCodeKey(code.getCode()), code, codeExpire, TimeUnit.SECONDS);
     }
 
+    /**
+     * 从Redis中删除授权码
+     *
+     * @param code 授权码值
+     */
     @Override
     public void delCode(String code) {
         redisTemplate.delete(RedisPrefix.buildAuthCodeKey(code));
     }
 
+    /**
+     * 从Redis中获取授权码信息
+     *
+     * @param code 授权码值
+     * @return 授权码对象
+     */
     @Override
     public AuthorizationCode getCode(String code) {
         return (AuthorizationCode) redisTemplate.opsForValue().get(RedisPrefix.buildAuthCodeKey(code));
@@ -122,13 +145,20 @@ public class OAuth2ServiceImpl implements OAuth2Service {
         return code2Token(oAuthTokenRequest, code);
     }
 
+    /**
+     * 通过授权码构建访问令牌，生成accessToken和refreshToken并存储
+     *
+     * @param request OAuth2令牌请求对象
+     * @param code    授权码对象
+     * @return 访问令牌对象
+     */
     @Override
     public RedisAccessToken code2Token(OAuthTokenRequest request, AuthorizationCode code) {
         RedisAccessToken accessToken = new RedisAccessToken();
         BeanUtils.copyProperties(code, accessToken);
         accessToken.setAccessToken(Utils.uuid32());
         accessToken.setRefreshToken(Utils.uuid32());
-        accessToken.setTokenSessionId(SecurityUtils.getSubject().getSession().getId().toString());
+        accessToken.setTokenSessionId(request.getRequest().getSession().getId());
         accessToken.setGrantType(request.getGrantType());
         accessToken.setClientSecret(request.getClientSecret());
         accessToken.setExpire(tokenExpire);
@@ -140,6 +170,12 @@ public class OAuth2ServiceImpl implements OAuth2Service {
         return accessToken;
     }
 
+    /**
+     * 刷新访问令牌，删除旧令牌并生成新的accessToken和refreshToken
+     *
+     * @param token 原始访问令牌对象
+     * @return 新的访问令牌对象
+     */
     @Override
     public RedisAccessToken refresh2Token(RedisAccessToken token) {
         webTokenService.delToken(token.getAccessToken());
@@ -151,6 +187,4 @@ public class OAuth2ServiceImpl implements OAuth2Service {
         webTokenService.setRefreshToken(token);
         return token;
     }
-
-
 }

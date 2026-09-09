@@ -1,6 +1,6 @@
 package cn.com.mfish.workflow.nodes;
 
-import cn.com.mfish.common.core.utils.StringUtils;
+import cn.com.mfish.workflow.enums.ApproveType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
@@ -9,7 +9,6 @@ import org.flowable.bpmn.model.MultiInstanceLoopCharacteristics;
 import org.flowable.bpmn.model.SequenceFlow;
 import org.flowable.bpmn.model.UserTask;
 
-import java.util.Arrays;
 import java.util.List;
 
 /**
@@ -22,21 +21,32 @@ import java.util.List;
 @Data
 @Schema(description = "审批节点")
 public class ApprovalNode extends BaseNode {
-    @Schema(description = "指定审批人")
-    private String assignee;
     @Schema(description = "候选用户列表")
-    private String candidateUsers;
+    private List<String> candidateUsers;
     @Schema(description = "候选组列表")
-    private String candidateGroups;
-    @Schema(description = "审批类型（OR 或签，AND 会签，PERCENT 按比例会签）")
-    private String approvalType;
+    private List<String> candidateGroups;
+    @Schema(description = "审批类型（OR 或签，AND 会签）")
+    private ApproveType approvalType;
     @Schema(description = "会签完成比例（0-100 之间的整数，仅在 approvalType 为 PERCENT 时有效）")
     private Integer completionPercent;
 
+    /**
+     * 审批节点构造方法
+     *
+     * @param id            节点ID
+     * @param name          节点名称
+     * @param documentation 节点说明
+     */
     public ApprovalNode(String id, String name, String documentation) {
         super(id, name, documentation);
     }
 
+    /**
+     * 创建用户任务节点，并根据审批类型初始化多实例配置
+     *
+     * @param sequenceFlows 所有连线列表
+     * @return 用户任务节点
+     */
     @Override
     protected FlowNode create(List<SequenceFlow> sequenceFlows) {
         UserTask node = new UserTask();
@@ -44,48 +54,35 @@ public class ApprovalNode extends BaseNode {
         return node;
     }
 
+    /**
+     * 初始化用户任务节点
+     * 根据审批类型（会签/或签）配置不同的候选人策略和多实例特征
+     *
+     * @param userTask 用户任务对象
+     */
     private void initUserTask(UserTask userTask) {
-
         // 1. 根据审批类型决定如何处理
-        if ("AND".equalsIgnoreCase(this.getApprovalType())) {
-            // 全部完成模式（100% 会签）
-            initMultiInstance(userTask, null);
-            // 会签模式下只需设置候选人列表（用于任务查询），assignee 会在多实例中动态设置
-            setCandidateInfo(userTask);
-        } else if ("PERCENT".equalsIgnoreCase(this.getApprovalType())
-                && this.getCompletionPercent() != null
-                && this.getCompletionPercent() > 0
-                && this.getCompletionPercent() <= 100) {
-            // 按比例完成模式
-            initMultiInstance(userTask, this.getCompletionPercent());
-            // 会签模式下只需设置候选人列表（用于任务查询），assignee 会在多实例中动态设置
-            setCandidateInfo(userTask);
+        if (this.getApprovalType() == ApproveType.AND) {
+            if (this.getCompletionPercent() == null || this.getCompletionPercent() == 100) {
+                // 全部完成模式（100% 会签）
+                initMultiInstance(userTask, null);
+                // 会签模式下只需设置候选人列表（用于任务查询），assignee 会在多实例中动态设置
+                setCandidateInfo(userTask);
+            } else {
+                // 按比例完成模式
+                initMultiInstance(userTask, this.getCompletionPercent());
+                // 会签模式下只需设置候选人列表（用于任务查询），assignee 会在多实例中动态设置
+                setCandidateInfo(userTask);
+            }
+
         } else {
             // 或签 (OR) 或无指定类型：普通单签模式
             // Flowable 中，当 UserTask 设置了多个候选人（candidateUsers 或 candidateGroups），
             // 默认就是或签模式：任意一个候选人审批通过后，流程即进入下一个节点
-            setAssigneeAndCandidates(userTask);
+            setCandidateInfo(userTask);
         }
     }
 
-    /**
-     * 设置审批人和候选人（用于单签/或签模式）
-     *
-     * @param userTask 用户任务对象
-     */
-    private void setAssigneeAndCandidates(UserTask userTask) {
-        // 优先使用指定审批人
-        if (StringUtils.isNotBlank(this.getAssignee())) {
-            userTask.setAssignee(this.getAssignee());
-        }
-        // 如果没有指定审批人，则使用候选人列表
-        if (StringUtils.isNotBlank(this.getCandidateUsers())) {
-            userTask.setCandidateUsers(Arrays.asList(this.getCandidateUsers().split(",")));
-        }
-        if (StringUtils.isNotBlank(this.getCandidateGroups())) {
-            userTask.setCandidateGroups(Arrays.asList(this.getCandidateGroups().split(",")));
-        }
-    }
 
     /**
      * 仅设置候选人信息（用于会签模式，assignee 由多实例动态设置）
@@ -95,11 +92,11 @@ public class ApprovalNode extends BaseNode {
     private void setCandidateInfo(UserTask userTask) {
         // 会签模式下，assignee 会被设置为 ${elementVariable}，从集合变量中取值
         // 这里只设置候选人列表，用于任务查询和权限验证
-        if (StringUtils.isNotBlank(this.getCandidateUsers())) {
-            userTask.setCandidateUsers(Arrays.asList(this.getCandidateUsers().split(",")));
+        if (this.getCandidateUsers() != null && !this.getCandidateUsers().isEmpty()) {
+            userTask.setCandidateUsers(this.getCandidateUsers());
         }
-        if (StringUtils.isNotBlank(this.getCandidateGroups())) {
-            userTask.setCandidateGroups(Arrays.asList(this.getCandidateGroups().split(",")));
+        if (this.getCandidateGroups() != null && !this.getCandidateGroups().isEmpty()) {
+            userTask.setCandidateGroups(this.getCandidateGroups());
         }
     }
 

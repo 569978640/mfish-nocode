@@ -18,11 +18,17 @@ import java.util.List;
  * @description: 界面配置
  * @author: mfish
  * @date: 2023-03-07
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 @Service
 public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig> implements SysConfigService {
 
+    /**
+     * 查询用户所有系统配置
+     *
+     * @param userId 用户ID
+     * @return 系统配置列表
+     */
     @Override
     public List<SysConfig> querySysConfig(String userId) {
         if (StringUtils.isEmpty(userId)) {
@@ -31,6 +37,13 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
         return baseMapper.selectList(new LambdaQueryWrapper<SysConfig>().eq(SysConfig::getUserId, userId));
     }
 
+    /**
+     * 根据用户ID和配置类型查询系统配置
+     *
+     * @param userId 用户ID
+     * @param type   配置类型
+     * @return 系统配置对象
+     */
     @Override
     public SysConfig querySysConfig(String userId, Integer type) {
         if (StringUtils.isEmpty(userId) || null == type) {
@@ -40,6 +53,12 @@ public class SysConfigServiceImpl extends ServiceImpl<SysConfigMapper, SysConfig
                 .eq(SysConfig::getType, type));
     }
 
+    /**
+     * 保存系统配置（已存在则更新，否则新增）
+     *
+     * @param sysConfig 系统配置对象
+     * @return 保存结果
+     */
     @Override
     public Result<SysConfig> saveSysConfig(SysConfig sysConfig) {
         String userId = AuthInfoUtils.getCurrentUserId();

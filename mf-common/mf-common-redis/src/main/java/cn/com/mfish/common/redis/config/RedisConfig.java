@@ -1,9 +1,5 @@
 package cn.com.mfish.common.redis.config;
 
-import com.fasterxml.jackson.annotation.JsonAutoDetect;
-import com.fasterxml.jackson.annotation.JsonTypeInfo;
-import com.fasterxml.jackson.annotation.PropertyAccessor;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Lazy;
@@ -39,9 +35,6 @@ public class RedisConfig {
         redisTemplate.setKeySerializer(keySerializer);
         redisTemplate.setHashKeySerializer(keySerializer);
         // 设置value的序列化方式，采用Jackson2JsonRedisSerializer
-        ObjectMapper objectMapper = new ObjectMapper();
-        objectMapper.setVisibility(PropertyAccessor.ALL, JsonAutoDetect.Visibility.ANY);
-        objectMapper.activateDefaultTyping(objectMapper.getPolymorphicTypeValidator(), ObjectMapper.DefaultTyping.NON_FINAL, JsonTypeInfo.As.PROPERTY);
         RedisSerializer<Object> valueSerializer = RedisSerializer.json();
         redisTemplate.setValueSerializer(valueSerializer);
         redisTemplate.setHashValueSerializer(valueSerializer);
@@ -62,22 +55,4 @@ public class RedisConfig {
         return template;
     }
 
-    /**
-     * redis存储session序列化方式使用GenericJackson2JsonRedisSerializer会造成反序列化失败
-     * 单独定义template
-     *
-     * @param redisConnectionFactory redis连接工厂
-     * @return redisTemplate
-     */
-    @Bean(name = "sessionRedisTemplate")
-    public RedisTemplate<String, Object> sessionRedisTemplate(@Lazy RedisConnectionFactory redisConnectionFactory) {
-        RedisTemplate<String, Object> sessionRedisTemplate = new RedisTemplate<>();
-        sessionRedisTemplate.setConnectionFactory(redisConnectionFactory);
-        // 设置key的序列化方式，采用StringRedisSerializer
-        GenericToStringSerializer<String> keySerializer = new GenericToStringSerializer<>(String.class);
-        sessionRedisTemplate.setKeySerializer(keySerializer);
-        sessionRedisTemplate.setHashKeySerializer(keySerializer);
-        sessionRedisTemplate.afterPropertiesSet();
-        return sessionRedisTemplate;
-    }
 }

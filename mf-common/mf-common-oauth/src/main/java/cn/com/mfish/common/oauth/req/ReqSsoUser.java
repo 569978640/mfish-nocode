@@ -9,7 +9,7 @@ import lombok.experimental.Accessors;
  * @Description: 用户信息
  * @Author: mfish
  * @date: 2022-11-13
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 @Data
 @Accessors(chain = true)
@@ -27,4 +27,8 @@ public class ReqSsoUser {
     private String nickname;
     @Schema(description = "状态（0正常 1停用）")
     private Integer status;
+    @Schema(description = "通过用户名、昵称、手机号进行模糊搜索")
+    private String condition;
+    @Schema(description = "用户ID,多个以逗号分隔")
+    private String userIds;
 }

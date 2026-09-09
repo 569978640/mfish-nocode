@@ -15,7 +15,10 @@ import cn.com.mfish.common.oauth.api.entity.UserRole;
 import cn.com.mfish.common.oauth.api.vo.TenantVo;
 import cn.com.mfish.common.oauth.api.vo.UserInfoVo;
 import cn.com.mfish.common.oauth.common.OauthUtils;
-import cn.com.mfish.common.oauth.entity.*;
+import cn.com.mfish.common.oauth.entity.OnlineUser;
+import cn.com.mfish.common.oauth.entity.RedisAccessToken;
+import cn.com.mfish.common.oauth.entity.SsoUser;
+import cn.com.mfish.common.oauth.entity.WeChatToken;
 import cn.com.mfish.common.oauth.req.ReqSsoUser;
 import cn.com.mfish.common.oauth.service.SsoOrgService;
 import cn.com.mfish.common.oauth.service.SsoUserService;
@@ -26,13 +29,8 @@ import cn.com.mfish.oauth.common.PasswordHelper;
 import cn.com.mfish.oauth.mapper.SsoUserMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
-import com.github.pagehelper.PageHelper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.shiro.authc.SimpleAuthenticationInfo;
-import org.apache.shiro.authc.UsernamePasswordToken;
-import org.apache.shiro.authc.credential.HashedCredentialsMatcher;
-import org.apache.shiro.lang.util.ByteSource;
 import org.springframework.beans.BeanUtils;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.Cursor;
@@ -46,14 +44,13 @@ import java.util.*;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * @description: 用户服务实现类，提供用户管理、密码管理、角色权限、在线用户等核心功能
  * @author: mfish
  * @date: 2020/2/13 16:51
  */
 @Service
 @Slf4j
 public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> implements SsoUserService {
-    @Resource
-    PasswordHelper passwordHelper;
     @Resource
     UserTempCache userTempCache;
     @Resource
@@ -62,8 +59,6 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
     UserRoleTempCache userRoleTempCache;
     @Resource
     UserPermissionTempCache userPermissionTempCache;
-    @Resource
-    HashedCredentialsMatcher hashedCredentialsMatcher;
     @Resource
     UserTenantTempCache userTenantTempCache;
     @Resource
@@ -101,7 +96,7 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
             return result;
         }
         user.setOldPassword(setOldPwd(user.getOldPassword(), user.getPassword()));
-        user.setPassword(passwordHelper.encryptPassword(userId, newPwd, user.getSalt()));
+        user.setPassword(PasswordHelper.encryptPassword(userId, newPwd, user.getSalt()));
         if (user.getOldPassword().contains(user.getPassword())) {
             return Result.fail(false, "错误:密码5次内不得循环使用");
         }
@@ -113,20 +108,21 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
         return Result.fail(false, "错误:用户密码-修改密码失败");
     }
 
+    /**
+     * 验证旧密码是否正确，超户重置其他用户密码时跳过验证
+     *
+     * @param ssoUser 用户信息
+     * @param oldPwd  旧密码
+     * @return 验证结果
+     */
     private Result<Boolean> verifyOldPwd(SsoUser ssoUser, String oldPwd) {
         //旧密码为null时不校验旧密码
         //超级管理员重置其他用户密码时不校验老密码
         if (StringUtils.isEmpty(ssoUser.getPassword()) || AuthInfoUtils.isSuper() && !AuthInfoUtils.isSuper(ssoUser.getId())) {
             return Result.ok();
         }
-        SimpleAuthenticationInfo authenticationInfo = new SimpleAuthenticationInfo(
-                ssoUser.getId(), //用户名
-                ssoUser.getPassword(), //密码
-                ByteSource.Util.bytes(ssoUser.getId() + ssoUser.getSalt()),
-                ""  //调用基类realm
-        );
-        UsernamePasswordToken token = new UsernamePasswordToken(ssoUser.getAccount(), oldPwd);
-        boolean result = hashedCredentialsMatcher.doCredentialsMatch(token, authenticationInfo);
+        String hashedOldPwd = PasswordHelper.encryptPassword(ssoUser.getId(), oldPwd, ssoUser.getSalt());
+        boolean result = hashedOldPwd.equals(ssoUser.getPassword());
         if (result) {
             return Result.ok(true, "密码校验正确");
         }
@@ -173,6 +169,12 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
         return StringUtils.join(list.iterator(), ",");
     }
 
+    /**
+     * 新增用户，自动生成盐值和加密密码，同时创建用户组织和角色关系
+     *
+     * @param user 用户信息
+     * @return 新增结果
+     */
     @Override
     @Transactional
     public Result<SsoUser> insertUser(SsoUser user) {
@@ -187,7 +189,7 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
         }
         //短信直接创建用户可以初始不设置密码此处密码允许为空
         if (!StringUtils.isEmpty(user.getPassword())) {
-            user.setPassword(passwordHelper.encryptPassword(user.getId(), user.getPassword(), user.getSalt()));
+            user.setPassword(PasswordHelper.encryptPassword(user.getId(), user.getPassword(), user.getSalt()));
         }
         if (null == user.getStatus()) {
             user.setStatus(0);
@@ -205,6 +207,12 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
         throw new MyRuntimeException("错误:用户信息-新增失败!");
     }
 
+    /**
+     * 更新用户信息，同步更新组织和角色关系，并清除相关缓存
+     *
+     * @param user 用户信息
+     * @return 更新结果
+     */
     @Override
     @Transactional
     public Result<SsoUser> updateUser(SsoUser user) {
@@ -261,6 +269,12 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
         }
     }
 
+    /**
+     * 逻辑删除用户，设置删除标志并清除缓存
+     *
+     * @param id 用户ID
+     * @return 是否删除成功
+     */
     @Override
     public boolean removeUser(String id) {
         SsoUser ssoUser = new SsoUser();
@@ -275,45 +289,96 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
     }
 
 
+    /**
+     * 根据账号查询用户信息
+     *
+     * @param account 账号（支持用户名、手机号、邮箱）
+     * @return 用户信息
+     */
     @Override
     public SsoUser getUserByAccount(String account) {
         String userId = account2IdTempCache.getFromCacheAndDB(account);
         return getUserById(userId);
     }
 
+    /**
+     * 根据Gitee账号查询用户
+     *
+     * @param gitee Gitee用户名
+     * @return 用户信息
+     */
     @Override
     public SsoUser getUserByGitee(String gitee) {
         return baseMapper.selectOne(new LambdaQueryWrapper<SsoUser>().eq(SsoUser::getGitee, gitee));
     }
 
+    /**
+     * 根据Github账号查询用户
+     *
+     * @param github Github用户名
+     * @return 用户信息
+     */
     @Override
     public SsoUser getUserByGithub(String github) {
         return baseMapper.selectOne(new LambdaQueryWrapper<SsoUser>().eq(SsoUser::getGithub, github));
     }
 
+    /**
+     * 根据账号查询用户信息（不含密码）
+     *
+     * @param account 账号
+     * @return 用户信息（脱敏）
+     */
     @Override
     public UserInfo getUserByAccountNoPwd(String account) {
         String userId = account2IdTempCache.getFromCacheAndDB(account);
         return getUserByIdNoPwd(userId);
     }
 
+    /**
+     * 根据账号列表批量获取用户ID
+     *
+     * @param accounts 账号列表
+     * @return 用户ID列表
+     */
     @Override
     public List<String> getUserIdsByAccounts(List<String> accounts) {
         return baseMapper.getUserIdsByAccounts(accounts);
     }
 
+    /**
+     * 根据账号列表批量获取用户信息
+     *
+     * @param accounts 账号列表
+     * @return 用户信息列表
+     */
     @Override
     public List<UserInfo> getUsersByAccounts(List<String> accounts) {
         return baseMapper.getUsersByAccounts(accounts);
     }
 
+    /**
+     * 根据用户ID获取用户信息（含密码）
+     *
+     * @param userId 用户ID
+     * @return 用户信息
+     */
     @Override
     public SsoUser getUserById(String userId) {
         return userTempCache.getFromCacheAndDB(userId);
     }
 
+    /**
+     * 根据用户ID获取用户信息（不含密码）
+     *
+     * @param userId 用户ID
+     * @return 用户信息（脱敏）
+     */
     public UserInfo getUserByIdNoPwd(String userId) {
         SsoUser ssoUser = userTempCache.getFromCacheAndDB(userId);
+        if (ssoUser == null) {
+            throw new MyRuntimeException("错误:未找到用户信息");
+        }
         UserInfo userInfo = new UserInfo();
         BeanUtils.copyProperties(ssoUser, userInfo);
         return userInfo;
@@ -401,13 +466,6 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
     @Override
     public boolean isExistUserOrg(String userId, String orgId) {
         return baseMapper.isExistUserOrg(userId, orgId) > 0;
-    }
-
-    @Override
-    public List<SimpleUserInfo> searchUserList(String condition) {
-        //最多检索50条
-        PageHelper.startPage(1, 50);
-        return baseMapper.searchUserList(condition);
     }
 
     @Override
@@ -516,19 +574,19 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
         //脱敏
         ssoUser.setPassword(null);
         ssoUser.setOldPassword(null);
-        if(ssoUser.getPhone() != null){
+        if (ssoUser.getPhone() != null) {
             ssoUser.setPhone(ssoUser.getPhone().replaceAll("(\\d{3})(\\d*)(\\d{2})", "$1****$3"));
         }
-        if(ssoUser.getEmail() != null){
+        if (ssoUser.getEmail() != null) {
             ssoUser.setEmail(ssoUser.getEmail().replaceAll("(\\w)\\w*(@\\w+\\.\\w+)", "$1****$2"));
         }
-        if(ssoUser.getGitee() != null){
+        if (ssoUser.getGitee() != null) {
             ssoUser.setGitee(ssoUser.getGitee().replaceAll("(\\w{1})(\\w*)(\\w{1})", "$1****$3"));
         }
-        if(ssoUser.getGithub() != null){
+        if (ssoUser.getGithub() != null) {
             ssoUser.setGithub(ssoUser.getGithub().replaceAll("(\\w{1})(\\w*)(\\w{1})", "$1****$3"));
         }
-        if(ssoUser.getOpenid() != null){
+        if (ssoUser.getOpenid() != null) {
             ssoUser.setOpenid(ssoUser.getOpenid().replaceAll("(\\w{1})(\\w*)(\\w{2})", "$1****$3"));
         }
         return ssoUser;
@@ -537,15 +595,15 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
     @Override
     public Result<Boolean> unbindGitee(String userId) {
         Result<SsoUser> result = unbindVerify(userId);
-        if(!result.isSuccess()){
+        if (!result.isSuccess()) {
             return Result.fail(false, result.getMsg());
         }
         SsoUser ssoUser = result.getData();
-        if(StringUtils.isEmpty(ssoUser.getGitee())){
+        if (StringUtils.isEmpty(ssoUser.getGitee())) {
             return Result.fail(false, "错误：未绑定gitee账号");
         }
         ssoUser.setGitee("");
-        if(baseMapper.updateById(ssoUser) > 0){
+        if (baseMapper.updateById(ssoUser) > 0) {
             userTempCache.removeOneCache(userId);
             return Result.ok(true, "解绑gitee账号成功");
         }
@@ -560,15 +618,15 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
             return Result.fail(false, "警告：Gitee账号已被其他用户绑定");
         }
         String userId = AuthInfoUtils.getCurrentUserId();
-        if(StringUtils.isEmpty(userId)){
+        if (StringUtils.isEmpty(userId)) {
             return Result.fail(false, "错误：未获取到当前用户ID");
         }
         SsoUser ssoUser = userTempCache.getFromCacheAndDB(userId);
-        if(StringUtils.isNotEmpty(ssoUser.getGitee())){
+        if (StringUtils.isNotEmpty(ssoUser.getGitee())) {
             return Result.fail(false, "错误：已绑定gitee账号");
         }
         ssoUser.setGitee(giteeAccount);
-        if(baseMapper.updateById(ssoUser) > 0){
+        if (baseMapper.updateById(ssoUser) > 0) {
             userTempCache.removeOneCache(AuthInfoUtils.getCurrentUserId());
             return Result.ok(true, "绑定gitee账号成功");
         }
@@ -578,15 +636,15 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
     @Override
     public Result<Boolean> unbindGithub(String userId) {
         Result<SsoUser> result = unbindVerify(userId);
-        if(!result.isSuccess()){
+        if (!result.isSuccess()) {
             return Result.fail(false, result.getMsg());
         }
         SsoUser ssoUser = result.getData();
-        if(StringUtils.isEmpty(ssoUser.getGithub())){
+        if (StringUtils.isEmpty(ssoUser.getGithub())) {
             return Result.fail(false, "错误：未绑定github账号");
         }
         ssoUser.setGithub("");
-        if(baseMapper.updateById(ssoUser) > 0){
+        if (baseMapper.updateById(ssoUser) > 0) {
             userTempCache.removeOneCache(userId);
             return Result.ok(true, "解绑github账号成功");
         }
@@ -601,32 +659,45 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
             return Result.fail(false, "警告：Github账号已被其他用户绑定");
         }
         String userId = AuthInfoUtils.getCurrentUserId();
-        if(StringUtils.isEmpty(userId)){
+        if (StringUtils.isEmpty(userId)) {
             return Result.fail(false, "错误：未获取到当前用户ID");
         }
         SsoUser ssoUser = userTempCache.getFromCacheAndDB(userId);
-        if(StringUtils.isNotEmpty(ssoUser.getGithub())){
+        if (StringUtils.isNotEmpty(ssoUser.getGithub())) {
             return Result.fail(false, "错误：已绑定github账号");
         }
         ssoUser.setGithub(githubAccount);
-        if(baseMapper.updateById(ssoUser) > 0){
+        if (baseMapper.updateById(ssoUser) > 0) {
             userTempCache.removeOneCache(AuthInfoUtils.getCurrentUserId());
             return Result.ok(true, "绑定github账号成功");
         }
         return Result.fail(false, "错误：绑定github账号失败");
     }
 
+    /**
+     * 解绑前验证，确保用户已设置密码且账号非自动生成
+     *
+     * @param userId 用户ID
+     * @return 验证结果
+     */
     private Result<SsoUser> unbindVerify(String userId) {
         SsoUser ssoUser = userTempCache.getFromCacheAndDB(userId);
-        if(StringUtils.isEmpty(ssoUser.getPassword())){
+        if (StringUtils.isEmpty(ssoUser.getPassword())) {
             return Result.fail(ssoUser, "错误：未设置密码，请设置密码后再解绑");
         }
-        if(StringUtils.isMatch("^G[0-9]*$", ssoUser.getAccount())){
+        if (StringUtils.isMatch("^G[0-9]*$", ssoUser.getAccount())) {
             return Result.fail(ssoUser, "错误：自动生成账号，请在个人信息中修改账号名称后再解绑");
         }
         return Result.ok(ssoUser, "验证通过");
     }
 
+    /**
+     * 构建Web端在线用户信息
+     *
+     * @param redisAccessToken 访问令牌
+     * @param sessionId        会话ID
+     * @return 在线用户信息
+     */
     private OnlineUser buildOnlineUser(RedisAccessToken redisAccessToken, String sessionId) {
         return new OnlineUser().setAccount(redisAccessToken.getAccount())
                 .setSid(SM4Utils.encryptEcb(sm4key, sessionId))
@@ -634,6 +705,13 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
                 .setLoginMode(0).setIp(redisAccessToken.getIp());
     }
 
+    /**
+     * 构建微信端在线用户信息
+     *
+     * @param weChatToken 微信令牌
+     * @param sessionId   会话ID
+     * @return 在线用户信息
+     */
     private OnlineUser buildOnlineUser(WeChatToken weChatToken, String sessionId) {
         return new OnlineUser().setAccount(weChatToken.getAccount())
                 .setSid(SM4Utils.encryptEcb(sm4key, sessionId))

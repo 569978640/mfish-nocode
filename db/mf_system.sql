@@ -1,6 +1,6 @@
-/**
-  系统相关表（采用微服务启动，需要创建该库）
- */
+-- ----------------------------------------
+--  系统相关表（采用微服务启动，需要创建该库）
+-- ----------------------------------------
 DROP DATABASE IF EXISTS `mf_system`;
 CREATE DATABASE  `mf_system` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 SET NAMES utf8mb4;
@@ -123,6 +123,7 @@ INSERT INTO `sys_dict` VALUES ('b0f0a03f9e879c2ce3b7722a3cd01061', 'HTTP请求�
 INSERT INTO `sys_dict` VALUES ('4a9914bd42939163ceb9c5b4002cfa66', 'HTTP请求方式', 'http_request_method', 0, NULL, 'admin', '2025-07-22 14:30:25', 'admin', '2025-07-22 14:30:25');
 INSERT INTO `sys_dict` VALUES ('220bbd3b1dd32fd37d0abbd279a14774', '工作流任务状态', 'workflow_task_status', 0, '工作流任务状态字典', 'admin', '2025-10-10 16:27:01', 'admin', '2025-10-10 16:27:01');
 INSERT INTO `sys_dict` VALUES ('eeb27772c310addeae7c12d296521399', '工作流审批类型', 'workflow_process_key', 0, '工作流流程定义key，例如大屏发布审批是screen_release', 'admin', '2025-10-15 16:34:32', 'admin', '2025-10-15 16:34:32');
+INSERT INTO `sys_dict` VALUES ('cd338555eccf73e26e9243837d6c711e', '模型接入协议', 'ai_model_protocol', 0, 'AI模型接入的协议，比如openai协议', 'admin', '2026-07-10 16:56:59', '', NULL);
 
 -- ----------------------------
 -- Table structure for sys_dict_item
@@ -271,6 +272,12 @@ INSERT INTO `sys_dict_item` VALUES ('2cdf5389b1d6a35e52c14486e04a3a57', '220bbd3
 INSERT INTO `sys_dict_item` VALUES ('261f489024bb90163e49ee85498df47e', '220bbd3b1dd32fd37d0abbd279a14774', 'workflow_task_status', '已审批', 'completed', 0, 2, NULL, 'green', 0, NULL, 'admin', '2025-10-10 16:28:02', 'admin', '2025-10-10 16:28:08');
 INSERT INTO `sys_dict_item` VALUES ('07582f8cb8443cd3de3f5ab150386690', '220bbd3b1dd32fd37d0abbd279a14774', 'workflow_task_status', '已取消', 'terminated', 0, 3, '', 'red', 0, NULL, 'admin', '2025-10-10 16:29:10', 'admin', '2025-10-10 16:29:14');
 INSERT INTO `sys_dict_item` VALUES ('4e14582f0b59762f2ca1cfda04539202', 'eeb27772c310addeae7c12d296521399', 'workflow_process_key', '大屏发布', 'screen_release', 0, 1, 'ant-design:fund-projection-screen-outlined', '', 0, NULL, 'admin', '2025-10-15 16:35:15', 'admin', '2025-10-16 11:04:43');
+INSERT INTO `sys_dict_item` VALUES ('581a7e287feec3be8771175bdc5dab9b', 'eeb27772c310addeae7c12d296521399', 'workflow_process_key', '工作流样例审批', 'demo_leave_apply_release', 0, 2, 'ant-design:fork-outlined', 'blue', 0, '工作流试用样例', 'admin', '2026-04-08 20:08:42', 'admin', '2026-04-20 21:38:45');
+INSERT INTO `sys_dict_item` VALUES ('e100aa3c678f2bf6a4e1e24a9feee89f', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'openai', 'openai', 0, 1, 'ant-design:open-a-i-outlined', 'green', 0, NULL, 'admin', '2026-07-10 16:57:27', 'admin', '2026-07-10 16:57:37');
+INSERT INTO `sys_dict_item` VALUES ('cac0983d1430c0a7dce98bd8c01cc19c', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'ollama', 'ollama', 0, 2, '', 'blue', 0, NULL, 'admin', '2026-07-10 16:58:34', '', NULL);
+INSERT INTO `sys_dict_item` VALUES ('64a2906317754ac19c779e04ddc155de', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'deepseek', 'deepseek', 0, 3, NULL, 'cyan', 0, NULL, 'admin', '2026-07-10 16:58:49', '', NULL);
+INSERT INTO `sys_dict_item` VALUES ('76faf36cc4e459171c273fa833e79ff4', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'anthropic', 'anthropic', 0, 4, NULL, 'pink', 0, NULL, 'admin', '2026-07-10 16:59:22', '', NULL);
+INSERT INTO `sys_dict_item` VALUES ('9f3c1a7d2e5b4a8c6f0d1e2a3b4c5d6e', 'cd338555eccf73e26e9243837d6c711e', 'ai_model_protocol', 'orcarouter', 'orcarouter', 0, 5, NULL, 'gold', 0, 'OrcaRouter 路由网关', 'admin', '2026-08-15 00:00:00', '', NULL);
 
 -- ----------------------------
 -- Table structure for sys_log
@@ -404,5 +411,6 @@ INSERT INTO `sys_dict_category` VALUES ('fb8d6852d275309854125a152f56e40b', 'fe7
 INSERT INTO `sys_dict_category` VALUES ('fc74625ae4c3a53cbea0eb7bdd994a9a', '4d544061656fca47a6dca3896a9f94fb', NULL, '输入框', '000040000200004', 3, 'ant-design:edit-outlined', NULL, 3, 'admin', '2025-07-08 16:03:04', NULL, NULL);
 INSERT INTO `sys_dict_category` VALUES ('fe72c08cf082f8f1c6efef9d28119c45', 'da6694b2d969e270122ad2ee1847ba5d', NULL, '装饰', '0000400004', 2, 'carbon:color-palette', NULL, 3, 'admin', '2024-11-18 17:15:41', 'admin', '2024-11-18 17:15:52');
 INSERT INTO `sys_dict_category` VALUES ('ff8792113848c4a2b03ea98d78381d7a', 'aaf0612479eaffe56b8c3b2af7d3cb8f', NULL, '所有', '000040000500001', 3, 'ant-design:ellipsis-outlined', NULL, 0, 'admin', '2025-03-17 14:42:03', 'admin', '2025-03-17 14:42:19');
+INSERT INTO `sys_dict_category` VALUES ('eb166b740e08373871fc720dc8c62dfe', 'eeaab687ec80b493ab4725977ea975b9', NULL, '列表', '000040000300003', 3, 'ant-design:ordered-list-outlined', NULL, 2, 'admin', '2026-06-04 22:58:26', 'admin', '2026-06-04 22:58:47');
 
 SET FOREIGN_KEY_CHECKS = 1;

@@ -119,6 +119,16 @@ public interface RemoteWorkflowService {
     Result<List<MfTask>> getProcessTasks(@RequestHeader(RPCConstants.REQ_ORIGIN) String origin, @PathVariable String processInstanceId);
 
     /**
+     * 通过业务id查询流程实例任务列表
+     *
+     * @param origin      来源
+     * @param businessKey 业务key
+     * @return 任务列表
+     */
+    @GetMapping("/process/tasks/businessKey/{businessKey}")
+    Result<List<MfTask>> getProcessTasksByBusinessKey(@RequestHeader(RPCConstants.REQ_ORIGIN) String origin, @PathVariable String businessKey);
+
+    /**
      * 查询待处理任务列表
      *
      * @param origin  来源
@@ -209,4 +219,16 @@ public interface RemoteWorkflowService {
      */
     @GetMapping("/process/activeDefinitionKeys/{processInstanceId}")
     Result<List<String>> getActiveDefinitionKeys(@RequestHeader(RPCConstants.REQ_ORIGIN) String origin, @PathVariable String processInstanceId);
+
+    /**
+     * 查询所有已发布的流程定义列表（供 AI 工作流引擎发现可用流程）
+     * <p>
+     * 接入路径：{@code FlowManageController#getActiveFlows}，前缀 {@code /flowManage}。
+     * </p>
+     *
+     * @param origin 来源
+     * @return 已发布流程列表
+     */
+    @GetMapping("/flowManage/activeFlows")
+    Result<List<FlowManage>> getActiveFlows(@RequestHeader(RPCConstants.REQ_ORIGIN) String origin);
 }

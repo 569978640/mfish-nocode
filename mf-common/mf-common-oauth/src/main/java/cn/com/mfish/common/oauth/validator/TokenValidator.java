@@ -20,8 +20,25 @@ public class TokenValidator {
     @Resource
     private WeChatTokenValidator weChatTokenValidator;
 
+    /**
+     * 统一token校验入口，根据token前缀自动选择Web或微信校验器
+     *
+     * @param request 请求对象
+     * @param <R>     请求类型
+     * @return 校验结果
+     */
     public <R> Result<?> validator(R request) {
         String accessToken = AuthInfoUtils.getAccessToken(request);
+        return validate(accessToken);
+    }
+
+    /**
+     * 校验token有效性
+     *
+     * @param accessToken 访问令牌
+     * @return 校验结果
+     */
+    public Result<?> validate(String accessToken) {
         Result<?> result;
         if (!StringUtils.isEmpty(accessToken) && accessToken.startsWith(SerConstant.WX_PREFIX)) {
             result = weChatTokenValidator.validate(accessToken);

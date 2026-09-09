@@ -11,7 +11,7 @@ import cn.com.mfish.common.sys.req.ReqDictItem;
 import cn.com.mfish.common.sys.service.DictItemService;
 import cn.com.mfish.sys.api.entity.DictItem;
 import cn.com.mfish.sys.cache.DictCache;
-import cn.com.mfish.sys.entity.Dict;
+import cn.com.mfish.sys.api.entity.Dict;
 import cn.com.mfish.sys.mapper.DictMapper;
 import com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper;
 import com.github.pagehelper.PageHelper;
@@ -28,7 +28,7 @@ import java.util.List;
  * @Description: 字典项
  * @Author: mfish
  * @date: 2023-01-03
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 @Slf4j
 @Tag(name = "字典项")
@@ -57,6 +57,12 @@ public class DictItemController {
         return Result.ok(new PageResult<>(dictItemService.getDictItems(reqDictItem)), "字典项-查询成功!");
     }
 
+    /**
+     * 根据字典编码获取字典项（值根据类型设置进行转换）
+     *
+     * @param dictCode 字典编码
+     * @return 返回字典项列表
+     */
     @Operation(summary = "根据字典编码获取字典项(值根据类型设置进行转换)")
     @SuppressWarnings("rawtypes")
     @GetMapping("/{dictCode}")

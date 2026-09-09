@@ -4,10 +4,14 @@ spring:
       api-key: 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
       base-url: https://openrouter.ai/api
       chat:
-        options:
-          max-tokens: 1000
-          temperature: 0.7
+        max-tokens: 1000
+        temperature: 0.7
+        model: gemini-3.1-flash-lite
+#          model: deepseek-ai/deepseek-v3.2
     ollama:
       base-url: http://localhost:11434
       chat:
         model: qwen3:8b
+ai:
+  api-key:
+    hex-key: 8ca90bd312db42aac5a8313ce9a0eac3

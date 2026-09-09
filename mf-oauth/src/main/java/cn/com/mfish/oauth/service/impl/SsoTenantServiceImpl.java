@@ -22,7 +22,7 @@ import com.baomidou.mybatisplus.extension.service.impl.ServiceImpl;
 import com.github.pagehelper.PageHelper;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.shiro.authc.IncorrectCredentialsException;
+import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,7 +35,7 @@ import java.util.stream.Collectors;
  * @description: 租户信息表
  * @author: mfish
  * @date: 2023-05-31
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 @Service
 @Slf4j
@@ -49,12 +49,25 @@ public class SsoTenantServiceImpl extends ServiceImpl<SsoTenantMapper, SsoTenant
     @Resource
     ClearCache clearCache;
 
+    /**
+     * 分页查询租户列表
+     *
+     * @param reqSsoTenant 租户查询条件
+     * @param reqPage      分页参数
+     * @return 租户列表
+     */
     @Override
     public List<TenantVo> queryList(ReqSsoTenant reqSsoTenant, ReqPage reqPage) {
         PageHelper.startPage(reqPage.getPageNum(), reqPage.getPageSize());
         return baseMapper.queryList(reqSsoTenant);
     }
 
+    /**
+     * 查询租户详情
+     *
+     * @param id 租户ID
+     * @return 租户信息
+     */
     @Override
     public TenantVo queryInfo(String id) {
         return baseMapper.queryInfo(id);
@@ -203,16 +216,36 @@ public class SsoTenantServiceImpl extends ServiceImpl<SsoTenantMapper, SsoTenant
         throw new MyRuntimeException("错误:租户信息-删除失败!");
     }
 
+    /**
+     * 判断用户是否为租户管理员
+     *
+     * @param userId   用户ID
+     * @param tenantId 租户ID
+     * @return 是否为管理员
+     */
     @Override
     public boolean isTenantMaster(String userId, String tenantId) {
         return baseMapper.isTenantMaster(userId, tenantId) > 0;
     }
 
+    /**
+     * 判断用户是否为指定组织的管理员
+     *
+     * @param userId 用户ID
+     * @param orgId  组织ID
+     * @return 是否为管理员
+     */
     @Override
     public boolean isTenantMasterOrg(String userId, String orgId) {
         return baseMapper.isTenantMasterOrg(userId, orgId) > 0;
     }
 
+    /**
+     * 通过角色编码获取关联的租户列表
+     *
+     * @param roleCode 角色编码
+     * @return 租户列表
+     */
     @Override
     public List<TenantVo> getTenantByRoleCode(String roleCode) {
         return baseMapper.getTenantByRoleCode(roleCode);
@@ -226,10 +259,10 @@ public class SsoTenantServiceImpl extends ServiceImpl<SsoTenantMapper, SsoTenant
             result = ssoUserService.insertUser(ssoUser);
         } catch (MyRuntimeException ex) {
             //包装成shiro异常,便于shiro统一处理
-            throw new IncorrectCredentialsException(ex.getMessage());
+            throw new BadCredentialsException(ex.getMessage());
         }
         if (!result.isSuccess()) {
-            throw new IncorrectCredentialsException(result.getMsg());
+            throw new BadCredentialsException(result.getMsg());
         }
         SsoTenant ssoTenant = new SsoTenant();
         ssoTenant.setUserId(ssoUser.getId());
@@ -246,10 +279,10 @@ public class SsoTenantServiceImpl extends ServiceImpl<SsoTenantMapper, SsoTenant
         try {
             result1 = insertTenant(ssoTenant);
         } catch (MyRuntimeException ex) {
-            throw new IncorrectCredentialsException(ex.getMessage());
+            throw new BadCredentialsException(ex.getMessage());
         }
         if (!result1.isSuccess()) {
-            throw new IncorrectCredentialsException("错误：创建新租户失败");
+            throw new BadCredentialsException("错误：创建新租户失败");
         }
     }
 }

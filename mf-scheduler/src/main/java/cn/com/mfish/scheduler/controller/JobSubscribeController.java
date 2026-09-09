@@ -25,7 +25,7 @@ import java.util.List;
  * @description: 任务订阅表
  * @author: mfish
  * @date: 2023-02-20
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 @Slf4j
 @Tag(name = "任务订阅表")
@@ -50,10 +50,16 @@ public class JobSubscribeController {
                 , "任务订阅表-查询成功!");
     }
 
+    /**
+     * 根据任务ID获取策略列表
+     *
+     * @param jobId 任务ID
+     * @return 返回任务订阅策略列表
+     */
     @Operation(summary = "根据任务ID获取策略列表")
     @GetMapping("/{jobId}")
     @RequiresPermissions("sys:job:query")
-    public Result<List<JobSubscribe>> queryList(@Parameter(name = "jobId", description = "任务ID") @PathVariable("jobId") String jobId) {
+    public Result<List<JobSubscribe>> queryList(@PathVariable @Parameter(name = "jobId", description = "任务ID") String jobId) {
         return Result.ok(jobSubscribeService.getSubscribesByJobId(jobId), "任务策略-查询成功!");
     }
 
@@ -91,6 +97,13 @@ public class JobSubscribeController {
         return Result.fail(jobSubscribe, "错误:任务订阅表-编辑失败!");
     }
 
+    /**
+     * 设置任务订阅状态（启用/禁用）
+     *
+     * @param jobSubscribe 任务订阅对象（包含订阅ID和状态）
+     * @return 返回状态设置结果
+     * @throws SchedulerException 调度器异常
+     */
     @Log(title = "设置订阅状态", operateType = OperateType.UPDATE)
     @Operation(summary = "设置订阅状态", description = "设置订阅状态")
     @PutMapping("/status")

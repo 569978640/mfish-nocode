@@ -22,7 +22,7 @@ import cn.com.mfish.common.oauth.common.OauthUtils;
 import cn.com.mfish.common.oauth.entity.RedisAccessToken;
 import cn.com.mfish.common.oauth.entity.SsoRole;
 import cn.com.mfish.common.oauth.entity.WeChatToken;
-import cn.com.mfish.common.oauth.req.ReqSsoMenu;
+import cn.com.mfish.common.oauth.api.req.ReqSsoMenu;
 import cn.com.mfish.common.oauth.req.ReqSsoOrg;
 import cn.com.mfish.common.oauth.req.ReqSsoUser;
 import cn.com.mfish.common.oauth.service.SsoMenuService;
@@ -52,7 +52,7 @@ import java.util.List;
  * @description: 租户信息表
  * @author: mfish
  * @date: 2023-05-31
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 @Slf4j
 @Tag(name = "租户信息表")
@@ -136,6 +136,12 @@ public class SsoTenantController {
         return ssoTenantService.updateTenant(ssoTenant);
     }
 
+    /**
+     * 管理员编辑自己租户信息
+     *
+     * @param ssoTenant 租户信息
+     * @return 编辑结果
+     */
     @Log(title = "管理员编辑自己租户信息", operateType = OperateType.UPDATE)
     @Operation(summary = "管理员编辑自己租户信息")
     @PutMapping("/me")
@@ -199,7 +205,7 @@ public class SsoTenantController {
      */
     @Operation(summary = "切换租户")
     @PutMapping("/change/{tenantId}")
-    public Result<String> changeTenant(@PathVariable("tenantId") String tenantId) {
+    public Result<String> changeTenant(@Parameter(name = "tenantId", description = "租户ID") @PathVariable String tenantId) {
         if (StringUtils.isEmpty(tenantId)) {
             return Result.fail(tenantId, "错误:租户ID不允许为空");
         }
@@ -260,7 +266,7 @@ public class SsoTenantController {
     @GetMapping("/org/{ids}")
     @RequiresPermissions("sys:tenantOrg:query")
     @DataScope(table = "sso_org", type = DataScopeType.Tenant)
-    public Result<List<SsoOrg>> queryByIds(@Parameter(name = "ids", description = "唯一性ID") @PathVariable("ids") String ids) {
+    public Result<List<SsoOrg>> queryByIds(@Parameter(name = "ids", description = "组织ID") @PathVariable String ids) {
         return ssoOrgService.queryByIds(ids);
     }
 
@@ -389,6 +395,12 @@ public class SsoTenantController {
         return Result.ok(new PageResult<>(ssoRoleService.list(SsoRoleController.buildCondition(reqSsoRole))), "角色信息表-查询成功!");
     }
 
+    /**
+     * 查询租户角色列表（不分页）
+     *
+     * @param reqSsoRole 查询条件
+     * @return 角色列表
+     */
     @Operation(summary = "租户角色信息表-列表查询", description = "租户角色信息表-列表查询")
     @GetMapping("/role/all")
     @RequiresPermissions("sys:tenantRole:query")
@@ -411,6 +423,12 @@ public class SsoTenantController {
         return ssoRoleService.queryByIds(ids);
     }
 
+    /**
+     * 获取租户角色关联的菜单ID列表
+     *
+     * @param roleId 角色ID
+     * @return 菜单ID列表
+     */
     @Operation(summary = "获取租户角色下的菜单ID")
     @GetMapping("/role/menus/{roleId}")
     @RequiresPermissions("sys:tenantRole:query")
@@ -422,6 +440,12 @@ public class SsoTenantController {
         return Result.fail(new ArrayList<>(), result.getMsg());
     }
 
+    /**
+     * 获取当前用户的菜单树
+     *
+     * @param reqSsoMenu 菜单查询条件
+     * @return 菜单树列表
+     */
     @Operation(summary = "获取用户菜单树")
     @GetMapping("/menu/tree")
     @RequiresPermissions("sys:tenantRole:query")
@@ -467,6 +491,12 @@ public class SsoTenantController {
         return Result.fail(ssoRole, result.getMsg());
     }
 
+    /**
+     * 删除租户角色
+     *
+     * @param id 角色ID
+     * @return 删除结果
+     */
     @Log(title = "租户角色信息-通过id删除", operateType = OperateType.DELETE)
     @Operation(summary = "租户角色信息-通过id删除", description = "租户角色信息-通过id删除")
     @DeleteMapping("/role/{id}")
@@ -479,6 +509,12 @@ public class SsoTenantController {
         return result;
     }
 
+    /**
+     * 通过角色编码查询关联的租户列表
+     *
+     * @param roleCode 角色编码
+     * @return 租户列表
+     */
     @Operation(summary = "获取租户列表-通过角色编码查询")
     @GetMapping("/roleCode/{roleCode}")
     public Result<List<TenantVo>> queryByRoleCode(@Parameter(name = "roleCode", description = "角色编码") @PathVariable String roleCode) {
@@ -503,6 +539,13 @@ public class SsoTenantController {
         return Result.ok();
     }
 
+    /**
+     * 分页查询租户下的用户列表
+     *
+     * @param reqSsoUser 用户查询条件
+     * @param reqPage    分页参数
+     * @return 用户分页列表
+     */
     @Operation(summary = "租户用户信息-分页列表查询", description = "租户用户信息-分页列表查询")
     @GetMapping("/user")
     @RequiresPermissions("sys:tenantUser:query")
@@ -513,6 +556,12 @@ public class SsoTenantController {
         return Result.ok(new PageResult<>(pageList), "租户人员信息-查询成功!");
     }
 
+    /**
+     * 绑定用户到组织
+     *
+     * @param userOrg 用户组织关系
+     * @return 绑定结果
+     */
     @Operation(summary = "用户组织关系绑定")
     @PostMapping("/user/org")
     @RequiresPermissions("sys:tenantUser:insert")
@@ -531,6 +580,12 @@ public class SsoTenantController {
         return Result.fail(false, "错误:用户分配组织失败");
     }
 
+    /**
+     * 移除用户组织关系
+     *
+     * @param userOrg 用户组织关系
+     * @return 移除结果
+     */
     @Operation(summary = "用户组织关系移除")
     @DeleteMapping("/user/org")
     @RequiresPermissions("sys:tenantUser:delete")

@@ -5,6 +5,9 @@ import cn.com.mfish.workflow.nodes.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Data;
 
+import java.util.ArrayList;
+import java.util.List;
+
 /**
  * @description: 节点对象
  * @author: mfish
@@ -18,6 +21,12 @@ public class FlowNode {
     @Schema(description = "节点业务数据")
     private NodeData data;
 
+    /**
+     * 根据节点类型创建对应的基础节点对象
+     * 将节点业务数据转换为具体的节点实现（开始节点、结束节点、审批节点、排他网关）
+     *
+     * @return 基础节点对象
+     */
     public BaseNode create() {
         BaseNode node;
         switch (data.getType()) {
@@ -30,11 +39,17 @@ public class FlowNode {
             case APPROVAL:
                 node = new ApprovalNode(id, data.getLabel(), data.getDescription());
                 ApprovalNode approvalNode = (ApprovalNode) node;
-                approvalNode.setCandidateUsers(data.getCandidateUsers());
-                approvalNode.setCandidateGroups(data.getCandidateGroups());
+                approvalNode.setCandidateUsers(data.getUserIds());
+                List<String> groupList = new ArrayList<>();
+                if (data.getOrgIds() != null && !data.getOrgIds().isEmpty()) {
+                    groupList.addAll(data.getOrgIds().stream().map(orgId -> "org:" + orgId).toList());
+                }
+                if (data.getRoleIds() != null && !data.getRoleIds().isEmpty()) {
+                    groupList.addAll(data.getRoleIds().stream().map(roleId -> "role:" + roleId).toList());
+                }
+                approvalNode.setCandidateGroups(groupList);
                 approvalNode.setApprovalType(data.getApprovalType());
                 approvalNode.setCompletionPercent(data.getCompletionPercent());
-                approvalNode.setAssignee(data.getAssignee());
                 break;
             case CONDITION:
                 node = new ExclusiveNode(id, data.getLabel(), data.getDescription(), data.getBranches());

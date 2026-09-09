@@ -6,7 +6,7 @@
     <parent>
         <groupId>cn.com.mfish</groupId>
         <artifactId>mf-start</artifactId>
-        <version>mf-2.3.1</version>
+        <version>mf-2.4.1</version>
     </parent>
 
     <artifactId>mf-start-workflow</artifactId>
@@ -30,6 +30,10 @@
         <dependency>
             <groupId>cn.com.mfish</groupId>
             <artifactId>mf-nocode-api</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-demo-api</artifactId>
         </dependency>
     </dependencies>
     <build>

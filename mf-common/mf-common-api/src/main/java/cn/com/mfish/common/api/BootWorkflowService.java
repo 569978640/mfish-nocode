@@ -72,6 +72,11 @@ public class BootWorkflowService implements RemoteWorkflowService {
     }
 
     @Override
+    public Result<List<MfTask>> getProcessTasksByBusinessKey(String origin, String businessKey) {
+        return Result.ok(flowableService.getProcessTasksByBusinessKey(businessKey), "查询流程实例任务列表成功");
+    }
+
+    @Override
     public Result<PageResult<MfTask>> getPendingTasks(String origin, ReqTask reqTask, ReqPage reqPage) {
         return Result.ok(flowableService.getPendingTasks(reqTask, reqPage), "查询待办任务列表成功");
     }
@@ -116,5 +121,10 @@ public class BootWorkflowService implements RemoteWorkflowService {
     @Override
     public Result<List<String>> getActiveDefinitionKeys(String origin, String processInstanceId) {
         return Result.ok(flowableService.getActiveDefinitionKeys(processInstanceId), "查询流程实例当前活动节点成功");
+    }
+
+    @Override
+    public Result<List<FlowManage>> getActiveFlows(String origin) {
+        return Result.ok(flowableService.getActiveFlows(), "查询已发布流程列表成功");
     }
 }

@@ -3,20 +3,44 @@ package cn.com.mfish.common.workflow.api.enums;
 import lombok.Getter;
 
 /**
- * @description: 流程定义key
+ * 流程定义key
+ * <p>
+ * callback/prefix 用于 AI 发起流程时回调业务系统更新单据状态：
+ * <ul>
+ *   <li>callback 非空：AI 启动流程时走 {@code startProcess}，流程结束后 {@code CompleteCallbackHandler}
+ *       按 callback 回调业务系统，业务单据状态正常更新。</li>
+ *   <li>callback 为空：AI 启动流程时走 {@code startProcessWithoutCallback}，不触发业务回调（纯自动化流程）。</li>
+ * </ul>
+ * 新增流程时，在此枚举追加一项并配置 callback/prefix（无业务回调则留空）。
+ * </p>
+ *
  * @author: mfish
  * @date: 2025/9/16
  */
 @Getter
 public enum FlowKey {
-    UNKNOWN("unknown"),
-    大屏发布("screen_release"),
-    TEST("test");
+    /** 未知流程 */
+    UNKNOWN("unknown", null, null),
+    /** 大屏发布流程 */
+    大屏发布("screen_release", null, null),
+    /** 请假申请发布流程：回调 demo 服务更新请假单状态 */
+    请假申请发布("demo_leave_apply_release",
+            "cn.com.mfish.demo.api.remote.RemoteDemoLeaveApplyService",
+            "demoLeaveApply"),
+    /** 测试流程 */
+    TEST("test", null, null);
 
+    /** 流程定义key值 */
     private final String key;
+    /** 业务回调 Feign 接口全路径（为空表示无业务回调） */
+    private final String callback;
+    /** 业务前缀 */
+    private final String prefix;
 
-    FlowKey(String key) {
+    FlowKey(String key, String callback, String prefix) {
         this.key = key;
+        this.callback = callback;
+        this.prefix = prefix;
     }
 
     /**
@@ -32,6 +56,15 @@ public enum FlowKey {
             }
         }
         return FlowKey.UNKNOWN;
+    }
+
+    /**
+     * 是否配置了业务回调
+     *
+     * @return true 表示有业务回调
+     */
+    public boolean hasCallback() {
+        return callback != null && !callback.isEmpty();
     }
 
     @Override

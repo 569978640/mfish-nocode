@@ -17,7 +17,10 @@ import cn.com.mfish.common.oauth.api.entity.UserRole;
 import cn.com.mfish.common.oauth.api.vo.TenantVo;
 import cn.com.mfish.common.oauth.api.vo.UserInfoVo;
 import cn.com.mfish.common.oauth.common.OauthUtils;
-import cn.com.mfish.common.oauth.entity.*;
+import cn.com.mfish.common.oauth.entity.OnlineUser;
+import cn.com.mfish.common.oauth.entity.RedisAccessToken;
+import cn.com.mfish.common.oauth.entity.SsoUser;
+import cn.com.mfish.common.oauth.entity.WeChatToken;
 import cn.com.mfish.common.oauth.req.ReqSsoUser;
 import cn.com.mfish.common.oauth.service.SsoUserService;
 import cn.com.mfish.oauth.cache.redis.UserTokenCache;
@@ -28,15 +31,19 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.Parameters;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
-import org.apache.shiro.SecurityUtils;
-import org.apache.shiro.subject.Subject;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.security.web.authentication.logout.SecurityContextLogoutHandler;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
 import java.util.Set;
 
 /**
+ * @description: 用户信息控制器，提供用户管理、权限查询、登录状态管理等功能
  * @author: mfish
  * @date: 2020/2/17 18:49
  */
@@ -65,7 +72,7 @@ public class SsoUserController {
     /**
      * 获取用户权限
      *
-     * @param userId 用户 ID，为空时默认当前登录用户
+     * @param userId   用户 ID，为空时默认当前登录用户
      * @param tenantId 租户 ID
      * @return 用户权限集合
      */
@@ -86,7 +93,7 @@ public class SsoUserController {
     /**
      * 获取用户角色列表
      *
-     * @param userId 用户 ID，为空时默认当前登录用户
+     * @param userId   用户 ID，为空时默认当前登录用户
      * @param tenantId 租户 ID
      * @return 用户角色列表
      */
@@ -120,7 +127,7 @@ public class SsoUserController {
     /**
      * 获取用户组织树
      *
-     * @param userId 用户 ID
+     * @param userId    用户 ID
      * @param direction 方向：all-返回所有父子节点，up-返回父节点，down-返回子节点
      * @return 用户组织树列表
      */
@@ -129,15 +136,15 @@ public class SsoUserController {
     @Parameters({
             @Parameter(name = "direction", description = "方向 all 返回所有父子节点 up 返回父节点 down 返回子节点", required = true)
     })
-    public Result<List<SsoOrg>> getOrgs(@PathVariable("userId") String userId, @RequestParam String direction) {
+    public Result<List<SsoOrg>> getOrgs(@PathVariable @Parameter(name = "userId", description = "用户 ID") String userId, @RequestParam String direction) {
         return ssoUserService.getOrgs(userId, direction);
     }
 
     /**
      * 获取用户组织 ID 列表
      *
-     * @param userId 用户 ID
-     * @param tenantId 租户 ID
+     * @param userId    用户 ID
+     * @param tenantId  租户 ID
      * @param direction 方向：all-返回所有父子节点，up-返回父节点，down-返回子节点
      * @return 用户组织 ID 列表
      */
@@ -147,7 +154,7 @@ public class SsoUserController {
             @Parameter(name = "tenantId", description = "租户 id"),
             @Parameter(name = "direction", description = "方向 all 返回所有父子节点 up 返回父节点 down 返回子节点", required = true)
     })
-    public Result<List<String>> getOrgIds(@PathVariable("userId") String userId, @RequestParam String tenantId, @RequestParam String direction) {
+    public Result<List<String>> getOrgIds(@PathVariable @Parameter(name = "userId", description = "用户 ID") String userId, @RequestParam String tenantId, @RequestParam String direction) {
         return ssoUserService.getOrgIds(tenantId, userId, direction);
     }
 
@@ -221,14 +228,13 @@ public class SsoUserController {
     @Operation(summary = "用户登出", description = "用户登出--该方法只适用于 web 前端登录的用户登出")
     @DeleteMapping("/revoke")
     @Log(title = "用户登出", operateType = OperateType.LOGOUT)
-    public Result<Boolean> revoke() {
-        Subject subject = SecurityUtils.getSubject();
+    public Result<Boolean> revoke(HttpServletRequest request, HttpServletResponse response) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String userId = null;
-        //session中存在userId,优先使用session中的userId
-        if (subject != null) {
-            userId = (String) subject.getPrincipal();
+        if (authentication != null && authentication.isAuthenticated()
+                && !"anonymousUser".equals(authentication.getPrincipal())) {
+            userId = (String) authentication.getPrincipal();
         }
-        //session中不存在userId获取token中的userId
         if (StringUtils.isEmpty(userId)) {
             try {
                 userId = AuthInfoUtils.getCurrentUserId();
@@ -236,7 +242,7 @@ public class SsoUserController {
                 log.error(e.getMessage());
             }
         } else {
-            subject.logout();
+            new SecurityContextLogoutHandler().logout(request, response, authentication);
         }
         if (StringUtils.isEmpty(userId)) {
             String error = "未获取到用户登录状态，无需登出";
@@ -274,16 +280,30 @@ public class SsoUserController {
         return Result.ok(new PageResult<>(pageList), "用户信息-查询成功!");
     }
 
+    /**
+     * 检索用户列表（限制最多查询100人，需要租户用户新增权限）
+     *
+     * @param condition 检索条件，支持用户名、昵称、手机号模糊搜索
+     * @return 用户信息列表
+     */
     @Operation(summary = "检索用户列表-限制最多查询50人(有新增租户用户权限人允许检索)", description = "检索用户列表")
     @GetMapping("/search")
     @Parameters({
             @Parameter(name = "condition", description = "检索条件，可输入用户名、昵称、手机号")
     })
     @RequiresPermissions("sys:tenantUser:insert")
-    public Result<List<SimpleUserInfo>> queryUserList(String condition) {
-        return Result.ok(ssoUserService.searchUserList(condition), "用户信息-检索成功!");
+    public Result<List<UserInfo>> queryUserList(String condition) {
+        // 只检索100条
+        PageHelper.startPage(1, 100);
+        return Result.ok(ssoUserService.getUserList(new ReqSsoUser().setCondition(condition)), "用户信息-检索成功!");
     }
 
+    /**
+     * 添加用户
+     *
+     * @param ssoUser 用户信息对象
+     * @return 返回添加结果
+     */
     @Log(title = "用户信息-添加", operateType = OperateType.INSERT)
     @Operation(summary = "用户信息-添加", description = "用户信息-添加")
     @PostMapping
@@ -306,6 +326,12 @@ public class SsoUserController {
         return ssoUserService.updateUser(ssoUser);
     }
 
+    /**
+     * 编辑当前登录用户自己的信息
+     *
+     * @param ssoUser 用户信息对象
+     * @return 返回编辑结果
+     */
     @Log(title = "用户信息-编辑", operateType = OperateType.UPDATE)
     @Operation(summary = "用户信息-编辑", description = "用户信息-编辑")
     @PutMapping("/me")
@@ -336,6 +362,12 @@ public class SsoUserController {
         return Result.fail(false, "错误:用户信息-删除失败!");
     }
 
+    /**
+     * 判断用户账号是否已存在
+     *
+     * @param account 用户账号
+     * @return 返回账号是否存在
+     */
     @Operation(summary = "判断用户是否存在")
     @GetMapping("/exist/{account}")
     public Result<Boolean> isAccountExist(@Parameter(name = "account", description = "帐号名称") @PathVariable String account) {
@@ -345,6 +377,12 @@ public class SsoUserController {
         return Result.ok(false, "帐号[" + account + "]不存在");
     }
 
+    /**
+     * 获取在线用户列表
+     *
+     * @param reqPage 分页参数
+     * @return 在线用户分页列表
+     */
     @Operation(summary = "获取在线用户信息")
     @GetMapping("/online")
     @RequiresPermissions("sys:online:query")
@@ -352,6 +390,12 @@ public class SsoUserController {
         return Result.ok(ssoUserService.getOnlineUser(reqPage), "获取在线用户成功");
     }
 
+    /**
+     * 踢出指定在线用户
+     *
+     * @param sid 加密的用户会话ID
+     * @return 返回踢出结果
+     */
     @Operation(summary = "踢出指定用户")
     @DeleteMapping("/revoke/{sid}")
     @Log(title = "踢出指定用户", operateType = OperateType.LOGOUT)
@@ -361,6 +405,12 @@ public class SsoUserController {
         return Result.ok(true, "成功登出");
     }
 
+    /**
+     * 根据账号获取用户ID列表（内部接口）
+     *
+     * @param accounts 用户账号，多个以逗号分隔
+     * @return 用户ID列表
+     */
     @Operation(summary = "根据账号获取用户id(内部接口)")
     @GetMapping("/userId/{accounts}")
     @InnerUser
@@ -368,6 +418,12 @@ public class SsoUserController {
         return Result.ok(ssoUserService.getUserIdsByAccounts(List.of(accounts.split(","))), "获取用户id成功");
     }
 
+    /**
+     * 根据账号获取简单用户信息列表（内部接口）
+     *
+     * @param accounts 用户账号，多个以逗号分隔
+     * @return 用户信息列表
+     */
     @Operation(summary = "根据账号获取简单用户信息(内部接口)")
     @GetMapping("/users/{accounts}")
     @InnerUser
@@ -375,18 +431,36 @@ public class SsoUserController {
         return Result.ok(ssoUserService.getUsersByAccounts(List.of(accounts.split(","))), "获取用户信息成功");
     }
 
+    /**
+     * 判断用户是否已设置过密码
+     *
+     * @param userId 用户ID
+     * @return 返回是否已设置密码
+     */
     @Operation(summary = "判断账号是否设置过密码")
     @GetMapping("/pwdExist/{userId}")
-    public Result<Boolean> isPasswordExist(@PathVariable("userId") String userId) {
+    public Result<Boolean> isPasswordExist(@PathVariable @Parameter(name = "userId", description = "用户 ID") String userId) {
         return Result.ok(ssoUserService.isPasswordExist(userId));
     }
 
+    /**
+     * 判断是否允许修改用户账号
+     *
+     * @param userId 用户ID
+     * @return 返回是否允许修改
+     */
     @Operation(summary = "是否允许修改账号")
     @GetMapping("/allowChangeAccount/{userId}")
-    public Result<Boolean> allowChangeAccount(@PathVariable("userId") String userId) {
+    public Result<Boolean> allowChangeAccount(@PathVariable @Parameter(name = "userId", description = "用户 ID") String userId) {
         return Result.ok(ssoUserService.allowChangeAccount(userId));
     }
 
+    /**
+     * 修改用户账号
+     *
+     * @param ssoUser 用户对象（包含用户ID和新账号）
+     * @return 返回修改结果
+     */
     @Operation(summary = "修改账号")
     @PutMapping("/changeAccount")
     @Log(title = "修改账号", operateType = OperateType.UPDATE)
@@ -394,25 +468,42 @@ public class SsoUserController {
         return ssoUserService.changeAccount(ssoUser.getId(), ssoUser.getAccount());
     }
 
+    /**
+     * 获取用户安全设置信息
+     *
+     * @param userId 用户ID
+     * @return 用户安全设置信息
+     */
     @Operation(summary = "获取用户安全设置")
     @GetMapping("/secureSetting/{userId}")
-    public Result<SsoUser> getSecureSetting(@PathVariable("userId") String userId) {
+    public Result<SsoUser> getSecureSetting(@PathVariable @Parameter(name = "userId", description = "用户 ID") String userId) {
         return Result.ok(ssoUserService.getSecureSetting(userId));
     }
 
+    /**
+     * 解绑Gitee第三方账号
+     *
+     * @param userId 用户ID
+     * @return 返回解绑结果
+     */
     @Operation(summary = "解绑gitee账号")
     @PutMapping("/unbind/gitee/{userId}")
     @Log(title = "解绑gitee账号", operateType = OperateType.UPDATE)
-    public Result<Boolean> unbindGitee(@PathVariable("userId") String userId) {
+    public Result<Boolean> unbindGitee(@PathVariable @Parameter(name = "userId", description = "用户 ID") String userId) {
         return ssoUserService.unbindGitee(userId);
     }
 
 
-
+    /**
+     * 解绑GitHub第三方账号
+     *
+     * @param userId 用户ID
+     * @return 返回解绑结果
+     */
     @Operation(summary = "解绑github账号")
     @PutMapping("/unbind/github/{userId}")
     @Log(title = "解绑github账号", operateType = OperateType.UPDATE)
-    public Result<Boolean> unbindGithub(@PathVariable("userId") String userId) {
+    public Result<Boolean> unbindGithub(@PathVariable @Parameter(name = "userId", description = "用户 ID") String userId) {
         return ssoUserService.unbindGithub(userId);
     }
 }

@@ -31,7 +31,6 @@ import io.swagger.v3.oas.annotations.enums.ParameterIn;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import jakarta.servlet.http.HttpServletRequest;
-import org.apache.shiro.SecurityUtils;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -40,6 +39,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.util.concurrent.CompletableFuture;
 
 /**
+ * @description: 访问令牌控制器，支持授权码、密码和刷新令牌三种方式获取访问令牌
  * @author: mfish
  * @date: 2020/2/17 14:17
  */
@@ -108,7 +108,7 @@ public class AccessTokenController {
         //缓存用户角色信息
         CompletableFuture.supplyAsync(() -> ssoUserService.getUserInfoAndRoles(token.getUserId(), token.getTenantId()));
         userTokenCache.addUserTokenCache(DeviceType.Web
-                , SecurityUtils.getSubject().getSession().getId().toString()
+                , request.getSession().getId()
                 , token.getUserId(), token.getAccessToken());
         return Result.ok(new AccessToken().setAccess_token(token.getAccessToken()).setExpires_in(token.getExpire()).setRefresh_token(token.getRefreshToken()));
     }

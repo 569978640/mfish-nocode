@@ -1,6 +1,7 @@
 package cn.com.mfish.common.nocode.api.fallback;
 
 import cn.com.mfish.common.core.entity.WorkflowCompleteResult;
+import cn.com.mfish.common.core.utils.FeignFallbackHelper;
 import cn.com.mfish.common.core.web.Result;
 import cn.com.mfish.common.nocode.api.remote.RemoteNocodeService;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,12 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class RemoteNocodeFallBack implements FallbackFactory<RemoteNocodeService> {
+    /**
+     * 创建低代码服务降级实例
+     *
+     * @param cause 导致降级的异常原因
+     * @return 降级后的低代码服务实例
+     */
     @Override
     public RemoteNocodeService create(Throwable cause) {
         log.error("错误: 开发服务接口调用异常", cause);
@@ -22,17 +29,17 @@ public class RemoteNocodeFallBack implements FallbackFactory<RemoteNocodeService
 
             @Override
             public Result<String> approved(String origin, String prefix, String id, WorkflowCompleteResult result) {
-                return Result.fail("错误：资源审核通过回调接口异常");
+                return Result.fail(FeignFallbackHelper.resolveErrorMsg(cause, "错误：资源审核通过回调接口异常"));
             }
 
             @Override
             public Result<String> rejected(String origin, String prefix, String id, WorkflowCompleteResult result) {
-                return Result.fail("错误：资源审核拒绝回调接口异常");
+                return Result.fail(FeignFallbackHelper.resolveErrorMsg(cause, "错误：资源审核拒绝回调接口异常"));
             }
 
             @Override
             public Result<String> canceled(String origin, String prefix, String id, WorkflowCompleteResult result) {
-                return Result.fail("错误：资源审核取消回调接口异常");
+                return Result.fail(FeignFallbackHelper.resolveErrorMsg(cause, "错误：资源审核取消回调接口异常"));
             }
         };
 

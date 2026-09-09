@@ -5,7 +5,7 @@
     <parent>
         <groupId>cn.com.mfish</groupId>
         <artifactId>mfish-nocode</artifactId>
-        <version>mf-2.3.1</version>
+        <version>mf-2.4.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>mf-common</artifactId>
@@ -27,6 +27,7 @@
         <module>mf-common-captcha</module>
         <module>mf-common-code</module>
         <module>mf-common-api</module>
+        <module>mf-common-demo</module>
         <module>mf-common-sys</module>
         <module>mf-common-web</module>
         <module>mf-common-app</module>

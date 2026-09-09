@@ -5,6 +5,7 @@ import cn.com.mfish.common.core.utils.http.EscapeUtil;
 import cn.com.mfish.common.core.config.XssProperties;
 import io.netty.buffer.ByteBufAllocator;
 import org.jetbrains.annotations.NotNull;
+import org.jspecify.annotations.NonNull;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.cloud.gateway.filter.GatewayFilterChain;
 import org.springframework.cloud.gateway.filter.GlobalFilter;
@@ -28,6 +29,7 @@ import java.nio.charset.StandardCharsets;
 
 /**
  * @author: mfish
+ * @description: XSS攻击防护过滤器，对请求体中的非法字符进行转义清理
  * @date: 2021/8/12 10:12
  */
 @Component
@@ -36,8 +38,15 @@ public class XssFilter implements GlobalFilter, Ordered {
     @Resource
     XssProperties xssProperties;
 
+    /**
+     * XSS过滤核心方法，对非GET/DELETE的JSON类型请求体进行XSS字符清理
+     *
+     * @param exchange 服务端Web交换对象
+     * @param chain    网关过滤器链
+     * @return 过滤结果
+     */
     @Override
-    public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+    public @NonNull Mono<Void> filter(@NonNull ServerWebExchange exchange, @NonNull GatewayFilterChain chain) {
         if (!xssProperties.getEnabled()) {
             return chain.filter(exchange);
         }
@@ -60,11 +69,23 @@ public class XssFilter implements GlobalFilter, Ordered {
         return chain.filter(exchange.mutate().request(httpRequestDecorator).build());
     }
 
+    /**
+     * 判断请求是否为JSON类型
+     *
+     * @param exchange 服务端Web交换对象
+     * @return 是否为JSON请求
+     */
     public boolean isJsonRequest(ServerWebExchange exchange) {
         String header = exchange.getRequest().getHeaders().getFirst(HttpHeaders.CONTENT_TYPE);
         return StringUtils.startsWithIgnoreCase(header, MediaType.APPLICATION_JSON_VALUE);
     }
 
+    /**
+     * 创建请求装饰器，对请求体内容进行XSS字符清理并重新封装请求
+     *
+     * @param exchange 服务端Web交换对象
+     * @return 经过XSS清理的请求装饰器
+     */
     private ServerHttpRequestDecorator requestDecorator(ServerWebExchange exchange) {
         return new ServerHttpRequestDecorator(exchange.getRequest()) {
             @NotNull
@@ -101,6 +122,11 @@ public class XssFilter implements GlobalFilter, Ordered {
         };
     }
 
+    /**
+     * 获取过滤器执行顺序，值为-2，优先级高于认证过滤器
+     *
+     * @return 过滤器顺序值
+     */
     @Override
     public int getOrder() {
         return -2;

@@ -13,11 +13,17 @@ import java.util.List;
  * @description: 导入导出Demo
  * @author: mfish
  * @date: 2024-09-02
- * @version: V2.3.1
+ * @version: V2.4.1
  */
 @Service
 public class DemoImportExportServiceImpl extends ServiceImpl<DemoImportExportMapper, DemoImportExport> implements DemoImportExportService {
 
+    /**
+     * 批量插入数据（部分字段）
+     *
+     * @param list 待插入的数据列表
+     * @return 插入的记录数
+     */
     @Override
     public int insertBatchSomeColumn(List<DemoImportExport> list) {
         return baseMapper.insertBatchSomeColumn(list);

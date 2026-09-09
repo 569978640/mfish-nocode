@@ -1,7 +1,7 @@
-/**
-  DEMO样例表（采用微服务启动，如果需要使用演示样例需要创建该库）
-  根据个人使用场景选择是否初始化
- */
+-- ----------------------------------------
+--  DEMO样例表（采用微服务启动，如果需要使用演示样例需要创建该库）
+--  根据个人使用场景选择是否初始化
+-- ----------------------------------------
 DROP DATABASE IF EXISTS `mf_demo`;
 CREATE DATABASE  `mf_demo` DEFAULT CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci;
 SET NAMES utf8mb4;
@@ -249,5 +249,25 @@ INSERT INTO `demo_order_detail` VALUES ('e319c6ae4efd11eb820300163e11f4a0', 'O16
 INSERT INTO `demo_order_detail` VALUES ('e319c6b94efd11eb820300163e11f4a0', 'O16098137908580001', '【8折】皇冠丹麦曲奇饼干特别礼盒装 1.01kg/盒', 'https://www.ecishan.com.cn/storage/file16087791143760001.png', 126.60, 126.60, 2, NULL, NULL, 0.00, 253.20, 0.00, '', NULL, '', NULL);
 INSERT INTO `demo_order_detail` VALUES ('f36c3a074b0911eb820300163e11f4a0', 'O16093791675560001', '雕牌超效加酶无磷洗衣粉2.68千克/袋', 'https://www.ecishan.com.cn/storage/714991-1.png', 24.30, 24.30, 2, NULL, NULL, 0.00, 48.60, 0.00, '', NULL, '', NULL);
 INSERT INTO `demo_order_detail` VALUES ('f36c3a2f4b0911eb820300163e11f4a0', 'O16093791675560001', '福临门苏软香 10kg/袋', 'https://www.ecishan.com.cn/storage/file16049116832980001.png', 59.90, 59.90, 2, NULL, NULL, 0.00, 119.80, 0.00, '', NULL, '', NULL);
+
+-- ----------------------------
+-- Table structure for demo_leave_apply
+-- ----------------------------
+DROP TABLE IF EXISTS `demo_leave_apply`;
+CREATE TABLE `demo_leave_apply`  (
+                                      `id` varchar(32) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '唯一ID',
+                                      `title` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NOT NULL COMMENT '申请标题',
+                                      `leave_type` tinyint NULL DEFAULT NULL COMMENT '请假类型 1事假 2病假 3年假',
+                                      `start_time` datetime NULL DEFAULT NULL COMMENT '开始时间',
+                                      `end_time` datetime NULL DEFAULT NULL COMMENT '结束时间',
+                                      `leave_days` decimal(5, 1) NULL DEFAULT NULL COMMENT '请假天数',
+                                      `reason` varchar(500) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT NULL COMMENT '请假事由',
+                                      `audit_state` tinyint NULL DEFAULT NULL COMMENT '审核状态 null未提交 0审核中 1已通过 2未通过',
+                                      `create_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '创建者',
+                                      `create_time` datetime NULL DEFAULT NULL COMMENT '创建时间',
+                                      `update_by` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_general_ci NULL DEFAULT '' COMMENT '更新者',
+                                      `update_time` datetime NULL DEFAULT NULL COMMENT '更新时间',
+                                      PRIMARY KEY (`id`) USING BTREE
+) ENGINE = InnoDB CHARACTER SET = utf8mb4 COLLATE = utf8mb4_general_ci COMMENT = '请假申请审批Demo' ROW_FORMAT = Dynamic;
 
 SET FOREIGN_KEY_CHECKS = 1;

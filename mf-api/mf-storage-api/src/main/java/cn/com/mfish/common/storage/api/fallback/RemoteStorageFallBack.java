@@ -1,5 +1,6 @@
 package cn.com.mfish.common.storage.api.fallback;
 
+import cn.com.mfish.common.core.utils.FeignFallbackHelper;
 import cn.com.mfish.common.core.web.Result;
 import cn.com.mfish.common.storage.api.entity.StorageInfo;
 import cn.com.mfish.common.storage.api.remote.RemoteStorageService;
@@ -17,18 +18,24 @@ import org.springframework.stereotype.Component;
 @Component
 @Slf4j
 public class RemoteStorageFallBack implements FallbackFactory<RemoteStorageService> {
+    /**
+     * 创建文件存储服务降级实例
+     *
+     * @param cause 导致降级的异常原因
+     * @return 降级后的文件存储服务实例
+     */
     @Override
     public RemoteStorageService create(Throwable cause) {
         log.error("错误:文件接口调用异常", cause);
         return new RemoteStorageService() {
             @Override
             public Result<StorageInfo> queryByKey(String origin, String fileKey) {
-                return Result.fail("错误:根据Key获取文件信息失败" + cause.getMessage());
+                return Result.fail(FeignFallbackHelper.resolveErrorMsg(cause, "错误:根据Key获取文件信息失败"));
             }
 
             @Override
             public Result<Boolean> logicDelete(String origin, String id) {
-                return Result.fail("错误:逻辑删除文件失败" + cause.getMessage());
+                return Result.fail(FeignFallbackHelper.resolveErrorMsg(cause, "错误:逻辑删除文件失败"));
             }
 
             @Override

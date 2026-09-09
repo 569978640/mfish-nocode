@@ -5,7 +5,7 @@
     <parent>
         <artifactId>mf-common</artifactId>
         <groupId>cn.com.mfish</groupId>
-        <version>mf-2.3.1</version>
+        <version>mf-2.4.1</version>
     </parent>
     <modelVersion>4.0.0</modelVersion>
     <artifactId>mf-common-core</artifactId>
@@ -36,11 +36,11 @@
         </dependency>
         <dependency>
             <groupId>io.swagger.core.v3</groupId>
-            <artifactId>swagger-annotations-jakarta</artifactId>
+            <artifactId>swagger-annotations</artifactId>
         </dependency>
         <!-- Jackson -->
         <dependency>
-            <groupId>com.fasterxml.jackson.core</groupId>
+            <groupId>tools.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
         </dependency>
         <!-- Java Servlet -->
