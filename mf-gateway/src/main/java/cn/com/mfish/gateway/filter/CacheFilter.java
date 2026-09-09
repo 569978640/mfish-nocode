@@ -33,6 +33,20 @@ public class CacheFilter extends AbstractGatewayFilterFactory<CacheFilter.Config
     }
 
     /**
+     * 指定过滤器在路由配置中的注册名称
+     * <p>
+     * 默认情况下 Spring Cloud Gateway 会将类名去掉 {@code GatewayFilterFactory} 或 {@code Filter} 后缀作为注册名，
+     * 导致 {@code CacheFilter} 类默认注册为 {@code Cache}，与 Nacos 中路由配置 {@code - CacheFilter} 不匹配。
+     * 此处显式覆盖，使注册名与 Nacos 配置保持一致。
+     *
+     * @return 过滤器注册名称
+     */
+    @Override
+    public String name() {
+        return "CacheFilter";
+    }
+
+    /**
      * 缓存过滤器配置类，用于设置过滤器执行顺序
      */
     @Data
