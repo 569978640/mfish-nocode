@@ -1,0 +1,44 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema" xmlns:flowable="http://flowable.org/bpmn" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:omgdc="http://www.omg.org/spec/DD/20100524/DC" xmlns:omgdi="http://www.omg.org/spec/DD/20100524/DI" typeLanguage="http://www.w3.org/2001/XMLSchema" expressionLanguage="http://www.w3.org/1999/XPath" targetNamespace="http://www.flowable.org/test">
+  <process id="process" name="process" isExecutable="true">
+    <sequenceFlow id="e-node_start_1-right-node_approval_1776999903987-left" sourceRef="node_start_1" targetRef="node_approval_1776999903987"></sequenceFlow>
+    <sequenceFlow id="e-node_approval_1776999903987-right-node_approval_1776999917779-left" name="通过" sourceRef="node_approval_1776999903987" targetRef="node_approval_1776999917779">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${auditType == 'approved'}]]></conditionExpression>
+    </sequenceFlow>
+    <sequenceFlow id="e-node_approval_1776999917779-right-node_end_1776999937046-left" name="通过" sourceRef="node_approval_1776999917779" targetRef="node_end_1776999937046">
+      <conditionExpression xsi:type="tFormalExpression"><![CDATA[${auditType == 'approved'}]]></conditionExpression>
+    </sequenceFlow>
+    <startEvent id="node_start_1" name="开始"></startEvent>
+    <userTask id="node_approval_1776999903987" name="审核"></userTask>
+    <userTask id="node_approval_1776999917779" name="批准"></userTask>
+    <endEvent id="node_end_1776999937046" name="结束"></endEvent>
+  </process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_process">
+    <bpmndi:BPMNPlane bpmnElement="process" id="BPMNPlane_process">
+      <bpmndi:BPMNShape bpmnElement="node_approval_1776999917779" id="BPMNShape_node_approval_1776999917779">
+        <omgdc:Bounds height="60.0" width="100.0" x="230.0" y="0.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="node_end_1776999937046" id="BPMNShape_node_end_1776999937046">
+        <omgdc:Bounds height="30.0" width="30.0" x="380.0" y="15.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="node_approval_1776999903987" id="BPMNShape_node_approval_1776999903987">
+        <omgdc:Bounds height="60.0" width="100.0" x="80.0" y="0.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape bpmnElement="node_start_1" id="BPMNShape_node_start_1">
+        <omgdc:Bounds height="30.0" width="30.0" x="0.0" y="15.0"></omgdc:Bounds>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge bpmnElement="e-node_approval_1776999917779-right-node_end_1776999937046-left" id="BPMNEdge_e-node_approval_1776999917779-right-node_end_1776999937046-left">
+        <omgdi:waypoint x="330.0" y="30.0"></omgdi:waypoint>
+        <omgdi:waypoint x="380.0" y="30.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="e-node_start_1-right-node_approval_1776999903987-left" id="BPMNEdge_e-node_start_1-right-node_approval_1776999903987-left">
+        <omgdi:waypoint x="30.0" y="30.0"></omgdi:waypoint>
+        <omgdi:waypoint x="80.0" y="30.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge bpmnElement="e-node_approval_1776999903987-right-node_approval_1776999917779-left" id="BPMNEdge_e-node_approval_1776999903987-right-node_approval_1776999917779-left">
+        <omgdi:waypoint x="180.0" y="30.0"></omgdi:waypoint>
+        <omgdi:waypoint x="230.0" y="30.0"></omgdi:waypoint>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</definitions>
