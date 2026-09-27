@@ -1,0 +1,45 @@
+swagger:
+  title: 'WindFlow-BFCES服务'
+  prefix: /bfces
+mybatis-plus:
+  mapper-locations: classpath*:cn/com/mfish/bfces/**/*Mapper.xml
+  global-config:
+    banner: false
+    db-config:
+      table-underline: true
+      logic-not-delete-value: 0
+      logic-delete-value: 1
+  configuration:
+    call-setters-on-nulls: true
+    map-underscore-to-camel-case: true
+    auto-mapping-behavior: full
+    jdbc-type-for-null:
+spring:
+  datasource:
+    druid:
+      stat-view-servlet:
+        enabled: true
+        loginUsername: admin
+        loginPassword: 123456
+    dynamic:
+      druid:
+        initial-size: 10
+        min-idle: 10
+        maxActive: 50
+        maxWait: 60000
+        timeBetweenEvictionRunsMillis: 60000
+        minEvictableIdleTimeMillis: 300000
+        validationQuery: SELECT 1
+        testWhileIdle: true
+        testOnBorrow: false
+        testOnReturn: false
+        poolPreparedStatements: true
+        maxPoolPreparedStatementPerConnectionSize: 20
+        filters: stat,slf4j
+        connectionProperties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
+      datasource:
+        master:
+          driver-class-name: oracle.jdbc.OracleDriver
+          url: jdbc:oracle:thin:@//10.177.214.8:1521/wind1p
+          username: wcadmin
+          password: wcadmin

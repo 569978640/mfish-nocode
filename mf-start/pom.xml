@@ -24,6 +24,7 @@
         <module>mf-start-workflow</module>
         <module>mf-start-plm</module>
         <module>mf-start-graph</module>
+        <module>mf-start-bfces</module>
     </modules>
     <properties>
         <maven.compiler.source>${java.version}</maven.compiler.source>

@@ -19,6 +19,7 @@
         <module>mf-workflow</module>
         <module>mf-plm</module>
         <module>mf-graph</module>
+        <module>mf-bfces</module>
     </modules>
 
     <properties>

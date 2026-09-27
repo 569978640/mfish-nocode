@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+    <parent>
+        <artifactId>mf-business</artifactId>
+        <groupId>cn.com.mfish</groupId>
+        <version>mf-2.4.1</version>
+    </parent>
+    <modelVersion>4.0.0</modelVersion>
+
+    <artifactId>mf-bfces</artifactId>
+
+    <properties>
+        <maven.compiler.source>${java.version}</maven.compiler.source>
+        <maven.compiler.target>${java.version}</maven.compiler.target>
+    </properties>
+    <dependencies>
+        <!-- Oracle数据库驱动 -->
+        <dependency>
+            <groupId>com.oracle.database.jdbc</groupId>
+            <artifactId>ojdbc8</artifactId>
+        </dependency>
+        <!-- 公共Web模块依赖 -->
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-common-web</artifactId>
+        </dependency>
+        <!-- Feign 接口依赖 -->
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-oauth-api</artifactId>
+            <version>${mfish.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>cn.com.mfish</groupId>
+            <artifactId>mf-sys-api</artifactId>
+            <version>${mfish.version}</version>
+        </dependency>
+    </dependencies>
+</project>
