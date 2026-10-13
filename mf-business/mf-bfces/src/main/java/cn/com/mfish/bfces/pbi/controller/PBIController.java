@@ -83,6 +83,21 @@ public class PBIController {
     }
 
     /**
+     * 获取产品型号下拉选项
+     *
+     * @param firstCategory 一级分类
+     * @param productClassification 产品分类
+     * @return 返回"部件编号,部件名称"下拉选项列表
+     */
+    @Operation(summary = "获取产品型号下拉选项", description = "根据产品分类获取部件编号+名称下拉选项列表")
+    @GetMapping("/partOptions")
+    public Result<List<String>> getPartOptions(
+            @RequestParam("firstCategory") String firstCategory,
+            @RequestParam("productClassification") String productClassification) {
+        return Result.ok(pbiService.getPartOptions(firstCategory, productClassification), "获取产品型号选项成功!");
+    }
+
+    /**
      * 获取筛选属性
      *
      * @param nodeName 节点名称(可选)

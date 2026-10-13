@@ -47,6 +47,16 @@ public interface PBIService {
     List<PbiPart> getPartsByClassification(String firstCategory, String productClassification);
 
     /**
+     * 获取产品型号下拉选项（竞品选择级联下拉用）
+     * 仅查询编号、名称两列，每项格式为"部件编号,部件名称"
+     *
+     * @param firstCategory 一级分类
+     * @param productClassification 产品分类（二级分类内部名称）
+     * @return 下拉选项字符串列表
+     */
+    List<String> getPartOptions(String firstCategory, String productClassification);
+
+    /**
      * 获取筛选属性信息
      *
      * @param nodeName 节点名称(可选)
