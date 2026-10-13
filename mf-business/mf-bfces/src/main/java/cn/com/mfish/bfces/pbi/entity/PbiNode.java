@@ -22,6 +22,12 @@ public class PbiNode {
     @Schema(description = "显示名称")
     private String displayName;
     
+    @Schema(description = "父节点名称")
+    private String parentName;
+    
+    @Schema(description = "父节点显示名称")
+    private String parentDisplayName;
+    
     @Schema(description = "描述")
     private String description;
 }
