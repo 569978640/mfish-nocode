@@ -35,6 +35,7 @@ STRING_DEFS AS (
                    'com.bfces.EmissionStandard',
                    'com.bfces.EGTS',
                    'com.bfces.SCRCanning',
+                   'com.bfces.VClamp',
                    'com.bfces.Bracket',
                    'com.bfces.ReleasePhaseCode',
                    'com.bfces.EBUNumeber',
@@ -100,6 +101,7 @@ PART_MASTER_ALL AS (
              FROM wcadmin.WTPART WP
              WHERE WP.IDA3VIEW = '24712'
                AND WP.VERSIONIDA2VERSIONINFO NOT LIKE '%-%'
+               AND WP.STATECHECKOUTINFO = 'c/i'
                AND WP.STATESTATE IN ('RELEASED', 'OBSOLETE')
                AND WP.IDA3MASTERREFERENCE IN (SELECT IDA3MASTERREFERENCE FROM QUALIFIED_PART_MASTER)
          )
@@ -171,6 +173,8 @@ STRING_ATTR_AGG AS (
     WITHIN GROUP (ORDER BY sv.IDA2A2) AS EGTS,
     LISTAGG(CASE sd.NAME WHEN 'com.bfces.SCRCanning' THEN sv.value2 END, ',')
     WITHIN GROUP (ORDER BY sv.IDA2A2) AS SCRCanning,
+    LISTAGG(CASE sd.NAME WHEN 'com.bfces.VClamp' THEN sv.value2 END, ',')
+    WITHIN GROUP (ORDER BY sv.IDA2A2) AS VClamp,
     LISTAGG(CASE sd.NAME WHEN 'com.bfces.Bracket' THEN sv.value2 END, ',')
     WITHIN GROUP (ORDER BY sv.IDA2A2) AS Bracket,
     LISTAGG(CASE sd.NAME WHEN 'com.bfces.ReleasePhaseCode' THEN sv.value2 END, ',')
@@ -224,6 +228,7 @@ ON sv.IDA3A6 = td.IDA2A2
 GROUP BY sv.IDA3A4
     )
 SELECT
+    wtp.IDA2A2,
     'OR:wt.part.WTPart:' || wtp.IDA2A2 AS oid,
     wpm.WTPARTNUMBER,
     wpm.NAME,
@@ -263,6 +268,7 @@ SELECT
     NVL(sa.EmissionStandard, '') AS EmissionStandard,
     NVL(sa.EGTS, '') AS EGTS,
     NVL(sa.SCRCanning, '') AS SCRCanning,
+		NVL(sa.VClamp, '') AS VClamp,
     NVL(sa.Bracket, '') AS Bracket,
     NVL(ta.EffectiveData, '') AS EffectiveData,
     NVL(sa.ReleasePhaseCode, '') AS ReleasePhaseCode,
