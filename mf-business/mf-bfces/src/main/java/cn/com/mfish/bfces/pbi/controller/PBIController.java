@@ -1,5 +1,6 @@
 package cn.com.mfish.bfces.pbi.controller;
 
+import cn.com.mfish.bfces.pbi.entity.PbiFamilyTreeNode;
 import cn.com.mfish.bfces.pbi.entity.PbiFilterProperty;
 import cn.com.mfish.bfces.pbi.entity.PbiNode;
 import cn.com.mfish.bfces.pbi.entity.PbiParamConfig;
@@ -21,7 +22,7 @@ import java.util.List;
  * @description: PBI控制器
  * @author: mfish
  * @date: 2026-10-09
- * @version: V1.2.0
+ * @version: V1.4.0
  */
 @Slf4j
 @Tag(name = "PBI接口")
@@ -107,5 +108,32 @@ public class PbiController {
     @GetMapping("/filterProperties")
     public Result<List<PbiFilterProperty>> getFilterProperties(@RequestParam(required = false) String nodeName) {
         return Result.ok(pbiService.getFilterProperties(nodeName), "获取筛选属性成功!");
+    }
+
+    /**
+     * 获取产品家谱树
+     *
+     * @param productClassification 二级分类内部名称（PRODUCTCLASSIFICATION）
+     * @return 返回产品家谱顶层节点（自底向上递归组装的衍生关系树）
+     */
+    @Operation(summary = "获取产品家谱", description = "根据二级分类自底向上递归查询并组装产品家谱树")
+    @GetMapping("/familyTree")
+    public Result<PbiFamilyTreeNode> getFamilyTree(@RequestParam("productClassification") String productClassification) {
+        return Result.ok(pbiService.getFamilyTree(productClassification), "获取产品家谱成功!");
+    }
+
+    /**
+     * 按部件编号获取单个产品型号详情（详细特性参数）
+     *
+     * @param firstCategory 一级分类（决定特性参数展示列）
+     * @param wtPartNumber  部件编号
+     * @return 产品型号详情；未查到时 data 为 null
+     */
+    @Operation(summary = "获取产品型号详情", description = "根据部件编号获取单个产品型号完整特性参数")
+    @GetMapping("/partDetail")
+    public Result<PbiPart> getPartDetail(
+            @RequestParam("firstCategory") String firstCategory,
+            @RequestParam("wtPartNumber") String wtPartNumber) {
+        return Result.ok(pbiService.getPartDetail(firstCategory, wtPartNumber), "获取产品型号详情成功!");
     }
 }

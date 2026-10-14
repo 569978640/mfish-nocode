@@ -38,8 +38,21 @@ spring:
         filters: stat,slf4j
         connectionProperties: druid.stat.mergeSql\=true;druid.stat.slowSqlMillis\=5000
       datasource:
+        # 主库：Windchill 库，家谱部件/规格软属性等业务数据
         master:
           driver-class-name: oracle.jdbc.OracleDriver
           url: jdbc:oracle:thin:@//10.177.214.8:1521/wind1p
           username: wcadmin
           password: wcadmin
+        # 接口库：另一台Oracle服务器，BFCES_INTERFACE接口视图（如实际发货量），业务代码通过 @DS("interface") 切换
+        interface:
+          driver-class-name: oracle.jdbc.OracleDriver
+          url: jdbc:oracle:thin:@//10.177.206.104:1521/fce1p
+          username: bfces_interface
+          password: bfces_interface
+pbi:
+  api:
+    domain: https://plm13test.bfces.com
+    authorization: Basic d2NhZG1pbjpiZmNlc2FkbWluMjAyMg==
+    imageDir: /plm/ptc/Windchill_13.1/Windchill/codebase/wtcore/test/part/image/
+    basicPassword: Bfces@2021

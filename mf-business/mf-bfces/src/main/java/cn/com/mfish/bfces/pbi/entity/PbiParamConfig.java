@@ -8,7 +8,7 @@ import lombok.Data;
  * @description: PBI特征参数展示配置
  * @author: mfish
  * @date: 2026-10-09
- * @version: V1.1.0
+ * @version: V1.2.0
  */
 @Data
 @TableName("PBI_FeatureParameterDisplayConfig")
@@ -32,6 +32,9 @@ public class PbiParamConfig {
 
     @Schema(description = "部件视图列名")
     private String columnName;
+
+    @Schema(description = "授权成员账号（多个账号英文逗号分隔；值为空表示不限制成员，对所有人可见）")
+    private String member;
 
     @Schema(description = "分组颜色")
     private String groupColor;

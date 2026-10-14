@@ -8,6 +8,7 @@ CREATE TABLE PBI_FeatureParameterDisplayConfig
     column_name    VARCHAR2(255),
     param_type     VARCHAR2(255),
     role           VARCHAR2(255),
+    member         VARCHAR2(255),
     group_color    VARCHAR2(100),
     param_color    VARCHAR2(100)
 );
@@ -35,3 +36,5 @@ COMMENT
 ON COLUMN PBI_FeatureParameterDisplayConfig.param_type IS '参数类型';
 COMMENT
 ON COLUMN PBI_FeatureParameterDisplayConfig.role IS '角色';
+COMMENT
+ON COLUMN PBI_FeatureParameterDisplayConfig.member IS '成员';

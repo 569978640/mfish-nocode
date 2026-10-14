@@ -1,5 +1,6 @@
 package cn.com.mfish.bfces.pbi.service;
 
+import cn.com.mfish.bfces.pbi.entity.PbiFamilyTreeNode;
 import cn.com.mfish.bfces.pbi.entity.PbiFilterProperty;
 import cn.com.mfish.bfces.pbi.entity.PbiNode;
 import cn.com.mfish.bfces.pbi.entity.PbiParamConfig;
@@ -11,7 +12,7 @@ import java.util.List;
  * @description: PBI服务
  * @author: mfish
  * @date: 2026-10-09
- * @version: V1.2.0
+ * @version: V1.3.0
  */
 public interface PbiService {
     /**
@@ -63,4 +64,24 @@ public interface PbiService {
      * @return 返回筛选属性列表
      */
     List<PbiFilterProperty> getFilterProperties(String nodeName);
+
+    /**
+     * 获取产品家谱树。
+     * 以二级分类下的底层部件为起点，沿"上一代物料编码"逐层向上递归，BASELINE 为顶层；
+     * 属性值为空、属性行缺失或父部件编号无法解析的支系不进入家谱。
+     *
+     * @param productClassification 二级分类内部名称（PRODUCTCLASSIFICATION）
+     * @return 产品家谱顶层节点；无有效支系时返回null
+     */
+    PbiFamilyTreeNode getFamilyTree(String productClassification);
+
+    /**
+     * 按部件编号获取单个产品型号完整信息（产品家谱点击部件编号进入"详细特性参数"页使用）。
+     * 特性参数列取该一级分类下配置的展示列，部件编号全库唯一，不限制二级分类。
+     *
+     * @param firstCategory 一级分类（决定特性参数展示列）
+     * @param wtPartNumber  部件编号
+     * @return 产品型号；编号为空或未查到时返回null
+     */
+    PbiPart getPartDetail(String firstCategory, String wtPartNumber);
 }

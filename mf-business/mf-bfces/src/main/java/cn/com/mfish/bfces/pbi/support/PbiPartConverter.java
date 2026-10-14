@@ -79,6 +79,16 @@ public class PbiPartConverter {
     }
 
     /**
+     * 按部件编号拼接图片静态资源地址（对外暴露，供产品家谱等非视图转换场景复用同一套规则）。
+     *
+     * @param wtPartNumber 部件编号
+     * @return 图片静态访问地址；编号非法时返回空串
+     */
+    public String buildImageUrl(String wtPartNumber) {
+        return resolveImage(wtPartNumber);
+    }
+
+    /**
      * 按部件编号拼接图片静态资源地址。
      * 编号为空或包含路径穿越字符（".."、"/"、"\"）时返回空串，防止拼出非法路径；
      * 不再做服务端文件存在性检查（图片由Windchill静态服务托管，加载失败由前端默认图兜底）。
