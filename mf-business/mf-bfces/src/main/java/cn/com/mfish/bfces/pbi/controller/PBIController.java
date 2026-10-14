@@ -11,6 +11,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.annotation.Resource;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -135,5 +136,17 @@ public class PbiController {
             @RequestParam("firstCategory") String firstCategory,
             @RequestParam("wtPartNumber") String wtPartNumber) {
         return Result.ok(pbiService.getPartDetail(firstCategory, wtPartNumber), "获取产品型号详情成功!");
+    }
+
+    /**
+     * 应急运维：清空PBI部件Redis缓存，下次查询自动从Oracle差量重新加载。
+     * 适用场景：视图异常数据被修正后需要强制重读、缓存内容与视图不一致时人工干预。
+     *
+     * @return 实际删除的缓存key数量
+     */
+    @Operation(summary = "清空PBI部件缓存", description = "清空Redis中全部PBI部件相关缓存，下次查询自动从Oracle重新加载")
+    @DeleteMapping("/cache/part")
+    public Result<Long> refreshPartCache() {
+        return Result.ok(pbiService.refreshPartCache(), "清空PBI部件缓存成功，后续查询将自动重新加载!");
     }
 }

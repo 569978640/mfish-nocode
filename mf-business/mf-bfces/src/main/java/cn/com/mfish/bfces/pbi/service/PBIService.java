@@ -84,4 +84,12 @@ public interface PbiService {
      * @return 产品型号；编号为空或未查到时返回null
      */
     PbiPart getPartDetail(String firstCategory, String wtPartNumber);
+
+    /**
+     * 应急运维：清空Redis中全部PBI部件相关缓存（部件属性Hash、分类/编号ID索引）。
+     * 清空后下次查询将按实时ID列表自动从Oracle差量重建，无需重启服务。
+     *
+     * @return 实际删除的缓存key数量
+     */
+    long refreshPartCache();
 }
