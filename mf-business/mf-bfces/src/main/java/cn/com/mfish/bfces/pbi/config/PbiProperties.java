@@ -45,6 +45,20 @@ public class PbiProperties {
     private String basicPassword;
 
     /**
+     * 是否启用部件数据Redis缓存（总开关）。
+     * 缓存模型：部件属性只新增不修改（WORM），Hash永久缓存；分类/编号到IDA2A2的ID列表实时查库（可短缓存）。
+     * 关闭后所有部件查询直接走Oracle，与改造前行为一致。
+     */
+    private boolean cacheEnabled = true;
+
+    /**
+     * 分类/编号到部件ID（IDA2A2）索引的Redis缓存秒数。
+     * ID列表是感知新部件的唯一实时入口，该缓存仅用于削减高频单列窄查询压力，默认30秒；
+     * 设为0表示不缓存、每次实时查库（新部件零延迟可见）。
+     */
+    private long idCacheTtlSeconds = 30L;
+
+    /**
      * 连接超时时间（毫秒）
      */
     private int connectTimeout = 10000;
