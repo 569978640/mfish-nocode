@@ -1,7 +1,9 @@
 package cn.com.mfish.oauth.cache.common;
 
 import cn.com.mfish.common.oauth.api.vo.TenantVo;
+import cn.com.mfish.common.oauth.entity.SsoUser;
 import cn.com.mfish.common.redis.common.RedisPrefix;
+import cn.com.mfish.oauth.cache.temp.Account2IdTempCache;
 import cn.com.mfish.oauth.cache.temp.UserPermissionTempCache;
 import cn.com.mfish.oauth.cache.temp.UserRoleTempCache;
 import cn.com.mfish.oauth.cache.temp.UserTempCache;
@@ -30,6 +32,8 @@ public class ClearCache {
     UserPermissionTempCache userPermissionTempCache;
     @Resource
     UserTempCache userTempCache;
+    @Resource
+    Account2IdTempCache account2IdTempCache;
 
     /**
      * 移除用户相关缓存
@@ -40,6 +44,38 @@ public class ClearCache {
         userTempCache.removeOneCache(userId);
         userTenantTempCache.removeOneCache(userId);
         removeUserAuthCache(Collections.singletonList(userId));
+    }
+
+    /**
+     * 移除用户相关缓存（含账号、手机号、邮箱到用户ID的映射缓存）
+     * <p>
+     * 删除用户时必须同步清理 account2id 映射缓存：该缓存默认保留7天，
+     * 若只清理用户详情缓存，同账号被重新创建后会命中已失效的旧用户ID，
+     * 导致登录时查询不到用户，报“账号不存在或已被禁用”
+     * </p>
+     *
+     * @param user 被删除或变更登录标识的用户信息
+     */
+    public void removeUserCache(SsoUser user) {
+        if (user == null) {
+            return;
+        }
+        removeUserCache(user.getId());
+        // 账号、手机号、邮箱均可能作为登录入口，三者到用户ID的映射缓存都需要清理
+        removeAccount2IdCache(user.getAccount());
+        removeAccount2IdCache(user.getPhone());
+        removeAccount2IdCache(user.getEmail());
+    }
+
+    /**
+     * 清理单个登录标识（账号/手机号/邮箱）到用户ID的映射缓存
+     *
+     * @param account 登录标识
+     */
+    public void removeAccount2IdCache(String account) {
+        if (account != null && !account.isEmpty()) {
+            account2IdTempCache.removeOneCache(account);
+        }
     }
 
     /**

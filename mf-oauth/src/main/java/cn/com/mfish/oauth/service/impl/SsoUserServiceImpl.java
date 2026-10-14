@@ -217,6 +217,9 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
     @Transactional
     public Result<SsoUser> updateUser(SsoUser user) {
         validateUser(user, "修改");
+        // 更新前查询旧用户信息，手机号、邮箱可能在本次更新中被修改，
+        // 需用旧值清理对应的 account2id 映射缓存
+        SsoUser oldUser = getUserById(user.getId());
         //账号名称密码不在此处更新
         String account = user.getAccount();
         user.setAccount(null);
@@ -235,7 +238,14 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
                 insertUserRole(user.getId(), user.getRoleIds());
             }
             //移除缓存下次登录时会自动拉取
-            CompletableFuture.runAsync(() -> clearCache.removeUserCache(user.getId()));
+            CompletableFuture.runAsync(() -> {
+                clearCache.removeUserCache(user.getId());
+                if (oldUser != null) {
+                    // 清理旧手机号、旧邮箱到用户ID的映射，避免变更后旧标识仍可登录
+                    clearCache.removeAccount2IdCache(oldUser.getPhone());
+                    clearCache.removeAccount2IdCache(oldUser.getEmail());
+                }
+            });
             return Result.ok(user, "用户信息-更新成功");
         }
         throw new MyRuntimeException("错误:未找到用户信息更新数据");
@@ -277,10 +287,13 @@ public class SsoUserServiceImpl extends ServiceImpl<SsoUserMapper, SsoUser> impl
      */
     @Override
     public boolean removeUser(String id) {
+        // 删除前查询用户的账号、手机号、邮箱，用于删除后清理 account2id 映射缓存，
+        // 避免同账号重建后登录命中已失效的旧用户ID
+        SsoUser existUser = getUserById(id);
         SsoUser ssoUser = new SsoUser();
         ssoUser.setDelFlag(1).setId(id);
         if (baseMapper.updateById(ssoUser) == 1) {
-            CompletableFuture.runAsync(() -> clearCache.removeUserCache(id));
+            CompletableFuture.runAsync(() -> clearCache.removeUserCache(existUser));
             log.info("删除用户成功,用户ID:{}", id);
             return true;
         }
