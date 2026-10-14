@@ -11,9 +11,9 @@ import java.util.List;
  * @description: PBI服务
  * @author: mfish
  * @date: 2026-10-09
- * @version: V1.0.0
+ * @version: V1.2.0
  */
-public interface PBIService {
+public interface PbiService {
     /**
      * 获取一级分类
      *

@@ -7,8 +7,8 @@ import org.springframework.stereotype.Component;
 /**
  * @description: PBI（Windchill）接口配置属性，对应配置前缀 pbi.api
  * @author: mfish
- * @date: 2026-10-13
- * @version: V1.1.0
+ * @date: 2026-10-14
+ * @version: V1.2.0
  */
 @Data
 @Component
@@ -18,7 +18,7 @@ public class PbiProperties {
     /**
      * 接口域名地址，必须包含协议，如 https://plm13test.bfces.com
      */
-    private String domain = "https://plm13test.bfces.com";;
+    private String domain;
 
     /**
      * 接口鉴权令牌，原样写入 Authorization 请求头
@@ -26,24 +26,23 @@ public class PbiProperties {
     private String authorization;
 
     /**
-     * 部件图片在应用服务器上的本地存放目录（按部件编号命名PNG文件）。
-     * 需与Windchill静态资源目录保持一致，默认取测试环境路径，生产环境通过配置覆盖。
+     * 部件图片静态访问URL的路径前缀（不含域名），与Windchill codebase下的图片目录映射一致，
+     * 拼接方式：domain + imagePathPrefix + 部件编号 + .png
      */
-    private String imageDir = "/plm/ptc/Windchill_13.1/Windchill/codebase/wtcore/test/part/image/";
+    private String imagePathPrefix = "/Windchill/wtcore/test/part/image/";
 
     /**
      * 部件Windchill信息页路径（不含域名，与 {@link #domain} 拼接后再追加OID）。
-     * 默认取测试环境路径，生产环境通过 pbi.api.info-page-path 配置覆盖；
      * 在 yml 中配置时值含“#”，请用引号包裹。
      */
     private String infoPagePath = "/Windchill/app/#ptc1/tcomp/infoPage?oid=";
 
     /**
      * Windchill信息页Basic认证的固定密码（各账号共用同一密码）。
-     * 账号取当前登录用户账号，密码默认测试环境值，生产环境务必通过
-     * Nacos配置 pbi.api.basic-password 覆盖，不要把真实密码硬编码在代码中。
+     * 账号取当前登录用户账号，密码不提供默认值，必须通过 Nacos 配置 pbi.api.basic-password 注入；
+     * 未配置时部件信息页链接降级为不可点击，避免把无效链接暴露给前端。
      */
-    private String basicPassword = "Bfces@2021";
+    private String basicPassword;
 
     /**
      * 连接超时时间（毫秒）

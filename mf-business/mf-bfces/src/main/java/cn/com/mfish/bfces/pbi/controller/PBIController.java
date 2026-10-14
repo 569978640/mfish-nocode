@@ -4,7 +4,7 @@ import cn.com.mfish.bfces.pbi.entity.PbiFilterProperty;
 import cn.com.mfish.bfces.pbi.entity.PbiNode;
 import cn.com.mfish.bfces.pbi.entity.PbiParamConfig;
 import cn.com.mfish.bfces.pbi.entity.PbiPart;
-import cn.com.mfish.bfces.pbi.service.PBIService;
+import cn.com.mfish.bfces.pbi.service.PbiService;
 import cn.com.mfish.common.core.web.Result;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -21,16 +21,16 @@ import java.util.List;
  * @description: PBI控制器
  * @author: mfish
  * @date: 2026-10-09
- * @version: V1.0.0
+ * @version: V1.2.0
  */
 @Slf4j
 @Tag(name = "PBI接口")
 @RestController
 @RequestMapping("/pbi")
-public class PBIController {
+public class PbiController {
 
     @Resource
-    private PBIService pbiService;
+    private PbiService pbiService;
 
     /**
      * 获取一级分类
