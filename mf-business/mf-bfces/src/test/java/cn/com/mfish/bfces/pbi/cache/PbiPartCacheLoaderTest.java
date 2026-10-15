@@ -1,11 +1,11 @@
 package cn.com.mfish.bfces.pbi.cache;
 
+import cn.com.mfish.bfces.pbi.config.PbiProperties;
 import cn.com.mfish.bfces.pbi.mapper.PbiPartMapper;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -16,6 +16,7 @@ import java.util.Map;
 import java.util.Set;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -25,10 +26,11 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 /**
- * @description: PBI部件缓存差量回源加载器单元测试：覆盖全命中快路径、新部件全列回源、新列批量补齐、空值占位。
+ * @description: PBI部件缓存差量回源加载器单元测试：覆盖全命中快路径、新部件全列回源、新列批量补齐、空值占位，
+ * 以及分类/编号ID索引的短缓存与差量回源。
  * @author: mfish
  * @date: 2026-10-14
- * @version: V1.0.0
+ * @version: V1.1.0
  */
 @ExtendWith(MockitoExtension.class)
 class PbiPartCacheLoaderTest {
@@ -39,13 +41,17 @@ class PbiPartCacheLoaderTest {
     @Mock
     private PbiPartCacheRepository cacheRepository;
 
-    @InjectMocks
+    private PbiProperties properties;
+
     private PbiPartCacheLoader loader;
 
     private Set<String> requiredColumns;
 
     @BeforeEach
     void setUp() {
+        properties = new PbiProperties();
+        // 回源锁使用真实条纹锁组件（无外部依赖），锁内双检行为与生产一致
+        loader = new PbiPartCacheLoader(pbiPartMapper, cacheRepository, properties, new PbiLoadLocks());
         requiredColumns = new LinkedHashSet<>(List.of("OID", "WTPARTNUMBER", "NAME", "APPLICATIONID"));
     }
 
@@ -147,5 +153,35 @@ class PbiPartCacheLoaderTest {
         assertEquals("", captor.getValue().get("1").get("POWER"));
         assertEquals("", result.get("1").get("POWER"));
         assertTrue(result.get("1").containsKey("POWER"));
+    }
+
+    @Test
+    void 分类ID短缓存命中_直接返回不查索引视图() {
+        when(cacheRepository.getCategoryIds("CAT")).thenReturn(List.of("1", "2"));
+
+        List<String> ids = loader.loadCategoryIds("CAT");
+
+        assertEquals(List.of("1", "2"), ids);
+        verify(pbiPartMapper, never()).findIdsByClassification(anyString());
+        verify(cacheRepository, never()).putCategoryIds(anyString(), any(), org.mockito.ArgumentMatchers.anyLong());
+    }
+
+    @Test
+    void 分类ID短缓存未命中_查索引视图去重trim并回填30秒() {
+        when(cacheRepository.getCategoryIds("CAT")).thenReturn(null);
+        when(pbiPartMapper.findIdsByClassification("CAT")).thenReturn(List.of("1", " 2 ", "1", " "));
+
+        List<String> ids = loader.loadCategoryIds("CAT");
+
+        assertEquals(List.of("1", "2"), ids);
+        verify(cacheRepository).putCategoryIds("CAT", List.of("1", "2"), 30L);
+    }
+
+    @Test
+    void 编号ID短缓存命中查无标记_返回null不查库() {
+        when(cacheRepository.getIdByNumber("P404")).thenReturn("");
+
+        assertNull(loader.loadIdByNumber("P404"));
+        verify(pbiPartMapper, never()).findIdsByNumber(anyString());
     }
 }

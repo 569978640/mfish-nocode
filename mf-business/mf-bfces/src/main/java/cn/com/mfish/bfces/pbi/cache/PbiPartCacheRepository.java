@@ -12,6 +12,7 @@ import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Component;
 
 import java.sql.Clob;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -86,7 +87,7 @@ public class PbiPartCacheRepository {
         }
         String value = ids == null ? "" : String.join(",", ids);
         stringRedisTemplate.opsForValue().set(buildCategoryIdsKey(productClassification), value,
-                java.time.Duration.ofSeconds(ttlSeconds));
+                Duration.ofSeconds(ttlSeconds));
     }
 
     /**
@@ -116,7 +117,7 @@ public class PbiPartCacheRepository {
         }
         String value = StringUtils.isBlank(partId) ? NULL_ID_MARKER : partId.trim();
         stringRedisTemplate.opsForValue().set(buildNumberIdKey(wtPartNumber), value,
-                java.time.Duration.ofSeconds(ttlSeconds));
+                Duration.ofSeconds(ttlSeconds));
     }
 
     /**
@@ -131,15 +132,10 @@ public class PbiPartCacheRepository {
             return result;
         }
         // 注意：pipeline回调入参是Lettuce动态代理（仅实现RedisConnection），不能强转为StringRedisConnection；
-        // 统一使用SessionCallback高层API（opsForHash），key/field/value序列化由StringRedisTemplate自动完成
-        List<Object> pipelined = stringRedisTemplate.executePipelined(new SessionCallback<Object>() {
-            @Override
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            public Object execute(RedisOperations operations) {
-                for (String partId : partIds) {
-                    operations.opsForHash().entries(buildPartDetailKey(partId));
-                }
-                return null;
+        // 统一走executePipelined模板的SessionCallback高层API（opsForHash），序列化由StringRedisTemplate自动完成
+        List<Object> pipelined = executePipelined(operations -> {
+            for (String partId : partIds) {
+                operations.opsForHash().entries(buildPartDetailKey(partId));
             }
         });
         for (int i = 0; i < partIds.size() && i < pipelined.size(); i++) {
@@ -168,19 +164,14 @@ public class PbiPartCacheRepository {
         if (rows == null || rows.isEmpty()) {
             return;
         }
-        stringRedisTemplate.executePipelined(new SessionCallback<Object>() {
-            @Override
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            public Object execute(RedisOperations operations) {
-                for (Map<String, Object> row : rows) {
-                    String partId = readPartId(row);
-                    if (StringUtils.isBlank(partId)) {
-                        log.warn("部件行缺少IDA2A2主键列，已跳过缓存写入，行内容:{}", row);
-                        continue;
-                    }
-                    operations.opsForHash().putAll(buildPartDetailKey(partId), normalizeRow(row));
+        executePipelined(operations -> {
+            for (Map<String, Object> row : rows) {
+                String partId = readPartId(row);
+                if (StringUtils.isBlank(partId)) {
+                    log.warn("部件行缺少IDA2A2主键列，已跳过缓存写入，行内容:{}", row);
+                    continue;
                 }
-                return null;
+                operations.opsForHash().putAll(buildPartDetailKey(partId), normalizeRow(row));
             }
         });
     }
@@ -194,16 +185,11 @@ public class PbiPartCacheRepository {
         if (fieldsByPartId == null || fieldsByPartId.isEmpty()) {
             return;
         }
-        stringRedisTemplate.executePipelined(new SessionCallback<Object>() {
-            @Override
-            @SuppressWarnings({"unchecked", "rawtypes"})
-            public Object execute(RedisOperations operations) {
-                for (Map.Entry<String, Map<String, String>> entry : fieldsByPartId.entrySet()) {
-                    if (StringUtils.isNotBlank(entry.getKey()) && entry.getValue() != null && !entry.getValue().isEmpty()) {
-                        operations.opsForHash().putAll(buildPartDetailKey(entry.getKey()), entry.getValue());
-                    }
+        executePipelined(operations -> {
+            for (Map.Entry<String, Map<String, String>> entry : fieldsByPartId.entrySet()) {
+                if (StringUtils.isNotBlank(entry.getKey()) && entry.getValue() != null && !entry.getValue().isEmpty()) {
+                    operations.opsForHash().putAll(buildPartDetailKey(entry.getKey()), entry.getValue());
                 }
-                return null;
             }
         });
     }
@@ -292,6 +278,37 @@ public class PbiPartCacheRepository {
             }
         }
         return value.toString();
+    }
+
+    /**
+     * pipeline动作：在一次pipeline中顺序下发多个Hash命令。
+     * 回调入参为Lettuce动态代理，仅可使用RedisOperations高层API，禁止强转具体连接类型。
+     */
+    @FunctionalInterface
+    private interface PipelinedAction {
+
+        /**
+         * @param operations pipeline会话操作入口
+         */
+        @SuppressWarnings({"unchecked", "rawtypes"})
+        void execute(RedisOperations operations);
+    }
+
+    /**
+     * 在一次Redis pipeline中执行批量Hash命令，收敛SessionCallback样板。
+     *
+     * @param action pipeline命令下发动作
+     * @return 各命令按下发顺序排列的返回结果
+     */
+    @SuppressWarnings({"unchecked", "rawtypes"})
+    private List<Object> executePipelined(PipelinedAction action) {
+        return stringRedisTemplate.executePipelined(new SessionCallback<Object>() {
+            @Override
+            public Object execute(RedisOperations operations) {
+                action.execute(operations);
+                return null;
+            }
+        });
     }
 
     private String buildPartDetailKey(String partId) {

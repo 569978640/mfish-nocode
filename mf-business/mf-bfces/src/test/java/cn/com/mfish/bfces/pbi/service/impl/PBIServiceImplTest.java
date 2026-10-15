@@ -10,6 +10,7 @@ import cn.com.mfish.bfces.pbi.mapper.PbiParamConfigMapper;
 import cn.com.mfish.bfces.pbi.mapper.PbiPartMapper;
 import cn.com.mfish.bfces.pbi.support.PbiFamilyTreeBuilder;
 import cn.com.mfish.bfces.pbi.support.PbiPartConverter;
+import cn.com.mfish.bfces.pbi.support.PbiPartRowQuery;
 import cn.com.mfish.bfces.pbi.support.PbiViewColumnSelector;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -76,8 +77,11 @@ class PBIServiceImplTest {
         properties = new PbiProperties();
         // 转换器使用真实实例（域名未配置时图片/信息页地址为空串，不影响属性断言）
         PbiPartConverter partConverter = new PbiPartConverter(properties);
+        // 行查询链路使用真实实例（内部装配实时ID+Hash缓存+宽行降级），mock仅停在Mapper/缓存加载器边界
+        PbiPartRowQuery partRowQuery =
+                new PbiPartRowQuery(properties, partCacheLoader, pbiPartMapper, viewColumnSelector);
         service = new PbiServiceImpl(pbiApiClient, pbiParamConfigMapper, pbiPartMapper, viewColumnSelector,
-                partConverter, familyTreeBuilder, properties, partCacheRepository, partCacheLoader);
+                partConverter, familyTreeBuilder, partCacheRepository, partRowQuery);
 
         // 一级分类配置一个POWER特性列；白名单选择器模拟"全部候选列校验通过"
         // lenient：下拉选项与清缓存用例不触达列配置/白名单组装，严格模式下避免误报冗余stub
@@ -89,8 +93,8 @@ class PBIServiceImplTest {
     }
 
     @Test
-    void 列表查询_ID短缓存与属性Hash均命中_不查Oracle() {
-        when(partCacheRepository.getCategoryIds("CAT")).thenReturn(List.of("1", "2"));
+    void 列表查询_ID与属性Hash均命中_不查Oracle宽行() {
+        when(partCacheLoader.loadCategoryIds("CAT")).thenReturn(List.of("1", "2"));
         Map<String, Map<String, String>> hashes = new LinkedHashMap<>();
         hashes.put("1", fullHash("1", "P1"));
         hashes.put("2", fullHash("2", "P2"));
@@ -108,9 +112,8 @@ class PBIServiceImplTest {
     }
 
     @Test
-    void 列表查询_ID短缓存未命中_实时查库去重trim并回填短缓存() {
-        when(partCacheRepository.getCategoryIds("CAT")).thenReturn(null);
-        when(pbiPartMapper.findIdsByClassification("CAT")).thenReturn(List.of("1", " 2 ", "1"));
+    void 列表查询_ID由加载器返回_去重trim与短缓存回填由加载器负责() {
+        when(partCacheLoader.loadCategoryIds("CAT")).thenReturn(List.of("1", "2"));
         Map<String, Map<String, String>> hashes = new LinkedHashMap<>();
         hashes.put("1", fullHash("1", "P1"));
         hashes.put("2", fullHash("2", "P2"));
@@ -119,24 +122,23 @@ class PBIServiceImplTest {
         List<PbiPart> parts = service.getPartsByClassification("一级分类", "CAT");
 
         assertEquals(2, parts.size());
-        // 实时窄查询结果去空白、去重后以30秒短缓存回填
-        verify(partCacheRepository).putCategoryIds("CAT", List.of("1", "2"), 30L);
+        // ID列表的实时查询、去重与短缓存回填均封装在加载器中，Service只负责编排
+        verify(partCacheLoader).loadCategoryIds("CAT");
     }
 
     @Test
-    void 列表查询_ID短缓存命中空列表_直接返回空且不回源() {
-        when(partCacheRepository.getCategoryIds("CAT_EMPTY")).thenReturn(new ArrayList<>());
+    void 列表查询_ID为空列表_直接返回空且不加载Hash() {
+        when(partCacheLoader.loadCategoryIds("CAT_EMPTY")).thenReturn(new ArrayList<>());
 
         List<PbiPart> parts = service.getPartsByClassification("一级分类", "CAT_EMPTY");
 
         assertEquals(0, parts.size());
-        verify(pbiPartMapper, never()).findIdsByClassification(anyString());
         verify(partCacheLoader, never()).loadHashes(any(), anyString(), any());
     }
 
     @Test
     void 列表查询_Redis异常_自动降级Oracle宽行查询() {
-        when(partCacheRepository.getCategoryIds("CAT")).thenThrow(new RuntimeException("redis连接失败"));
+        when(partCacheLoader.loadCategoryIds("CAT")).thenThrow(new RuntimeException("redis连接失败"));
         Map<String, Object> row = new LinkedHashMap<>();
         row.put("WTPARTNUMBER", "P1");
         row.put("NAME", "部件1");
@@ -162,6 +164,7 @@ class PBIServiceImplTest {
 
         assertEquals(1, parts.size());
         verifyNoInteractions(partCacheRepository);
+        verify(partCacheLoader, never()).loadCategoryIds(anyString());
     }
 
     @Test
@@ -175,13 +178,13 @@ class PBIServiceImplTest {
 
         assertEquals(List.of("P1,部件1"), options);
         verifyNoInteractions(partCacheRepository);
+        verifyNoInteractions(partCacheLoader);
         verify(pbiPartMapper, never()).getPartsByClassification(anyString(), anyString());
     }
 
     @Test
     void 详情查询_编号实时定位ID后走属性Hash() {
-        when(partCacheRepository.getIdByNumber("P1")).thenReturn(null);
-        when(pbiPartMapper.findIdsByNumber("P1")).thenReturn(List.of("10"));
+        when(partCacheLoader.loadIdByNumber("P1")).thenReturn("10");
         Map<String, Map<String, String>> hashes = new LinkedHashMap<>();
         hashes.put("10", fullHash("10", "P1"));
         when(partCacheLoader.loadHashes(eq(List.of("10")), eq("part:10"), any())).thenReturn(hashes);
@@ -190,19 +193,18 @@ class PBIServiceImplTest {
 
         assertEquals("P1", part.getWtPartNumber());
         assertEquals("5kW", part.getAttrs().get("POWER"));
-        verify(partCacheRepository).putIdByNumber("P1", "10", 30L);
+        verify(partCacheLoader).loadIdByNumber("P1");
         verify(pbiPartMapper, never()).getPartByNumber(anyString(), anyString());
     }
 
     @Test
-    void 详情查询_编号查无记录_返回null并写入查无短缓存标记() {
-        when(partCacheRepository.getIdByNumber("P404")).thenReturn(null);
-        when(pbiPartMapper.findIdsByNumber("P404")).thenReturn(new ArrayList<>());
+    void 详情查询_编号查无记录_返回null() {
+        when(partCacheLoader.loadIdByNumber("P404")).thenReturn(null);
 
         PbiPart part = service.getPartDetail("一级分类", "P404");
 
         assertNull(part);
-        verify(partCacheRepository).putIdByNumber("P404", null, 30L);
+        verify(partCacheLoader, never()).loadHashes(any(), anyString(), any());
     }
 
     @Test

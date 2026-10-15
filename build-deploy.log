@@ -1,0 +1,615 @@
+﻿[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for cn.com.mfish:mf-start-boot:jar:mf-2.4.1
+[WARNING] 'dependencies.dependency.systemPath' for cn.com.mfish:mf-nocode:jar should not point at files within the project directory, ${project.basedir}/lib/mf-nocode-${mfish.version}.jar will be unresolvable by dependent projects @ line 49, column 25
+[WARNING] 'dependencies.dependency.systemPath' for cn.com.mfish:mf-common-bi:jar:pg should not point at files within the project directory, ${project.basedir}/lib/mf-common-bi-${mfish.version}-pg.jar will be unresolvable by dependent projects @ line 67, column 25
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for cn.com.mfish:mf-start-nocode:jar:mf-2.4.1
+[WARNING] 'dependencies.dependency.systemPath' for cn.com.mfish:mf-nocode:jar should not point at files within the project directory, ${project.basedir}/lib/mf-nocode-${mfish.version}.jar will be unresolvable by dependent projects @ line 29, column 25
+[WARNING] 'dependencies.dependency.systemPath' for cn.com.mfish:mf-common-bi:jar:pg should not point at files within the project directory, ${project.basedir}/lib/mf-common-bi-${mfish.version}-pg.jar will be unresolvable by dependent projects @ line 37, column 25
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] mfish-nocode                                                       [pom]
+[INFO] mf-common                                                          [pom]
+[INFO] mf-common-core                                                     [jar]
+[INFO] mf-common-redis                                                    [jar]
+[INFO] mf-api                                                             [pom]
+[INFO] mf-oauth-api                                                       [jar]
+[INFO] mf-common-oauth                                                    [jar]
+[INFO] mf-common-captcha                                                  [jar]
+[INFO] mf-gateway                                                         [jar]
+[INFO] mf-common-swagger                                                  [jar]
+[INFO] mf-common-ds                                                       [jar]
+[INFO] mf-common-dataset                                                  [jar]
+[INFO] mf-sys-api                                                         [jar]
+[INFO] mf-common-log                                                      [jar]
+[INFO] mf-common-dblink                                                   [jar]
+[INFO] mf-common-code                                                     [jar]
+[INFO] mf-common-sys                                                      [jar]
+[INFO] mf-common-app                                                      [jar]
+[INFO] mf-common-web                                                      [jar]
+[INFO] mf-common-cloud                                                    [jar]
+[INFO] mf-oauth                                                           [jar]
+[INFO] mf-business                                                        [pom]
+[INFO] mf-sys                                                             [jar]
+[INFO] mf-bfces                                                           [jar]
+[INFO] mf-start                                                           [pom]
+[INFO] mf-start-oauth                                                     [jar]
+[INFO] mf-start-sys                                                       [jar]
+[INFO] mf-start-gateway                                                   [jar]
+[INFO] mf-start-bfces                                                     [jar]
+[INFO] 
+[INFO] ---------------------< cn.com.mfish:mfish-nocode >----------------------
+[INFO] Building mfish-nocode mf-2.4.1                                    [1/29]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mfish-nocode ---
+[INFO] 
+[INFO] -----------------------< cn.com.mfish:mf-common >-----------------------
+[INFO] Building mf-common mf-2.4.1                                       [2/29]
+[INFO]   from mf-common\pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common ---
+[INFO] 
+[INFO] --------------------< cn.com.mfish:mf-common-core >---------------------
+[INFO] Building mf-common-core mf-2.4.1                                  [3/29]
+[INFO]   from mf-common\mf-common-core\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-core ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-core\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-core ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-core ---
+[INFO] Recompiling the module because of changed source code.
+[INFO] Compiling 53 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-core/src/main/java/cn/com/mfish/common/core/utils/FeignFallbackHelper.java: 某些输入文件使用或覆盖了已过时的 API。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-core/src/main/java/cn/com/mfish/common/core/utils/FeignFallbackHelper.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-core ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-core ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-core ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-core ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-core\target\mf-common-core-mf-2.4.1.jar
+[INFO] 
+[INFO] --------------------< cn.com.mfish:mf-common-redis >--------------------
+[INFO] Building mf-common-redis mf-2.4.1                                 [4/29]
+[INFO]   from mf-common\mf-common-redis\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-redis ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-redis\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-redis ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-redis ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 5 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-redis/src/main/java/cn/com/mfish/common/redis/common/IDBuild.java: 某些输入文件使用或覆盖了已过时的 API。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-redis/src/main/java/cn/com/mfish/common/redis/common/IDBuild.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-redis ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-redis ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-redis ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-redis ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-redis\target\mf-common-redis-mf-2.4.1.jar
+[INFO] 
+[INFO] ------------------------< cn.com.mfish:mf-api >-------------------------
+[INFO] Building mf-api mf-2.4.1                                          [5/29]
+[INFO]   from mf-api\pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-api ---
+[INFO] 
+[INFO] ---------------------< cn.com.mfish:mf-oauth-api >----------------------
+[INFO] Building mf-oauth-api mf-2.4.1                                    [6/29]
+[INFO]   from mf-api\mf-oauth-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-oauth-api ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-api\mf-oauth-api\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-oauth-api ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-oauth-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 17 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-oauth-api ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-oauth-api ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-oauth-api ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-oauth-api ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-api\mf-oauth-api\target\mf-oauth-api-mf-2.4.1.jar
+[INFO] 
+[INFO] --------------------< cn.com.mfish:mf-common-oauth >--------------------
+[INFO] Building mf-common-oauth mf-2.4.1                                 [7/29]
+[INFO]   from mf-common\mf-common-oauth\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-oauth ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-oauth\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-oauth ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-oauth ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 44 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-oauth/src/main/java/cn/com/mfish/common/oauth/service/impl/WeChatTokenServiceImpl.java: 某些输入文件使用或覆盖了已过时的 API。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-oauth/src/main/java/cn/com/mfish/common/oauth/service/impl/WeChatTokenServiceImpl.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-oauth ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-oauth ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-oauth ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-oauth ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-oauth\target\mf-common-oauth-mf-2.4.1.jar
+[INFO] 
+[INFO] -------------------< cn.com.mfish:mf-common-captcha >-------------------
+[INFO] Building mf-common-captcha mf-2.4.1                               [8/29]
+[INFO]   from mf-common\mf-common-captcha\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-captcha ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-captcha\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-captcha ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-captcha ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-captcha/src/main/java/cn/com/mfish/common/captcha/service/impl/CheckCodeServiceImpl.java: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-captcha\src\main\java\cn\com\mfish\common\captcha\service\impl\CheckCodeServiceImpl.java使用或覆盖了已过时的 API。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-captcha/src/main/java/cn/com/mfish/common/captcha/service/impl/CheckCodeServiceImpl.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-captcha ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-captcha ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-captcha ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-captcha ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-captcha\target\mf-common-captcha-mf-2.4.1.jar
+[INFO] 
+[INFO] ----------------------< cn.com.mfish:mf-gateway >-----------------------
+[INFO] Building mf-gateway mf-2.4.1                                      [9/29]
+[INFO]   from mf-gateway\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-gateway ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-gateway\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-gateway ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] skip non existing resourceDirectory E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-gateway\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-gateway ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 12 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-gateway/src/main/java/cn/com/mfish/gateway/filter/XssFilter.java: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-gateway\src\main\java\cn\com\mfish\gateway\filter\XssFilter.java使用或覆盖了已过时的 API。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-gateway/src/main/java/cn/com/mfish/gateway/filter/XssFilter.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-gateway ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-gateway ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-gateway ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-gateway ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-gateway\target\mf-gateway-mf-2.4.1.jar
+[INFO] 
+[INFO] -------------------< cn.com.mfish:mf-common-swagger >-------------------
+[INFO] Building mf-common-swagger mf-2.4.1                              [10/29]
+[INFO]   from mf-common\mf-common-swagger\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-swagger ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-swagger\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-swagger ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-swagger ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 4 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-swagger ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-swagger ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-swagger ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-swagger ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-swagger\target\mf-common-swagger-mf-2.4.1.jar
+[INFO] 
+[INFO] ---------------------< cn.com.mfish:mf-common-ds >----------------------
+[INFO] Building mf-common-ds mf-2.4.1                                   [11/29]
+[INFO]   from mf-common\mf-common-ds\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-ds ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-ds\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-ds ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-ds ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 5 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-ds ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-ds ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-ds ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-ds ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-ds\target\mf-common-ds-mf-2.4.1.jar
+[INFO] 
+[INFO] -------------------< cn.com.mfish:mf-common-dataset >-------------------
+[INFO] Building mf-common-dataset mf-2.4.1                              [12/29]
+[INFO]   from mf-common\mf-common-dataset\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-dataset ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-dataset\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-dataset ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] skip non existing resourceDirectory E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-dataset\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-dataset ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 10 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-dataset ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-dataset ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-dataset ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-dataset ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-dataset\target\mf-common-dataset-mf-2.4.1.jar
+[INFO] 
+[INFO] ----------------------< cn.com.mfish:mf-sys-api >-----------------------
+[INFO] Building mf-sys-api mf-2.4.1                                     [13/29]
+[INFO]   from mf-api\mf-sys-api\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-sys-api ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-api\mf-sys-api\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-sys-api ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-sys-api ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 17 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[WARNING] 未知的枚举常量 org.apache.ibatis.type.JdbcType.UNDEFINED
+  原因: 找不到org.apache.ibatis.type.JdbcType的类文件
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-sys-api ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-sys-api ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-sys-api ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-sys-api ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-api\mf-sys-api\target\mf-sys-api-mf-2.4.1.jar
+[INFO] 
+[INFO] ---------------------< cn.com.mfish:mf-common-log >---------------------
+[INFO] Building mf-common-log mf-2.4.1                                  [14/29]
+[INFO]   from mf-common\mf-common-log\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-log ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-log\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-log ---
+[INFO] Copying 1 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-log ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 6 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-log ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-log ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-log ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-log ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-log\target\mf-common-log-mf-2.4.1.jar
+[INFO] 
+[INFO] -------------------< cn.com.mfish:mf-common-dblink >--------------------
+[INFO] Building mf-common-dblink mf-2.4.1                               [15/29]
+[INFO]   from mf-common\mf-common-dblink\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-dblink ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-dblink\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-dblink ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] skip non existing resourceDirectory E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-dblink\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-dblink ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 32 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-dblink/src/main/java/cn/com/mfish/common/dblink/manger/PoolManager.java: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-dblink\src\main\java\cn\com\mfish\common\dblink\manger\PoolManager.java使用了未经检查或不安全的操作。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-common/mf-common-dblink/src/main/java/cn/com/mfish/common/dblink/manger/PoolManager.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-dblink ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-dblink ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-dblink ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-dblink ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-dblink\target\mf-common-dblink-mf-2.4.1.jar
+[INFO] 
+[INFO] --------------------< cn.com.mfish:mf-common-code >---------------------
+[INFO] Building mf-common-code mf-2.4.1                                 [16/29]
+[INFO]   from mf-common\mf-common-code\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-code ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-code\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-code ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 14 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-code ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 11 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-code ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-code ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-code ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-code ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-code\target\mf-common-code-mf-2.4.1.jar
+[INFO] 
+[INFO] ---------------------< cn.com.mfish:mf-common-sys >---------------------
+[INFO] Building mf-common-sys mf-2.4.1                                  [17/29]
+[INFO]   from mf-common\mf-common-sys\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-sys ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-sys\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-sys ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] skip non existing resourceDirectory E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-sys\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-sys ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 5 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-sys ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-sys ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-sys ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-sys ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-sys\target\mf-common-sys-mf-2.4.1.jar
+[INFO] 
+[INFO] ---------------------< cn.com.mfish:mf-common-app >---------------------
+[INFO] Building mf-common-app mf-2.4.1                                  [18/29]
+[INFO]   from mf-common\mf-common-app\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-app ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-app\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-app ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] skip non existing resourceDirectory E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-app\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-app ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug parameters target 21] to target\classes

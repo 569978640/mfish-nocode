@@ -11,24 +11,26 @@ import java.util.List;
 
 /**
  * @description: PBI产品家谱Mapper。
- * 数据全部来自Windchill(Oracle 19c)：
- * 1.BFCES_PBI_PART_VIEW 提供二级分类下的底层部件ID；
- * 2.STRINGVALUE/STRINGDEFINITION 提供"上一代物料编码"（部件编号或BASELINE）及DOC/DPF/SCR_ASC规格软属性；
- * 3.WTPART/WTPARTMASTER 提供部件编号、生命周期状态及最新已发布版本的部件ID。
+ * 家谱按"Redis部件Hash优先、miss回Windchill原始表、编号解析始终实时"的方式读取数据（见 PbiFamilyPartReader）：
+ * 1.BFCES_PBI_PART_INDX_VIEW 提供二级分类下的底层部件ID（索引视图实时窄查询）；
+ * 2.STRINGVALUE/STRINGDEFINITION 提供"上一代物料编码"（部件编号或BASELINE）及DOC/DPF/SCR_ASC规格软属性，
+ *   作为Redis Hash对应字段miss时的回源；
+ * 3.WTPART/WTPARTMASTER 提供部件编号、生命周期状态及最新已发布版本的部件ID，
+ *   其中"编号→最新版本"始终实时查询，不走缓存，保证家谱连接到最新已发布/已作废版本。
  * @author: mfish
  * @date: 2026-10-14
- * @version: V1.1.0
+ * @version: V1.3.0
  */
 @Mapper
 public interface PbiFamilyMapper {
 
     /**
-     * 根据二级分类查询底层节点部件ID
+     * 根据二级分类查询底层节点部件ID（走专用索引视图BFCES_PBI_PART_INDX_VIEW，单列窄查询）。
      *
      * @param productClassification 二级分类内部名称（PRODUCTCLASSIFICATION）
-     * @return 底层部件ID列表（WTPART.IDA2A2）
+     * @return 底层部件ID列表（IDA2A2）
      */
-    @Select("SELECT IDA2A2 AS PART_ID FROM BFCES_PBI_PART_VIEW WHERE PRODUCTCLASSIFICATION = #{productClassification}")
+    @Select("SELECT IDA2A2 AS PART_ID FROM BFCES_PBI_PART_INDX_VIEW WHERE PRODUCTCLASSIFICATION = #{productClassification}")
     List<String> findLeafPartIds(@Param("productClassification") String productClassification);
 
     /**

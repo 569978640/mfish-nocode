@@ -1,8 +1,11 @@
 package cn.com.mfish.bfces.pbi.cache;
 
+import cn.com.mfish.bfces.pbi.config.PbiProperties;
 import cn.com.mfish.bfces.pbi.mapper.PbiPartMapper;
+import cn.com.mfish.bfces.pbi.util.PbiCollectionUtils;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
@@ -12,7 +15,6 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
 
 /**
  * @description: PBI部件缓存回源加载器。
@@ -34,8 +36,45 @@ public class PbiPartCacheLoader {
 
     private final PbiPartCacheRepository cacheRepository;
 
-    /** 回源锁池：key为分类标识（列表查询）或部件标识（详情查询），数量有限常驻内存 */
-    private final ConcurrentHashMap<String, Object> loadLocks = new ConcurrentHashMap<>();
+    private final PbiProperties pbiProperties;
+
+    /** 固定条纹回源锁：按lockKey分配，避免含部件ID的锁键无界增长 */
+    private final PbiLoadLocks loadLocks;
+
+    /**
+     * 获取分类下的部件ID列表：优先读30秒短缓存，未命中时实时查索引视图单列并回填短缓存。
+     * 产品列表与产品家谱共用同一套"分类→ID"实时入口。
+     *
+     * @param productClassification 二级分类内部名称
+     * @return 去空白、去重并保持视图顺序的部件ID列表
+     */
+    public List<String> loadCategoryIds(String productClassification) {
+        List<String> cachedIds = cacheRepository.getCategoryIds(productClassification);
+        if (cachedIds != null) {
+            return cachedIds;
+        }
+        List<String> dbIds = PbiCollectionUtils.distinctTrimmed(
+                pbiPartMapper.findIdsByClassification(productClassification));
+        cacheRepository.putCategoryIds(productClassification, dbIds, pbiProperties.getIdCacheTtlSeconds());
+        return dbIds;
+    }
+
+    /**
+     * 获取单个部件编号对应的部件ID：优先读短缓存（含查无标记），未命中时实时查索引视图并回填。
+     *
+     * @param wtPartNumber 已trim的部件编号
+     * @return 部件ID；视图查无记录时返回null
+     */
+    public String loadIdByNumber(String wtPartNumber) {
+        String cachedId = cacheRepository.getIdByNumber(wtPartNumber);
+        if (cachedId != null) {
+            return StringUtils.trimToNull(cachedId);
+        }
+        List<String> ids = pbiPartMapper.findIdsByNumber(wtPartNumber);
+        String partId = firstNotBlank(ids);
+        cacheRepository.putIdByNumber(wtPartNumber, partId, pbiProperties.getIdCacheTtlSeconds());
+        return partId;
+    }
 
     /**
      * 确保给定部件的缓存Hash包含全部所需列，返回部件ID -> 属性Map（field全大写）。
@@ -53,38 +92,16 @@ public class PbiPartCacheLoader {
         }
         // 第一次读缓存：全部部件Hash都含全部所需列时直接返回，无锁快路径
         Map<String, Map<String, String>> hashes = cacheRepository.getPartHashes(partIds);
-        if (isComplete(hashes, requiredColumns)) {
+        if (PbiCollectionUtils.allFieldsReady(hashes, requiredColumns)) {
             return hashes;
         }
         // 加锁后双重检查，避免新部件/新列首次出现时并发重复回源
-        Object lock = loadLocks.computeIfAbsent(lockKey, key -> new Object());
-        synchronized (lock) {
+        synchronized (loadLocks.lockOf(lockKey)) {
             hashes = cacheRepository.getPartHashes(partIds);
             fillMissingParts(hashes);
             fillMissingColumns(hashes, requiredColumns);
             return hashes;
         }
-    }
-
-    /**
-     * 判断所有部件Hash是否都存在且包含全部所需列。
-     *
-     * @param hashes          部件ID -> 属性Map
-     * @param requiredColumns 所需列集合（大写）
-     * @return true表示缓存完整，无需回源
-     */
-    private boolean isComplete(Map<String, Map<String, String>> hashes, Set<String> requiredColumns) {
-        for (Map<String, String> hash : hashes.values()) {
-            if (hash == null || hash.isEmpty()) {
-                return false;
-            }
-            for (String column : requiredColumns) {
-                if (!hash.containsKey(column)) {
-                    return false;
-                }
-            }
-        }
-        return true;
     }
 
     /**
@@ -205,5 +222,23 @@ public class PbiPartCacheLoader {
                 }
             }
         }
+    }
+
+    /**
+     * 取列表中首个非空白值并trim。
+     *
+     * @param values 原始值列表
+     * @return 首个非空白值；全部空白或列表为空时返回null
+     */
+    private String firstNotBlank(List<String> values) {
+        if (values == null) {
+            return null;
+        }
+        for (String value : values) {
+            if (StringUtils.isNotBlank(value)) {
+                return value.trim();
+            }
+        }
+        return null;
     }
 }
