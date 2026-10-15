@@ -1,13 +1,41 @@
 services:
-  mfish-nocode-service:
-    build: mf-start/mf-start-boot
-    container_name: mfish-nocode-service
+  mf-gateway:
+    build: mf-start/mf-start-gateway
+    container_name: mf-gateway
+    network_mode: host
     restart: always
     environment:
       - TZ=Asia/Shanghai
-    ports:
-      - 11116:8888
     volumes:
-      - /home/srv/docker_volumes/mfish-nocode-service/logs:/app/logs
-      - /home/srv/docker_volumes/mfish-nocode-service/code:/app/code
-      - /home/srv/docker_volumes/mfish-nocode-service/storage:/app/storage
+      - /plm/windflow/logs:/app/logs
+
+  mf-oauth:
+    build: mf-start/mf-start-oauth
+    container_name: mf-oauth
+    network_mode: host
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - /plm/windflow/logs:/app/logs
+
+  mf-sys:
+    build: mf-start/mf-start-sys
+    container_name: mf-sys
+    network_mode: host
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - /plm/windflow/logs:/app/logs
+      - /plm/windflow/code:/app/code
+
+  mf-bfces:
+    build: mf-start/mf-start-bfces
+    container_name: mf-bfces
+    network_mode: host
+    restart: always
+    environment:
+      - TZ=Asia/Shanghai
+    volumes:
+      - /plm/windflow/logs:/app/logs
