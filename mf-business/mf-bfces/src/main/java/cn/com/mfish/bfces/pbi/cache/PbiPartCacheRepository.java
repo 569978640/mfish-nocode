@@ -290,7 +290,7 @@ public class PbiPartCacheRepository {
         /**
          * @param operations pipeline会话操作入口
          */
-        @SuppressWarnings({"unchecked", "rawtypes"})
+        @SuppressWarnings({"rawtypes"})
         void execute(RedisOperations operations);
     }
 
@@ -300,7 +300,6 @@ public class PbiPartCacheRepository {
      * @param action pipeline命令下发动作
      * @return 各命令按下发顺序排列的返回结果
      */
-    @SuppressWarnings({"unchecked", "rawtypes"})
     private List<Object> executePipelined(PipelinedAction action) {
         return stringRedisTemplate.executePipelined(new SessionCallback<Object>() {
             @Override

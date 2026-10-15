@@ -613,3 +613,317 @@
 [INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-app ---
 [INFO] Recompiling the module because of changed dependency.
 [INFO] Compiling 1 source file with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-app ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-app ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-app ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-app ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-app\target\mf-common-app-mf-2.4.1.jar
+[INFO] 
+[INFO] ---------------------< cn.com.mfish:mf-common-web >---------------------
+[INFO] Building mf-common-web mf-2.4.1                                  [19/29]
+[INFO]   from mf-common\mf-common-web\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-web ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-web\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-web ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] skip non existing resourceDirectory E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-web\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-web ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-web ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-web ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-web ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-web ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-web\target\mf-common-web-mf-2.4.1.jar
+[INFO] 
+[INFO] --------------------< cn.com.mfish:mf-common-cloud >--------------------
+[INFO] Building mf-common-cloud mf-2.4.1                                [20/29]
+[INFO]   from mf-common\mf-common-cloud\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-common-cloud ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-cloud\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-common-cloud ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 1 resource from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-common-cloud ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 4 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-common-cloud ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-common-cloud ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-common-cloud ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-common-cloud ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-common\mf-common-cloud\target\mf-common-cloud-mf-2.4.1.jar
+[INFO] 
+[INFO] -----------------------< cn.com.mfish:mf-oauth >------------------------
+[INFO] Building mf-oauth mf-2.4.1                                       [21/29]
+[INFO]   from mf-oauth\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-oauth ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-oauth\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-oauth ---
+[INFO] Copying 7 resources from src\main\java to target\classes
+[INFO] Copying 25 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-oauth ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 113 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-oauth/src/main/java/cn/com/mfish/oauth/cache/redis/UserTokenCache.java: 某些输入文件使用或覆盖了已过时的 API。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-oauth/src/main/java/cn/com/mfish/oauth/cache/redis/UserTokenCache.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-oauth ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-oauth ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-oauth ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-oauth ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-oauth\target\mf-oauth-mf-2.4.1.jar
+[INFO] 
+[INFO] ----------------------< cn.com.mfish:mf-business >----------------------
+[INFO] Building mf-business mf-2.4.1                                    [22/29]
+[INFO]   from mf-business\pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-business ---
+[INFO] 
+[INFO] ------------------------< cn.com.mfish:mf-sys >-------------------------
+[INFO] Building mf-sys mf-2.4.1                                         [23/29]
+[INFO]   from mf-business\mf-sys\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-sys ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-business\mf-sys\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-sys ---
+[INFO] Copying 6 resources from src\main\java to target\classes
+[INFO] skip non existing resourceDirectory E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-business\mf-sys\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-sys ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 32 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-sys ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-sys ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-sys ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-sys ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-business\mf-sys\target\mf-sys-mf-2.4.1.jar
+[INFO] 
+[INFO] -----------------------< cn.com.mfish:mf-bfces >------------------------
+[INFO] Building mf-bfces mf-2.4.1                                       [24/29]
+[INFO]   from mf-business\mf-bfces\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-bfces ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-business\mf-bfces\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-bfces ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] skip non existing resourceDirectory E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-business\mf-bfces\src\main\resources
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-bfces ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 32 source files with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-business/mf-bfces/src/main/java/cn/com/mfish/bfces/pbi/cache/PbiPartCacheRepository.java: 某些输入文件使用或覆盖了已过时的 API。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-business/mf-bfces/src/main/java/cn/com/mfish/bfces/pbi/cache/PbiPartCacheRepository.java: 有关详细信息, 请使用 -Xlint:deprecation 重新编译。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-business/mf-bfces/src/main/java/cn/com/mfish/bfces/pbi/cache/PbiPartCacheRepository.java: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-business\mf-bfces\src\main\java\cn\com\mfish\bfces\pbi\cache\PbiPartCacheRepository.java使用了未经检查或不安全的操作。
+[INFO] /E:/windchill/idea_workspace/mfish/my/mfish-nocode/mf-business/mf-bfces/src/main/java/cn/com/mfish/bfces/pbi/cache/PbiPartCacheRepository.java: 有关详细信息, 请使用 -Xlint:unchecked 重新编译。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-bfces ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-bfces ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-bfces ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-bfces ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-business\mf-bfces\target\mf-bfces-mf-2.4.1.jar
+[INFO] 
+[INFO] -----------------------< cn.com.mfish:mf-start >------------------------
+[INFO] Building mf-start mf-2.4.1                                       [25/29]
+[INFO]   from mf-start\pom.xml
+[INFO] --------------------------------[ pom ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-start ---
+[INFO] 
+[INFO] --------------------< cn.com.mfish:mf-start-oauth >---------------------
+[INFO] Building mf-start-oauth mf-2.4.1                                 [26/29]
+[INFO]   from mf-start\mf-start-oauth\pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+[INFO] 
+[INFO] --- clean:3.2.0:clean (default-clean) @ mf-start-oauth ---
+[INFO] Deleting E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-start\mf-start-oauth\target
+[INFO] 
+[INFO] --- resources:3.4.0:resources (default-resources) @ mf-start-oauth ---
+[INFO] Copying 0 resource from src\main\java to target\classes
+[INFO] Copying 4 resources from src\main\resources to target\classes
+[INFO] 
+[INFO] --- compiler:3.15.0:compile (default-compile) @ mf-start-oauth ---
+[INFO] Recompiling the module because of changed dependency.
+[INFO] Compiling 1 source file with javac [debug parameters target 21] to target\classes
+[INFO] 由于在类路径中发现了一个或多个处理程序，因此启用了
+  批注处理。未来发行版的 javac 可能会禁用批注处理，
+  除非至少按名称指定了一个处理程序 (-processor)，
+  或指定了搜索路径 (--processor-path, --processor-module-path)，
+  或显式启用了批注处理 (-proc:only, -proc:full)。
+  可使用 -Xlint:-options 隐藏此消息。
+  可使用 -proc:none 禁用批注处理。
+[INFO] 
+[INFO] --- resources:3.4.0:testResources (default-testResources) @ mf-start-oauth ---
+[INFO] Not copying test resources
+[INFO] 
+[INFO] --- compiler:3.15.0:testCompile (default-testCompile) @ mf-start-oauth ---
+[INFO] Not compiling test sources
+[INFO] 
+[INFO] --- surefire:3.5.4:test (default-test) @ mf-start-oauth ---
+[INFO] Tests are skipped.
+[INFO] 
+[INFO] --- jar:3.3.0:jar (default-jar) @ mf-start-oauth ---
+[INFO] Building jar: E:\windchill\idea_workspace\mfish\my\mfish-nocode\mf-start\mf-start-oauth\target\mf-oauth.jar
+[INFO] 
+[INFO] --- spring-boot:4.1.0:repackage (default) @ mf-start-oauth ---
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/springframework/boot/spring-boot-buildpack-platform/4.1.0/spring-boot-buildpack-platform-4.1.0.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/net/java/dev/jna/jna-platform/5.17.0/jna-platform-5.17.0.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/net/java/dev/jna/jna/5.17.0/jna-5.17.0.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/commons-codec/commons-codec/1.17.1/commons-codec-1.17.1.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/apache/commons/commons-lang3/3.16.0/commons-lang3-3.16.0.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/apache/httpcomponents/core5/httpcore5/5.4/httpcore5-5.4.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/apache/httpcomponents/core5/httpcore5-h2/5.4/httpcore5-h2-5.4.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/springframework/boot/spring-boot-loader-tools/4.1.0/spring-boot-loader-tools-4.1.0.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/io/micrometer/micrometer-observation/1.16.6/micrometer-observation-1.16.6.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/io/micrometer/micrometer-commons/1.16.6/micrometer-commons-1.16.6.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/apache/maven/plugins/maven-shade-plugin/3.6.0/maven-shade-plugin-3.6.0.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/ow2/asm/asm/9.7/asm-9.7.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/ow2/asm/asm-commons/9.7/asm-commons-9.7.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/ow2/asm/asm-tree/9.7/asm-tree-9.7.jar
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/org/vafer/jdependency/2.10/jdependency-2.10.jar
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for mfish-nocode mf-2.4.1:
+[INFO] 
+[INFO] mfish-nocode ....................................... SUCCESS [  0.148 s]
+[INFO] mf-common .......................................... SUCCESS [  0.002 s]
+[INFO] mf-common-core ..................................... SUCCESS [ 19.934 s]
+[INFO] mf-common-redis .................................... SUCCESS [  9.424 s]
+[INFO] mf-api ............................................. SUCCESS [  0.003 s]
+[INFO] mf-oauth-api ....................................... SUCCESS [  7.636 s]
+[INFO] mf-common-oauth .................................... SUCCESS [ 10.314 s]
+[INFO] mf-common-captcha .................................. SUCCESS [  7.948 s]
+[INFO] mf-gateway ......................................... SUCCESS [  8.211 s]
+[INFO] mf-common-swagger .................................. SUCCESS [  3.281 s]
+[INFO] mf-common-ds ....................................... SUCCESS [  4.227 s]
+[INFO] mf-common-dataset .................................. SUCCESS [  2.920 s]
+[INFO] mf-sys-api ......................................... SUCCESS [  3.179 s]
+[INFO] mf-common-log ...................................... SUCCESS [  3.000 s]
+[INFO] mf-common-dblink ................................... SUCCESS [  4.328 s]
+[INFO] mf-common-code ..................................... SUCCESS [  3.898 s]
+[INFO] mf-common-sys ...................................... SUCCESS [  6.027 s]
+[INFO] mf-common-app ...................................... SUCCESS [  8.298 s]
+[INFO] mf-common-web ...................................... SUCCESS [ 12.196 s]
+[INFO] mf-common-cloud .................................... SUCCESS [ 13.533 s]
+[INFO] mf-oauth ........................................... SUCCESS [ 22.326 s]
+[INFO] mf-business ........................................ SUCCESS [  0.003 s]
+[INFO] mf-sys ............................................. SUCCESS [ 14.097 s]
+[INFO] mf-bfces ........................................... SUCCESS [ 15.030 s]
+[INFO] mf-start ........................................... SUCCESS [  0.002 s]
+[INFO] mf-start-oauth ..................................... FAILURE [ 19.243 s]
+[INFO] mf-start-sys ....................................... SKIPPED
+[INFO] mf-start-gateway ................................... SKIPPED
+[INFO] mf-start-bfces ..................................... SKIPPED
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  03:20 min
+[INFO] Finished at: 2026-10-15T15:07:50+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal org.springframework.boot:spring-boot-maven-plugin:4.1.0:repackage (default) on project mf-start-oauth: Execution default of goal org.springframework.boot:spring-boot-maven-plugin:4.1.0:repackage failed: Plugin org.springframework.boot:spring-boot-maven-plugin:4.1.0 or one of its dependencies could not be resolved: The following artifacts could not be resolved: org.springframework.boot:spring-boot-buildpack-platform:jar:4.1.0 (absent), net.java.dev.jna:jna-platform:jar:5.17.0 (absent), net.java.dev.jna:jna:jar:5.17.0 (absent), commons-codec:commons-codec:jar:1.17.1 (absent), org.apache.commons:commons-lang3:jar:3.16.0 (absent), org.apache.httpcomponents.core5:httpcore5:jar:5.4 (absent), org.apache.httpcomponents.core5:httpcore5-h2:jar:5.4 (absent), org.springframework.boot:spring-boot-loader-tools:jar:4.1.0 (absent), io.micrometer:micrometer-observation:jar:1.16.6 (absent), io.micrometer:micrometer-commons:jar:1.16.6 (absent), org.apache.maven.plugins:maven-shade-plugin:jar:3.6.0 (absent), org.ow2.asm:asm:jar:9.7 (absent), org.ow2.asm:asm-commons:jar:9.7 (absent), org.ow2.asm:asm-tree:jar:9.7 (absent), org.vafer:jdependency:jar:2.10 (absent): Could not transfer artifact org.springframework.boot:spring-boot-buildpack-platform:jar:4.1.0 from/to aliyunmaven (https://maven.aliyun.com/repository/public): Unexpected error: java.security.InvalidAlgorithmParameterException: the trustAnchors parameter must be non-empty -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/PluginResolutionException
+[ERROR] 
+[ERROR] After correcting the problems, you can resume the build with the command
+[ERROR]   mvn <args> -rf :mf-start-oauth
