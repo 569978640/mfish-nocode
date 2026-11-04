@@ -31,9 +31,10 @@ public class SwaggerConfig {
     @Bean
     public OpenAPI openAPIBean(SwaggerProperties swaggerProperties) {
         OpenAPI api = new OpenAPI().info(apiInfo(swaggerProperties))
-                .externalDocs(new ExternalDocumentation()
-                        .description(swaggerProperties.getDescription())
-                        .url(swaggerProperties.getTermsOfServiceUrl()))
+                // 注释掉文档扩展链接，页面上不再显示「WindFlow框架接口文档」外链
+                // .externalDocs(new ExternalDocumentation()
+                //         .description(swaggerProperties.getDescription())
+                //         .url(swaggerProperties.getTermsOfServiceUrl()))
                 .addSecurityItem(new SecurityRequirement().addList(Constants.AUTHENTICATION))
                 .components(new Components().addSecuritySchemes(Constants.AUTHENTICATION
                         , new SecurityScheme().name(Constants.AUTHENTICATION)
@@ -54,9 +55,10 @@ public class SwaggerConfig {
         return new Info()
                 .title(swaggerProperties.getTitle())
                 .description(swaggerProperties.getDescription())
-                .license(new License().name(swaggerProperties.getLicense()).url(swaggerProperties.getLicenseUrl()))
-                .contact(swaggerProperties.getContact().getContact())
-                .termsOfService(swaggerProperties.getTermsOfServiceUrl())
+                // 注释掉以下链接配置，页面顶部不再显示 Terms of service / Powered By mfish / 网站与邮箱链接
+                // .license(new License().name(swaggerProperties.getLicense()).url(swaggerProperties.getLicenseUrl()))
+                // .contact(swaggerProperties.getContact().getContact())
+                // .termsOfService(swaggerProperties.getTermsOfServiceUrl())
                 .version(swaggerProperties.getVersion());
     }
 
