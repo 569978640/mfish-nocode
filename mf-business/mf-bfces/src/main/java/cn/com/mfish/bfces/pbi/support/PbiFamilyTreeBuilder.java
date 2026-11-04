@@ -293,6 +293,8 @@ public class PbiFamilyTreeBuilder {
         node.setState(info.getState());
         // 部件图片地址：与产品列表同一套按编号拼接规则，编号非法/未配置域名时为空串，前端回退默认图标
         node.setImage(partConverter.buildImageUrl(info.getWtPartNumber()));
+        // 阶段（软属性 com.bfces.ReleasePhaseCode，无值为null）
+        node.setReleasePhaseCode(info.getReleasePhaseCode());
         // DOC/DPF/SCR_ASC规格（无值为null，前端按null隐藏对应标签）
         node.setDoc(info.getDoc());
         node.setDpf(info.getDpf());

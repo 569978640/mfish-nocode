@@ -28,6 +28,9 @@ public class PbiFamilyTreeNode {
     @Schema(description = "生命周期状态（WTPART.STATESTATE，如 RELEASED/OBSOLETE）")
     private String state;
 
+    @Schema(description = "阶段（软属性 com.bfces.ReleasePhaseCode 的 VALUE2，对应视图ReleasePhaseCode列，无值为null）")
+    private String releasePhaseCode;
+
     @Schema(description = "部件图片静态访问地址（按部件编号拼接，编号非法或未配置域名时为空串，前端回退默认图标）")
     private String image;
 

@@ -17,6 +17,7 @@ import static cn.com.mfish.bfces.pbi.support.PbiFamilySnapshotAssembler.FIELD_DO
 import static cn.com.mfish.bfces.pbi.support.PbiFamilySnapshotAssembler.FIELD_DPF;
 import static cn.com.mfish.bfces.pbi.support.PbiFamilySnapshotAssembler.FIELD_NUMBER;
 import static cn.com.mfish.bfces.pbi.support.PbiFamilySnapshotAssembler.FIELD_PREVIOUS;
+import static cn.com.mfish.bfces.pbi.support.PbiFamilySnapshotAssembler.FIELD_RELEASE_PHASE;
 import static cn.com.mfish.bfces.pbi.support.PbiFamilySnapshotAssembler.FIELD_SCR;
 import static cn.com.mfish.bfces.pbi.support.PbiFamilySnapshotAssembler.FIELD_STATE;
 
@@ -109,7 +110,8 @@ public class PbiFamilySnapshotCompleter {
                 previousQueryIds.add(partId);
             }
             if (hashMissing || !hash.containsKey(FIELD_DOC)
-                    || !hash.containsKey(FIELD_DPF) || !hash.containsKey(FIELD_SCR)) {
+                    || !hash.containsKey(FIELD_DPF) || !hash.containsKey(FIELD_SCR)
+                    || !hash.containsKey(FIELD_RELEASE_PHASE)) {
                 specQueryIds.add(partId);
             }
         }
@@ -129,8 +131,10 @@ public class PbiFamilySnapshotCompleter {
             String doc = resolveSpec(partId, FIELD_DOC, specQueryIds, specByPart, hash);
             String dpf = resolveSpec(partId, FIELD_DPF, specQueryIds, specByPart, hash);
             String scr = resolveSpec(partId, FIELD_SCR, specQueryIds, specByPart, hash);
+            String releasePhase = resolveSpec(partId, FIELD_RELEASE_PHASE, specQueryIds, specByPart, hash);
 
-            snapshots.put(partId, assembler.toSnapshot(partId, number, state, previous, doc, dpf, scr));
+            snapshots.put(partId,
+                    assembler.toSnapshot(partId, number, state, releasePhase, previous, doc, dpf, scr));
 
             // 仅回写本次实际回源过的字段，避免无谓写Redis；空串保留"已同步"语义
             boolean touched = false;
@@ -147,6 +151,7 @@ public class PbiFamilySnapshotCompleter {
                 fields.put(FIELD_DOC, StringUtils.defaultString(doc));
                 fields.put(FIELD_DPF, StringUtils.defaultString(dpf));
                 fields.put(FIELD_SCR, StringUtils.defaultString(scr));
+                fields.put(FIELD_RELEASE_PHASE, StringUtils.defaultString(releasePhase));
                 touched = true;
             }
             if (touched) {
@@ -197,6 +202,7 @@ public class PbiFamilySnapshotCompleter {
             }
             Map<String, String> spec = specByPart.get(partId);
             snapshots.put(partId, assembler.toSnapshot(partId, info[0], info[1],
+                    spec == null ? null : spec.get(FIELD_RELEASE_PHASE),
                     previousByPart.get(partId),
                     spec == null ? null : spec.get(FIELD_DOC),
                     spec == null ? null : spec.get(FIELD_DPF),

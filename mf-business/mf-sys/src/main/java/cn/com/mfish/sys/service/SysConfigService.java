@@ -14,7 +14,7 @@ import java.util.List;
  */
 public interface SysConfigService extends IService<SysConfig> {
     /**
-     * 查询用户系统配置列表
+     * 查询用户系统配置列表（样式配置按 Nacos 配置 sys.config.style-global 决定全局或按用户）
      *
      * @param userId 用户 ID
      * @return 系统配置列表
@@ -22,7 +22,7 @@ public interface SysConfigService extends IService<SysConfig> {
     List<SysConfig> querySysConfig(String userId);
 
     /**
-     * 根据用户 ID 和类型查询系统配置
+     * 根据用户 ID 和类型查询系统配置（全局模式下样式配置查询管理员记录）
      *
      * @param userId 用户 ID
      * @param type 配置类型
@@ -31,7 +31,7 @@ public interface SysConfigService extends IService<SysConfig> {
     SysConfig querySysConfig(String userId, Integer type);
 
     /**
-     * 保存系统配置
+     * 保存系统配置（全局模式下样式配置仅管理员可保存且对所有用户生效）
      *
      * @param sysConfig 系统配置对象
      * @return 操作结果

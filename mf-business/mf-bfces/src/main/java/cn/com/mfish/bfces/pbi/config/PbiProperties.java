@@ -32,6 +32,12 @@ public class PbiProperties {
     private String imagePathPrefix = "/Windchill/wtcore/test/part/image/";
 
     /**
+     * 第二张部件图片的文件名后缀（默认_2），拼接方式：domain + imagePathPrefix + 部件编号 + 后缀 + .png。
+     * 文件命名规则变化时只需调整此配置，无需修改代码；配置为空表示不生成第二张图片地址。
+     */
+    private String imageSecondSuffix = "_2";
+
+    /**
      * 部件Windchill信息页路径（不含域名，与 {@link #domain} 拼接后再追加OID）。
      * 在 yml 中配置时值含“#”，请用引号包裹。
      */

@@ -22,7 +22,7 @@ import java.util.Map;
  * 仅负责与Windchill原始表打交道的三类批量IN查询，不感知Redis缓存：
  * 1.WTPART关联WTPARTMASTER：按ID取编号/状态骨架；
  * 2.STRINGVALUE(com.bfces.PreviousMaterialCode)：按ID取上一代物料编码；
- * 3.STRINGVALUE(com.bfces.DOC/DPF/SCR_ASC)：按ID取三规格。
+ * 3.STRINGVALUE(com.bfces.DOC/DPF/SCR_ASC/ReleasePhaseCode)：按ID取三规格与阶段。
  * 同一部件同字段出现多行时保留首个非空值，值冲突时告警。
  * @author: mfish
  * @date: 2026-10-15
@@ -37,7 +37,8 @@ public class PbiFamilyPartQuery {
     private static final Map<String, String> SPEC_ATTR_NAME_BY_FIELD = Map.of(
             PbiFamilySnapshotAssembler.FIELD_DOC, "com.bfces.DOC",
             PbiFamilySnapshotAssembler.FIELD_DPF, "com.bfces.DPF",
-            PbiFamilySnapshotAssembler.FIELD_SCR, "com.bfces.SCR_ASC");
+            PbiFamilySnapshotAssembler.FIELD_SCR, "com.bfces.SCR_ASC",
+            PbiFamilySnapshotAssembler.FIELD_RELEASE_PHASE, "com.bfces.ReleasePhaseCode");
 
     private final PbiFamilyMapper pbiFamilyMapper;
 

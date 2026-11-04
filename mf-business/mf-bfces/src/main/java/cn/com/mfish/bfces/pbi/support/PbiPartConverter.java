@@ -11,7 +11,10 @@ import org.springframework.stereotype.Component;
 import java.net.URI;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -48,7 +51,10 @@ public class PbiPartConverter {
         part.setWtPartNumber(wtPartNumber);
         part.setName(getString(row, "NAME"));
         // 编号合法即生成图片静态地址，图片是否存在由前端加载失败时回退默认图
-        part.setImage(resolveImage(wtPartNumber));
+        // 每张图片地址都按命名规则生成（编号.png、编号_2.png），是否存在由前端探测
+        List<String> images = buildImageUrls(wtPartNumber);
+        part.setImages(images);
+        part.setImage(images.isEmpty() ? "" : images.get(0));
         // Windchill信息页地址：配置域名 + 信息页路径 + 视图OID字段值；域名或OID缺失时不生成链接
         part.setPageUrl(resolveInfoPageUrl(getString(row, "OID")));
 
@@ -85,18 +91,41 @@ public class PbiPartConverter {
      * @return 图片静态访问地址；编号非法时返回空串
      */
     public String buildImageUrl(String wtPartNumber) {
-        return resolveImage(wtPartNumber);
+        List<String> images = buildImageUrls(wtPartNumber);
+        return images.isEmpty() ? "" : images.get(0);
     }
 
     /**
-     * 按部件编号拼接图片静态资源地址。
-     * 编号为空或包含路径穿越字符（".."、"/"、"\"）时返回空串，防止拼出非法路径；
-     * 不再做服务端文件存在性检查（图片由Windchill静态服务托管，加载失败由前端默认图兜底）。
+     * 按部件编号拼接全部图片静态资源地址：
+     * 第一张为「编号.png」，第二张为「编号 + 配置后缀 + .png」（默认_2，后缀可在Nacos调整为其他命名规则）。
+     * 编号为空或包含路径穿越字符时返回空列表，防止拼出非法路径；
+     * 不做服务端文件存在性检查，第二张图是否存在由前端加载结果判断。
      *
      * @param wtPartNumber 部件编号
+     * @return 图片静态访问地址列表
+     */
+    public List<String> buildImageUrls(String wtPartNumber) {
+        Set<String> urls = new LinkedHashSet<>();
+        String first = resolveImage(wtPartNumber, "");
+        if (StringUtils.isNotBlank(first)) {
+            urls.add(first);
+        }
+        // 第二张图后缀为空时不生成，避免与第一张重复
+        String second = resolveImage(wtPartNumber, StringUtils.trimToEmpty(pbiProperties.getImageSecondSuffix()));
+        if (StringUtils.isNotBlank(second)) {
+            urls.add(second);
+        }
+        return new ArrayList<>(urls);
+    }
+
+    /**
+     * 按部件编号拼接指定后缀的图片静态资源地址。
+     *
+     * @param wtPartNumber 部件编号
+     * @param suffix       文件名后缀（第一张为空串）
      * @return 图片静态访问地址；编号非法时返回空串
      */
-    private String resolveImage(String wtPartNumber) {
+    private String resolveImage(String wtPartNumber, String suffix) {
         if (StringUtils.isBlank(wtPartNumber)
                 || wtPartNumber.contains("..") || wtPartNumber.contains("/") || wtPartNumber.contains("\\")) {
             return "";
@@ -106,7 +135,7 @@ public class PbiPartConverter {
         if (StringUtils.isAnyBlank(domain, pathPrefix)) {
             return "";
         }
-        return domain + pathPrefix + wtPartNumber + IMAGE_SUFFIX;
+        return domain + pathPrefix + wtPartNumber + suffix + IMAGE_SUFFIX;
     }
 
     /**

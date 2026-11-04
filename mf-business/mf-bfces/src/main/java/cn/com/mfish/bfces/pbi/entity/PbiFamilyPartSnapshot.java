@@ -7,7 +7,7 @@ import lombok.Data;
  * 数据来源优先取Redis部件Hash（pbi:part:detail:{IDA2A2}，列来自BFCES_PBI_PART_VIEW），
  * Redis不可用时由PbiFamilyMapper的WTPART/STRINGVALUE关联查询降级组装。
  * previousMaterialCode为"上一代物料编码"（父部件编号或BASELINE），空白表示该支系不进入家谱；
- * doc/dpf/scrAsc为规格属性，空白归一为null，前端按null隐藏对应标签。
+ * doc/dpf/scrAsc为规格属性，releasePhaseCode为阶段属性，空白归一为null，前端按null隐藏对应标签。
  * @author: mfish
  * @date: 2026-10-15
  * @version: V1.0.0
@@ -23,6 +23,9 @@ public class PbiFamilyPartSnapshot {
 
     /** 生命周期状态（视图STATE列，如 RELEASED/OBSOLETE；无值为null） */
     private String state;
+
+    /** 阶段（软属性 com.bfces.ReleasePhaseCode 的 VALUE2，对应视图ReleasePhaseCode列；无值为null） */
+    private String releasePhaseCode;
 
     /** 上一代物料编码（父部件编号；BASELINE表示家谱顶层；空白表示支系剪枝） */
     private String previousMaterialCode;

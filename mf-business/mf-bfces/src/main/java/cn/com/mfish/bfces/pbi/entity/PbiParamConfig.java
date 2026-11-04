@@ -41,4 +41,10 @@ public class PbiParamConfig {
 
     @Schema(description = "参数颜色")
     private String paramColor;
+
+    @Schema(description = "是否允许折叠")
+    private String allowFold;
+
+    @Schema(description = "折叠显示值")
+    private String foldDisplayValue;
 }

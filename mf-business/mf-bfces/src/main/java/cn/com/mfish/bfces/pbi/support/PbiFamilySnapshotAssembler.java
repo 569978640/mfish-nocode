@@ -10,7 +10,7 @@ import java.util.Map;
 
 /**
  * @description: PBI产品家谱快照组装器。
- * 统一家谱六字段（编号/状态/上一代物料编码/DOC/DPF/SCR_ASC）的Hash字段名定义、
+ * 统一家谱七字段（编号/状态/阶段/上一代物料编码/DOC/DPF/SCR_ASC）的Hash字段名定义、
  * 缓存快路径的快照组装、补全结果组装，以及快照到家谱节点展示信息的拷贝，
  * 消除读取器、补全器、树构建器之间重复的字段常量与new/set样板。
  * 本类无状态，仅做对象组装，不发起任何查询或缓存读写。
@@ -27,6 +27,9 @@ public class PbiFamilySnapshotAssembler {
     /** Hash字段：生命周期状态 */
     public static final String FIELD_STATE = "STATE";
 
+    /** Hash字段：阶段（对应视图ReleasePhaseCode列，软属性com.bfces.ReleasePhaseCode） */
+    public static final String FIELD_RELEASE_PHASE = "RELEASEPHASECODE";
+
     /** Hash字段：上一代物料编码 */
     public static final String FIELD_PREVIOUS = "PREVIOUSMATERIALCODE";
 
@@ -41,30 +44,32 @@ public class PbiFamilySnapshotAssembler {
 
     /** 叶层快路径依赖的全部Hash字段 */
     public static final List<String> ALL_FIELDS =
-            List.of(FIELD_NUMBER, FIELD_STATE, FIELD_PREVIOUS, FIELD_DOC, FIELD_DPF, FIELD_SCR);
+            List.of(FIELD_NUMBER, FIELD_STATE, FIELD_RELEASE_PHASE, FIELD_PREVIOUS, FIELD_DOC, FIELD_DPF, FIELD_SCR);
 
-    /** 父层快路径依赖的Hash字段（编号/状态由实时版本查询提供，仅需上一代编码与三规格） */
+    /** 父层快路径依赖的Hash字段（编号/状态由实时版本查询提供，仅需阶段、上一代编码与三规格） */
     public static final List<String> PARENT_REQUIRED_FIELDS =
-            List.of(FIELD_PREVIOUS, FIELD_DOC, FIELD_DPF, FIELD_SCR);
+            List.of(FIELD_RELEASE_PHASE, FIELD_PREVIOUS, FIELD_DOC, FIELD_DPF, FIELD_SCR);
 
     /**
-     * 按家谱六字段组装部件快照，各值统一trim并将空白归一为null。
+     * 按家谱七字段组装部件快照，各值统一trim并将空白归一为null。
      *
-     * @param partId   部件ID
-     * @param number   部件编号
-     * @param state    生命周期状态
-     * @param previous 上一代物料编码
-     * @param doc      DOC规格
-     * @param dpf      DPF规格
-     * @param scr      SCR_ASC规格
+     * @param partId       部件ID
+     * @param number       部件编号
+     * @param state        生命周期状态
+     * @param releasePhase 阶段
+     * @param previous     上一代物料编码
+     * @param doc          DOC规格
+     * @param dpf          DPF规格
+     * @param scr          SCR_ASC规格
      * @return 部件快照
      */
-    public PbiFamilyPartSnapshot toSnapshot(String partId, String number, String state,
+    public PbiFamilyPartSnapshot toSnapshot(String partId, String number, String state, String releasePhase,
                                             String previous, String doc, String dpf, String scr) {
         PbiFamilyPartSnapshot snapshot = new PbiFamilyPartSnapshot();
         snapshot.setPartId(partId);
         snapshot.setWtPartNumber(StringUtils.trimToNull(number));
         snapshot.setState(StringUtils.trimToNull(state));
+        snapshot.setReleasePhaseCode(StringUtils.trimToNull(releasePhase));
         snapshot.setPreviousMaterialCode(StringUtils.trimToNull(previous));
         snapshot.setDoc(StringUtils.trimToNull(doc));
         snapshot.setDpf(StringUtils.trimToNull(dpf));
@@ -93,7 +98,7 @@ public class PbiFamilySnapshotAssembler {
             number = hash.get(FIELD_NUMBER);
             state = hash.get(FIELD_STATE);
         }
-        return toSnapshot(partId, number, state,
+        return toSnapshot(partId, number, state, hash.get(FIELD_RELEASE_PHASE),
                 hash.get(FIELD_PREVIOUS), hash.get(FIELD_DOC),
                 hash.get(FIELD_DPF), hash.get(FIELD_SCR));
     }
@@ -110,6 +115,7 @@ public class PbiFamilySnapshotAssembler {
         info.setPartId(snapshot.getPartId());
         info.setWtPartNumber(snapshot.getWtPartNumber());
         info.setState(snapshot.getState());
+        info.setReleasePhaseCode(snapshot.getReleasePhaseCode());
         info.setDoc(snapshot.getDoc());
         info.setDpf(snapshot.getDpf());
         info.setScrAsc(snapshot.getScrAsc());
