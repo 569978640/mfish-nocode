@@ -20,6 +20,7 @@ public class MfMonitorApplication {
      * @param args 命令行参数
      */
     public static void main(String[] args) {
+
         SpringApplication.run(MfMonitorApplication.class, args);
         log.info("""
                 
