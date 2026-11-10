@@ -1,0 +1,48 @@
+﻿[INFO] Scanning for projects...
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for cn.com.mfish:mf-start-boot:jar:mf-2.4.1
+[WARNING] 'dependencies.dependency.systemPath' for cn.com.mfish:mf-nocode:jar should not point at files within the project directory, ${project.basedir}/lib/mf-nocode-${mfish.version}.jar will be unresolvable by dependent projects @ line 49, column 25
+[WARNING] 'dependencies.dependency.systemPath' for cn.com.mfish:mf-common-bi:jar:pg should not point at files within the project directory, ${project.basedir}/lib/mf-common-bi-${mfish.version}-pg.jar will be unresolvable by dependent projects @ line 67, column 25
+[WARNING] 
+[WARNING] Some problems were encountered while building the effective model for cn.com.mfish:mf-start-nocode:jar:mf-2.4.1
+[WARNING] 'dependencies.dependency.systemPath' for cn.com.mfish:mf-nocode:jar should not point at files within the project directory, ${project.basedir}/lib/mf-nocode-${mfish.version}.jar will be unresolvable by dependent projects @ line 29, column 25
+[WARNING] 'dependencies.dependency.systemPath' for cn.com.mfish:mf-common-bi:jar:pg should not point at files within the project directory, ${project.basedir}/lib/mf-common-bi-${mfish.version}-pg.jar will be unresolvable by dependent projects @ line 37, column 25
+[WARNING] 
+[WARNING] It is highly recommended to fix these problems because they threaten the stability of your build.
+[WARNING] 
+[WARNING] For this reason, future Maven versions might no longer support building such malformed projects.
+[WARNING] 
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Build Order:
+[INFO] 
+[INFO] mf-start-oauth                                                     [jar]
+[INFO] mf-start-sys                                                       [jar]
+[INFO] mf-start-gateway                                                   [jar]
+[INFO] mf-start-bfces                                                     [jar]
+[INFO] 
+[INFO] --------------------< cn.com.mfish:mf-start-oauth >---------------------
+[INFO] Building mf-start-oauth mf-2.4.1                                   [1/4]
+[INFO]   from pom.xml
+[INFO] --------------------------------[ jar ]---------------------------------
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/cn/com/mfish/mf-common-cloud/mf-2.4.1/mf-common-cloud-mf-2.4.1.pom
+Downloading from aliyunmaven: https://maven.aliyun.com/repository/public/cn/com/mfish/mf-oauth/mf-2.4.1/mf-oauth-mf-2.4.1.pom
+[INFO] ------------------------------------------------------------------------
+[INFO] Reactor Summary for mf-start-oauth mf-2.4.1:
+[INFO] 
+[INFO] mf-start-oauth ..................................... FAILURE [  0.940 s]
+[INFO] mf-start-sys ....................................... SKIPPED
+[INFO] mf-start-gateway ................................... SKIPPED
+[INFO] mf-start-bfces ..................................... SKIPPED
+[INFO] ------------------------------------------------------------------------
+[INFO] BUILD FAILURE
+[INFO] ------------------------------------------------------------------------
+[INFO] Total time:  1.742 s
+[INFO] Finished at: 2026-10-15T15:10:09+08:00
+[INFO] ------------------------------------------------------------------------
+[ERROR] Failed to execute goal on project mf-start-oauth: Could not resolve dependencies for project cn.com.mfish:mf-start-oauth:jar:mf-2.4.1: Failed to collect dependencies at cn.com.mfish:mf-common-cloud:jar:mf-2.4.1: Failed to read artifact descriptor for cn.com.mfish:mf-common-cloud:jar:mf-2.4.1: The following artifacts could not be resolved: cn.com.mfish:mf-common-cloud:pom:mf-2.4.1 (absent): Could not transfer artifact cn.com.mfish:mf-common-cloud:pom:mf-2.4.1 from/to aliyunmaven (https://maven.aliyun.com/repository/public): Unexpected error: java.security.InvalidAlgorithmParameterException: the trustAnchors parameter must be non-empty -> [Help 1]
+[ERROR] 
+[ERROR] To see the full stack trace of the errors, re-run Maven with the -e switch.
+[ERROR] Re-run Maven using the -X switch to enable full debug logging.
+[ERROR] 
+[ERROR] For more information about the errors and possible solutions, please read the following articles:
+[ERROR] [Help 1] http://cwiki.apache.org/confluence/display/MAVEN/DependencyResolutionException
